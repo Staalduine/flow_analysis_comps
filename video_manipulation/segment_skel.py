@@ -103,7 +103,7 @@ def segment_meanstd_image(
 def segment_brightfield_ultimate(
     image_addresses: list[Path],
     seg_thresh: float = 1.15,
-) -> tuple[np.ndarray, nx.Graph, dict]:
+) -> np.ndarray:
     """
     Segmentation method for brightfield video.
     image:          Input image
@@ -113,10 +113,22 @@ def segment_brightfield_ultimate(
     """
     mean_image, std_image = incremental_mean_std_address(image_addresses)
     segmented = segment_meanstd_image(seg_thresh, mean_image, std_image)
+    return segmented
+
+def skeletonize_segmented_im(segmented: np.ndarray) -> tuple[nx.Graph, dict]:
+    """
+    Take segmented image and skeletonize it
+
+    Args:
+        segmented (np.ndarray): Segmented image
+
+    Returns:
+        tuple[nx.Graph, dict]: networkx graph and positions
+    """
     skeletonized = skeletonize(segmented > 0)
 
     skeleton = scipy.sparse.dok_matrix(skeletonized)
     nx_graph, pos = generate_nx_graph(from_sparse_to_graph(skeleton))
     nx_graph_pruned, pos = remove_spurs(nx_graph, pos, threshold=200)
 
-    return (segmented, nx_graph_pruned, pos)
+    return nx_graph_pruned, pos

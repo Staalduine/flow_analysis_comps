@@ -2,15 +2,35 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 
-def generate_set_node(graph_tab) -> set:
+
+def generate_set_node(graph_tab: pd.DataFrame) -> set:
+    """
+    Retrieve all nodes in a DataFrame graph
+
+    Args:
+        graph_tab (pd.DataFrame): DataFrame containing edges of a graph
+
+    Returns:
+        set: set of node id's
+    """
     nodes = set()
-    for index, row in graph_tab.iterrows():
+    for _, row in graph_tab.iterrows():
         nodes.add(row["origin"])
         nodes.add(row["end"])
     return sorted(nodes)
 
 
-def generate_nx_graph(graph_tab, labeled=False):
+def generate_nx_graph(graph_tab: pd.DataFrame, labeled=False) -> tuple[nx.Graph, dict]:
+    """
+    Create networkx graph from dataframe
+
+    Args:
+        graph_tab (pd.DataFrame): DataFrame with edge data
+        labeled (bool, optional): Check if the data is labeled. Defaults to False.
+
+    Returns:
+        tuple[nx.Graph, dict]: Graph in nx format, with a dictionary of positions
+    """
     G = nx.Graph()
     pos = {}
     if not labeled:
@@ -28,10 +48,10 @@ def generate_nx_graph(graph_tab, labeled=False):
             pos[identifier2] = np.array(row["end"]).astype(np.int32)
         info = {"weight": len(row["pixel_list"]), "pixel_list": row["pixel_list"]}
         G.add_edges_from([(identifier1, identifier2, info)])
-    return (G, pos)
+    return G, pos
 
 
-def extract_branches(doc_skel):
+def extract_branches(doc_skel: dict):
     def get_neighbours(pixel):
         x = pixel[0]
         y = pixel[1]
@@ -98,7 +118,7 @@ def extract_branches(doc_skel):
                 pixel_branch_dic[neighbour] = pixel_branch_dic[neighbour].union(
                     pixel_branch_dic[pixel]
                 )
-    return (pixel_branch_dic, is_node, new_index)
+    return pixel_branch_dic, is_node, new_index
 
 
 def get_neighbours2(pixel, xs, ys):
@@ -112,7 +132,7 @@ def get_neighbours2(pixel, xs, ys):
         (x - 1, y - 1),
     }
     pixel_list = [(x, ys[i]) for i, x in enumerate(xs)]
-    num_neighbours = 0
+    # num_neighbours = 0
     actual_neighbours = set()
     for neighbour in primary_neighbours:
         if neighbour in pixel_list:
@@ -149,11 +169,11 @@ def order_pixel(pixel_begin, pixel_end, pixel_list):
     return ordered_list
 
 
-def from_sparse_to_graph(doc_skel):
+def from_sparse_to_graph(doc_skel: dict) -> pd.DataFrame:
     column_names = ["origin", "end", "pixel_list"]
     graph = pd.DataFrame(columns=column_names)
     pixel_branch_dic, is_node, new_index = extract_branches(doc_skel)
-    nodes = []
+    # nodes = []
     edges = {}
     for pixel in pixel_branch_dic:
         for branch in pixel_branch_dic[pixel]:
@@ -174,7 +194,7 @@ def from_sparse_to_graph(doc_skel):
     return graph
 
 
-def reconnect_degree_2(nx_graph, pos, has_width=True):
+def reconnect_degree_2(nx_graph: nx.Graph, pos: dict, has_width: bool = True) -> None:
     degree_2_nodes = [node for node in nx_graph.nodes if nx_graph.degree(node) == 2]
     while len(degree_2_nodes) > 0:
         node = degree_2_nodes.pop()
@@ -212,7 +232,9 @@ def reconnect_degree_2(nx_graph, pos, has_width=True):
         nx_graph.remove_node(node)
 
 
-def remove_spurs(nx_g, pos, threshold=100):
+def remove_spurs(
+    nx_g: nx.Graph, pos: dict, threshold: int = 100
+) -> tuple[nx.Graph, dict]:
     found = True
     while found:
         spurs = []
@@ -227,4 +249,4 @@ def remove_spurs(nx_g, pos, threshold=100):
         for spur in spurs:
             nx_g.remove_edge(spur[0], spur[1])
         reconnect_degree_2(nx_g, pos, has_width=False)
-    return (nx_g, pos)
+    return nx_g, pos
