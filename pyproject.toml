@@ -3,7 +3,7 @@ name = "flow-analysis-comps"
 version = "0.1.0"
 description = ""
 authors = [
-    {name = "Your Name",email = "you@example.com"}
+    {name = "Simon van Staalduine",email = "simonvanstaalduine@home.nl"}
 ]
 readme = "README.md"
 requires-python = ">3.11"
