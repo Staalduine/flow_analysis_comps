@@ -3,7 +3,7 @@ name = "flow-analysis-comps"
 version = "0.1.0"
 description = ""
 authors = [
-    {name = "Your Name",email = "you@example.com"}
+    {name = "Simon van Staalduine",email = "simonvanstaalduine@home.nl"}
 ]
 readme = "README.md"
 requires-python = ">3.11"
@@ -12,10 +12,16 @@ dependencies = [
     "pydantic (>=2.10.5,<3.0.0)",
     "pandas (>=2.2.3,<3.0.0)",
     "opencv-python (>=4.11.0.86,<5.0.0.0)",
-    "pytest (>=8.3.4,<9.0.0)"
+    "pytest (>=8.3.4,<9.0.0)",
+    "jupyter (>=1.1.1,<2.0.0)",
+    "dask (>=2025.1.0,<2026.0.0)"
 ]
 
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.29.5"
+
