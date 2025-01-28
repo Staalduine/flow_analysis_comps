@@ -7,6 +7,8 @@ from scipy.ndimage import convolve
 from skimage.morphology import skeletonize
 import networkx as nx
 from util.graph_util import generate_nx_graph, remove_spurs, from_sparse_to_graph
+from scipy.optimize import minimize_scalar
+from skimage.filters import threshold_yen
 
 
 def incremental_mean_std_address(
@@ -100,20 +102,37 @@ def segment_meanstd_image(
     return segmented
 
 
-def segment_brightfield_ultimate(
-    image_addresses: list[Path],
-    seg_thresh: float = 1.15,
-) -> np.ndarray:
-    """
-    Segmentation method for brightfield video.
-    image:          Input image
-    thresh:         Value close to zero such that the function will output a boolean array
-    threshtype:     Type of threshold to apply to segmentation. Can be hist_edge, Renyi or Yen
+def calculate_renyi_entropy(threshold: float, pixels: np.ndarray) -> np.ndarray:
+    # Calculate probabilities and entropies
+    Ps = np.mean(pixels <= threshold)
+    Hs = -np.sum(
+        pixels[pixels <= threshold] * np.log(pixels[pixels <= threshold] + 1e-10)
+    )
+    Hn = -np.sum(pixels * np.log(pixels + 1e-10))
 
-    """
-    mean_image, std_image = incremental_mean_std_address(image_addresses)
-    segmented = segment_meanstd_image(seg_thresh, mean_image, std_image)
-    return segmented
+    # Calculate phi(s)
+    phi_s = np.log(Ps * (1 - Ps)) + Hs / Ps + (Hn - Hs) / (1 - Ps)
+
+    return -phi_s
+
+
+def RenyiEntropy_thresholding(image: np.ndarray) -> np.ndarray:
+    # Flatten the image
+    pixels = image.flatten()
+
+    # Find the optimal threshold
+    result = minimize_scalar(
+        calculate_renyi_entropy, bounds=(0, 255), args=(pixels,), method="bounded"
+    )
+
+    # The image is rescaled to [0,255] and thresholded
+    optimal_threshold = result.x
+    _, thresholded = cv2.threshold(
+        image / np.max(image) * 255, optimal_threshold, 255, cv2.THRESH_BINARY
+    )
+
+    return thresholded
+
 
 def skeletonize_segmented_im(segmented: np.ndarray) -> tuple[nx.Graph, dict]:
     """
@@ -132,3 +151,54 @@ def skeletonize_segmented_im(segmented: np.ndarray) -> tuple[nx.Graph, dict]:
     nx_graph_pruned, pos = remove_spurs(nx_graph, pos, threshold=200)
 
     return nx_graph_pruned, pos
+
+
+def segment_brightfield_ultimate(
+    image_addresses: list[Path], seg_thresh: float = 1.15, mode="BRIGHTFIELD"
+) -> np.ndarray:
+    """
+    Segmentation method for brightfield video.
+    image:          Input image
+    thresh:         Value close to zero such that the function will output a boolean array
+    threshtype:     Type of threshold to apply to segmentation. Can be hist_edge, Renyi or Yen
+
+    """
+    mean_image, std_image = incremental_mean_std_address(image_addresses)
+    match mode:
+        case "BRIGHTFIELD":
+            segmented = segment_meanstd_image(seg_thresh, mean_image, std_image)
+        case "FLUO":
+            segmented = segment_fluo_new(mean_image)
+        case _:
+            raise ValueError(f"Wrong mode, what is {mode}?")
+    return segmented
+
+
+def segment_fluo_new(
+    mean_img: np.ndarray, seg_thresh: float = 1.10, threshtype: str = "hist_edge"
+) -> np.ndarray:
+    """
+    Segmentation method for brightfield video, uses vesselness filters to get result.
+    image:          Input image
+    thresh:         Value close to zero such that the function will output a boolean array
+    threshtype:     Type of threshold to apply to segmentation. Can be hist_edge, Renyi or Yen
+
+    """
+    smooth_im_blur = cv2.blur(mean_img, (20, 20))
+    match threshtype:
+        case "hist_edge":
+            # the biggest derivative in the hist is calculated and we multiply with a small number to sit just right of that.
+            thresh = find_histogram_edge(smooth_im_blur)
+            segmented = (smooth_im_blur >= thresh * seg_thresh).astype(np.uint8) * 255
+        case "Renyi":
+            # this version minimizes a secific entropy (phi)
+            segmented = RenyiEntropy_thresholding(smooth_im_blur)
+        case "Yen":
+            # This maximizes the distance between the two means and probabilities, sigma^2 = p(1-p)(mu1-mu2)^2
+            thresh = threshold_yen(smooth_im_blur)
+            segmented = (smooth_im_blur >= thresh).astype(np.uint8) * 255
+        case _:
+            print("threshold type has a typo! rito pls fix.")
+            raise ValueError
+
+    return segmented
