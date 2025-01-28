@@ -1,3 +1,4 @@
 poetry.lock
 exp1_001.txt
 *.pyc
+*.ipynb_checkpoints
