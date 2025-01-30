@@ -3,15 +3,15 @@ import scipy
 import imageio
 import numpy as np
 from pathlib import Path
-from scipy.ndimage import convolve
 from skimage.morphology import skeletonize
 import networkx as nx
 from util.graph_util import generate_nx_graph, remove_spurs, from_sparse_to_graph
-from scipy.optimize import minimize_scalar
 from skimage.filters import threshold_yen
 
+from video_manipulation.img_util import RenyiEntropy_thresholding, find_histogram_edge
 
-def incremental_mean_std_address(
+
+def mean_std_from_img_paths(
     image_addresses: list[Path],
 ) -> tuple[np.ndarray, np.ndarray]:
     """Returns the mean and std pixel value of a stack of images
@@ -51,33 +51,7 @@ def incremental_mean_std_address(
     return mean_image, std_dev_image
 
 
-def find_histogram_edge(image: np.ndarray) -> float:
-    """
-    Uses a sobel filter to find the point of highest gradient.
-
-    Args:
-        image (np.ndarray): Image
-
-    Returns:
-        float: Pixel value of highest image gradient
-    """
-    # Calculate the histogram
-    hist, bins = np.histogram(image.flatten(), 40)
-    hist = hist.astype(float) / hist.max()  # Normalize the histogram
-
-    # Sobel Kernel
-    sobel_kernel = np.array([-1, 0, 1])
-
-    # Apply Sobel edge detection to the histogram
-    sobel_hist = convolve(hist, sobel_kernel)
-
-    # Find the point with the highest gradient change
-    threshold = np.argmax(sobel_hist)
-
-    return bins[threshold]
-
-
-def segment_meanstd_image(
+def segment_brightfield_image(
     seg_thresh: float, mean_image: np.ndarray, std_image: np.ndarray
 ) -> np.ndarray:
     """
@@ -102,37 +76,6 @@ def segment_meanstd_image(
     return segmented
 
 
-def calculate_renyi_entropy(threshold: float, pixels: np.ndarray) -> np.ndarray:
-    # Calculate probabilities and entropies
-    Ps = np.mean(pixels <= threshold)
-    Hs = -np.sum(
-        pixels[pixels <= threshold] * np.log(pixels[pixels <= threshold] + 1e-10)
-    )
-    Hn = -np.sum(pixels * np.log(pixels + 1e-10))
-
-    # Calculate phi(s)
-    phi_s = np.log(Ps * (1 - Ps)) + Hs / Ps + (Hn - Hs) / (1 - Ps)
-
-    return -phi_s
-
-
-def RenyiEntropy_thresholding(image: np.ndarray) -> np.ndarray:
-    # Flatten the image
-    pixels = image.flatten()
-
-    # Find the optimal threshold
-    result = minimize_scalar(
-        calculate_renyi_entropy, bounds=(0, 255), args=(pixels,), method="bounded"
-    )
-
-    # The image is rescaled to [0,255] and thresholded
-    optimal_threshold = result.x
-    _, thresholded = cv2.threshold(
-        image / np.max(image) * 255, optimal_threshold, 255, cv2.THRESH_BINARY
-    )
-
-    return thresholded
-
 
 def skeletonize_segmented_im(segmented: np.ndarray) -> tuple[nx.Graph, dict]:
     """
@@ -153,7 +96,7 @@ def skeletonize_segmented_im(segmented: np.ndarray) -> tuple[nx.Graph, dict]:
     return nx_graph_pruned, pos
 
 
-def segment_brightfield_ultimate(
+def segment_ultimate(
     image_addresses: list[Path], seg_thresh: float = 1.15, mode="BRIGHTFIELD"
 ) -> np.ndarray:
     """
@@ -163,18 +106,18 @@ def segment_brightfield_ultimate(
     threshtype:     Type of threshold to apply to segmentation. Can be hist_edge, Renyi or Yen
 
     """
-    mean_image, std_image = incremental_mean_std_address(image_addresses)
+    mean_image, std_image = mean_std_from_img_paths(image_addresses)
     match mode:
         case "BRIGHTFIELD":
-            segmented = segment_meanstd_image(seg_thresh, mean_image, std_image)
+            segmented = segment_brightfield_image(seg_thresh, mean_image, std_image)
         case "FLUO":
-            segmented = segment_fluo_new(mean_image)
+            segmented = segment_fluorescence_image(mean_image, threshtype="hist_edge")
         case _:
             raise ValueError(f"Wrong mode, what is {mode}?")
     return segmented
 
 
-def segment_fluo_new(
+def segment_fluorescence_image(
     mean_img: np.ndarray, seg_thresh: float = 1.10, threshtype: str = "hist_edge"
 ) -> np.ndarray:
     """
@@ -202,3 +145,5 @@ def segment_fluo_new(
             raise ValueError
 
     return segmented
+
+

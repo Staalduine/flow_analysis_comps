@@ -1,7 +1,7 @@
 from pathlib import Path
 from openpiv import tools, pyprocess, validation, filters, scaling
 import tifffile
-from video_manipulation.segment_skel import segment_brightfield_ultimate
+from video_manipulation.segment_skel import segment_ultimate
 import cv2
 from glob import glob
 import os
@@ -17,7 +17,7 @@ class AMF_PIV:
         self.frame_paths = glob(
             str(self.parameters.video_path / "Img") + os.sep + "Img*"
         )
-        self.segmented_img = segment_brightfield_ultimate(
+        self.segmented_img = segment_ultimate(
             self.frame_paths[:200],
             mode=self.parameters.segment_mode,
         )
