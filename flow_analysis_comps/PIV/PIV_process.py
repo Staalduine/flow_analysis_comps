@@ -18,7 +18,7 @@ class AMF_PIV:
             str(self.parameters.video_path / "Img") + os.sep + "Img*"
         )
         self.segmented_img = segment_brightfield_ultimate(
-            self.frame_paths[:20],
+            self.frame_paths[:200],
             mode=self.parameters.segment_mode,
         )
         print(f"Found {len(self.frame_paths)} images in target directory.")
@@ -41,47 +41,48 @@ class AMF_PIV:
     def plot_segmentation(self):
         fig, ax = plt.subplots()
         ax.imshow(self.segmented_img)
-        
-    def make_hsv_img(self):
+
+    def make_hsv_img(self) -> tuple[np.ndarray, np.ndarray]:
         if self.x is None:
             raise ValueError("Process has not ran yet!")
-        
-        hue = np.arctan2(self.v, self.u) 
+
+        hue = np.arctan2(self.v, self.u)
         val = np.linalg.norm([self.v, self.u], axis=0)
         val /= np.nanmax(val)
         val = np.sqrt(val)
         sat = np.ones_like(val)
 
-        hsv_im = np.array([hue/ (2*np.pi) + 0.5, sat, val])
+        hsv_im = np.array([hue / (2 * np.pi) + 0.5, sat, val])
         hsv_im = np.moveaxis(hsv_im, 0, -1)
         rgb_im = hsv_to_rgb(hsv_im)
         return rgb_im, hue
-    
-    
-    
+
     def plot_results_color(self):
         if self.x is None:
             raise ValueError("Process has not ran yet!")
-        
+
         rgb_im, hue = self.make_hsv_img()
-        
-        fig, ax = plt.subplot_mosaic([["result", "hue"], ["result","hist"]], figsize=(20,10))
+
+        fig, ax = plt.subplot_mosaic(
+            [["result", "hue"], ["result", "hist"]], figsize=(20, 10)
+        )
         ax["result"].imshow(rgb_im)
         ax["hue"].set_title("Hue")
         ax["hue"].imshow(np.arctan2(self.y - 1, self.x - 1), cmap="hsv")
         ax["hist"].hist(hue.flatten(), bins=50)
 
         fig.tight_layout()
-    
+
     def plot_results_arrows(self, scale=4, width=0.0015):
-        fig, ax = plt.subplots(figsize=(20,20))
+        fig, ax = plt.subplots(figsize=(20, 20))
         tools.display_vector_field(
-            Path('exp1_001.txt'),
-            ax=ax, scaling_factor=self.parameters.px_per_mm,
-            scale=scale, # scale defines here the arrow length
-            width=width, # width is the thickness of the arrow
-            on_img=True, # overlay on the image
-            image_name= self.frame_paths[0],
+            Path("exp1_001.txt"),
+            ax=ax,
+            scaling_factor=self.parameters.px_per_mm,
+            scale=scale,  # scale defines here the arrow length
+            width=width,  # width is the thickness of the arrow
+            on_img=True,  # overlay on the image
+            image_name=self.frame_paths[0],
         )
 
     def piv_process(
@@ -141,11 +142,7 @@ class AMF_PIV:
 
         # Scale results based on pixels per millimeter
         x, y, u3, v3 = scaling.uniform(
-            x,
-            y,
-            u0,
-            v0,
-            scaling_factor=self.parameters.px_per_mm
+            x, y, u0, v0, scaling_factor=self.parameters.px_per_mm
         )
 
         # Change coordinates so plt plots look good
