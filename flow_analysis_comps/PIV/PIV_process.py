@@ -1,14 +1,14 @@
 from pathlib import Path
 from openpiv import tools, pyprocess, validation, filters, scaling
 import tifffile
-from video_manipulation.segment_skel import segment_ultimate
+from video_manipulation.segment_skel import segment_ultimate, harmonic_mean_thresh
 import cv2
 from glob import glob
 import os
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import hsv_to_rgb
-from flow_analysis_comps.PIV.definitions import PIV_params, segmentMode
+from flow_analysis_comps.PIV.definitions import PIV_params
 
 
 class AMF_PIV:
@@ -18,7 +18,7 @@ class AMF_PIV:
             str(self.parameters.video_path / "Img") + os.sep + "Img*"
         )
         self.segmented_img = segment_ultimate(
-            self.frame_paths[:200],
+            self.frame_paths[:20],
             mode=self.parameters.segment_mode,
         )
         print(f"Found {len(self.frame_paths)} images in target directory.")
@@ -31,9 +31,12 @@ class AMF_PIV:
     def plot_raw_images(self, frames: tuple[int, int]):
         img1 = tifffile.imread(self.frame_paths[frames[0]])
         img2 = tifffile.imread(self.frame_paths[frames[1]])
+        
+        img1 = harmonic_mean_thresh(img1)
+        img2 = harmonic_mean_thresh(img2)
 
         fig, ax = plt.subplot_mosaic(
-            [["img1", "img2"], ["img1", "img2"]], figsize=(20, 20)
+            [["img1", "img2"], ["img1", "img2"]], figsize=(20, 12)
         )
         ax["img1"].imshow(img1, cmap=plt.cm.gray)
         ax["img2"].imshow(img2, cmap=plt.cm.gray)
@@ -47,21 +50,21 @@ class AMF_PIV:
             raise ValueError("Process has not ran yet!")
 
         hue = np.arctan2(self.v, self.u)
-        val = np.linalg.norm([self.v, self.u], axis=0)
-        val /= np.nanmax(val)
-        val = np.sqrt(val)
-        sat = np.ones_like(val)
+        val = np.linalg.norm([self.v, self.u], axis=0)* ~self.piv_mask
+        val_im = val / np.nanmax(val)
+        val_im = np.sqrt(val_im)
+        sat = np.ones_like(val_im)
 
-        hsv_im = np.array([hue / (2 * np.pi) + 0.5, sat, val])
+        hsv_im = np.array([hue / (2 * np.pi) + 0.5, sat, val_im])
         hsv_im = np.moveaxis(hsv_im, 0, -1)
         rgb_im = hsv_to_rgb(hsv_im)
-        return rgb_im, hue
+        return rgb_im, hue, val 
 
     def plot_results_color(self):
         if self.x is None:
             raise ValueError("Process has not ran yet!")
 
-        rgb_im, hue = self.make_hsv_img()
+        rgb_im, hue, val = self.make_hsv_img()
 
         fig, ax = plt.subplot_mosaic(
             [["result", "hue"], ["result", "hist"]], figsize=(20, 10)
@@ -69,7 +72,7 @@ class AMF_PIV:
         ax["result"].imshow(rgb_im)
         ax["hue"].set_title("Hue")
         ax["hue"].imshow(np.arctan2(self.y - 1, self.x - 1), cmap="hsv")
-        ax["hist"].hist(hue.flatten(), bins=50)
+        ax["hist"].hist(val.flatten(), bins=50, range=(.001, .01))
 
         fig.tight_layout()
 
@@ -95,6 +98,9 @@ class AMF_PIV:
         # Load frames
         img1 = tifffile.imread(self.frame_paths[frames[0]])
         img2 = tifffile.imread(self.frame_paths[frames[1]])
+        
+        img1 = harmonic_mean_thresh(img1, self.segmented_img)
+        img2 = harmonic_mean_thresh(img2, self.segmented_img)
 
         # Run PIV analysis
         u0, v0, sig2noise = pyprocess.extended_search_area_piv(
@@ -150,4 +156,6 @@ class AMF_PIV:
 
         self.x, self.y, self.u, self.v = x, y, u3, v3
         self.piv_mask = invalid_mask
+        tools.save('exp1_001.txt', x, y, u3, v3, invalid_mask)
+
         return
