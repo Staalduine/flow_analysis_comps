@@ -1,3 +1,4 @@
+from typing import Optional
 import cv2
 import scipy
 import imageio
@@ -146,4 +147,17 @@ def segment_fluorescence_image(
 
     return segmented
 
+def harmonic_mean(pixels: np.ndarray, mask:Optional[np.ndarray]=None)-> float:
+    arr = pixels.flatten()
+    if mask is not None:
+        arr = np.array([arr_val for arr_val, mask_val in zip(arr, mask.flatten()) if mask_val > 0])
+    return len(arr) / np.sum(1.0 / (arr[arr > 0]))
+    
 
+def harmonic_mean_thresh(img: np.ndarray, mask:Optional[np.ndarray] =None):
+    print(np.min(img), np.max(img))
+    img_inv = np.nanmax(img.flatten()) - img
+    thresh_val = harmonic_mean(img_inv, mask)
+    print(thresh_val)
+    _, thresholded_image = cv2.threshold(img_inv, thresh_val, 255, cv2.THRESH_BINARY )
+    return thresholded_image - thresh_val
