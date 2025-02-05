@@ -1,5 +1,5 @@
 from pathlib import Path
-from openpiv import tools, pyprocess, validation, filters, scaling
+from openpiv import tools, pyprocess, validation, filters, scaling, windef
 import tifffile
 from video_manipulation.segment_skel import segment_ultimate, harmonic_mean_thresh
 import cv2
@@ -14,9 +14,9 @@ from flow_analysis_comps.PIV.definitions import PIV_params
 class AMF_PIV:
     def __init__(self, parameters: PIV_params):
         self.parameters = parameters
-        self.frame_paths = glob(
-            str(self.parameters.video_path / "Img") + os.sep + "Img*"
-        )
+        self.frame_paths = sorted(glob(
+            str(self.parameters.video_path) + os.sep + "Img*"
+        ))
         self.segmented_img = segment_ultimate(
             self.frame_paths[:20],
             mode=self.parameters.segment_mode,
@@ -31,12 +31,12 @@ class AMF_PIV:
     def plot_raw_images(self, frames: tuple[int, int]):
         img1 = tifffile.imread(self.frame_paths[frames[0]])
         img2 = tifffile.imread(self.frame_paths[frames[1]])
-        
+
         img1 = harmonic_mean_thresh(img1)
         img2 = harmonic_mean_thresh(img2)
 
         fig, ax = plt.subplot_mosaic(
-            [["img1", "img2"], ["img1", "img2"]], figsize=(20, 12)
+            [["img1", "img2"], ["img1", "img2"]], figsize=(10, 6)
         )
         ax["img1"].imshow(img1, cmap=plt.cm.gray)
         ax["img2"].imshow(img2, cmap=plt.cm.gray)
@@ -50,7 +50,7 @@ class AMF_PIV:
             raise ValueError("Process has not ran yet!")
 
         hue = np.arctan2(self.v, self.u)
-        val = np.linalg.norm([self.v, self.u], axis=0)* ~self.piv_mask
+        val = np.linalg.norm([self.v, self.u], axis=0) * ~self.piv_mask
         val_im = val / np.nanmax(val)
         val_im = np.sqrt(val_im)
         sat = np.ones_like(val_im)
@@ -58,7 +58,7 @@ class AMF_PIV:
         hsv_im = np.array([hue / (2 * np.pi) + 0.5, sat, val_im])
         hsv_im = np.moveaxis(hsv_im, 0, -1)
         rgb_im = hsv_to_rgb(hsv_im)
-        return rgb_im, hue, val 
+        return rgb_im, hue, val
 
     def plot_results_color(self):
         if self.x is None:
@@ -67,17 +67,17 @@ class AMF_PIV:
         rgb_im, hue, val = self.make_hsv_img()
 
         fig, ax = plt.subplot_mosaic(
-            [["result", "hue"], ["result", "hist"]], figsize=(20, 10)
+            [["result", "hue"], ["result", "hist"]], figsize=(10, 5)
         )
         ax["result"].imshow(rgb_im)
         ax["hue"].set_title("Hue")
         ax["hue"].imshow(np.arctan2(self.y - 1, self.x - 1), cmap="hsv")
-        ax["hist"].hist(val.flatten(), bins=50, range=(.001, .01))
+        ax["hist"].hist(val.flatten(), bins=50, range=(0.001, 0.01))
 
         fig.tight_layout()
 
     def plot_results_arrows(self, scale=4, width=0.0015):
-        fig, ax = plt.subplots(figsize=(20, 20))
+        fig, ax = plt.subplots(figsize=(10, 10))
         tools.display_vector_field(
             Path("exp1_001.txt"),
             ax=ax,
@@ -87,6 +87,27 @@ class AMF_PIV:
             on_img=True,  # overlay on the image
             image_name=self.frame_paths[0],
         )
+
+    def piv_process_windef(
+        self, frames: tuple[int, int], USE_SEGMENTATION=True, FAKE_OUTLIERS=False
+    ):
+        settings = windef.PIVSettings()
+        print(str(self.parameters.video_path ))
+        print(str(self.frame_paths[frames[0]]))
+        print(str(self.frame_paths[frames[1]]))
+
+        settings.filepath_images = self.parameters.video_path
+        settings.frame_pattern_a = 'Img_*.tif'
+        settings.frame_pattern_b = '(1+2),(3+4)'
+
+        settings.static_mask = ~self.segmented_img
+        settings.save_path = self.parameters.video_path.parent
+        settings.save_folder_suffix = "PIV_output"
+        settings.save_plot = True
+        # settings.show_all_plots = True
+        # settings.show_plot = True
+
+        windef.piv(settings)
 
     def piv_process(
         self, frames: tuple[int, int], USE_SEGMENTATION=True, FAKE_OUTLIERS=False
@@ -98,7 +119,7 @@ class AMF_PIV:
         # Load frames
         img1 = tifffile.imread(self.frame_paths[frames[0]])
         img2 = tifffile.imread(self.frame_paths[frames[1]])
-        
+
         img1 = harmonic_mean_thresh(img1, self.segmented_img)
         img2 = harmonic_mean_thresh(img2, self.segmented_img)
 
@@ -156,6 +177,6 @@ class AMF_PIV:
 
         self.x, self.y, self.u, self.v = x, y, u3, v3
         self.piv_mask = invalid_mask
-        tools.save('exp1_001.txt', x, y, u3, v3, invalid_mask)
+        tools.save("exp1_001.txt", x, y, u3, v3, invalid_mask)
 
         return

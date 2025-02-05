@@ -159,5 +159,5 @@ def harmonic_mean_thresh(img: np.ndarray, mask:Optional[np.ndarray] =None):
     img_inv = np.nanmax(img.flatten()) - img
     thresh_val = harmonic_mean(img_inv, mask)
     print(thresh_val)
-    _, thresholded_image = cv2.threshold(img_inv, thresh_val, 255, cv2.THRESH_BINARY )
+    _, thresholded_image = cv2.threshold(img_inv, thresh_val, 255, cv2.THRESH_TOZERO_INV )
     return thresholded_image - thresh_val

@@ -6,7 +6,7 @@ authors = [
     {name = "Simon van Staalduine",email = "simonvanstaalduine@home.nl"}
 ]
 readme = "README.md"
-requires-python = ">3.11"
+requires-python = "^3.12"
 dependencies = [
     "openpiv (>=0.25.3,<0.26.0)",
     "pydantic (>=2.10.5,<3.0.0)",
@@ -16,7 +16,8 @@ dependencies = [
     "jupyter (>=1.1.1,<2.0.0)",
     "dask (>=2025.1.0,<2026.0.0)",
     "jupyterlab (>=4.3.4,<5.0.0)",
-    "ipympl (>=0.9.6,<0.10.0)"
+    "ipympl (>=0.9.6,<0.10.0)",
+    "colorcet (>=3.1.0,<4.0.0)"
 ]
 
 
