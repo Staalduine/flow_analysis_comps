@@ -104,6 +104,7 @@ class AMF_PIV:
         settings.save_path = self.parameters.video_path.parent
         settings.save_folder_suffix = "PIV_output"
         settings.save_plot = True
+        settings.sig2noise_threshold = self.parameters.stn_threshold
         # settings.show_all_plots = True
         # settings.show_plot = True
 
