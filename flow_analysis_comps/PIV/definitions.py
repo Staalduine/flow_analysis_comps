@@ -4,6 +4,7 @@ from pathlib import Path
 
 
 class segmentMode(StrEnum):
+    NONE : str =  "NONE"
     BRIGHT: str = "BRIGHTFIELD"
     FLUO: str = "FLUO"
 

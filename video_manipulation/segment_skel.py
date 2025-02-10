@@ -97,7 +97,7 @@ def skeletonize_segmented_im(segmented: np.ndarray) -> tuple[nx.Graph, dict]:
     return nx_graph_pruned, pos
 
 
-def segment_ultimate(
+def segment_hyphae_general(
     image_addresses: list[Path], seg_thresh: float = 1.15, mode="BRIGHTFIELD"
 ) -> np.ndarray:
     """
@@ -154,10 +154,8 @@ def harmonic_mean(pixels: np.ndarray, mask:Optional[np.ndarray]=None)-> float:
     return len(arr) / np.sum(1.0 / (arr[arr > 0]))
     
 
-def harmonic_mean_thresh(img: np.ndarray, mask:Optional[np.ndarray] =None):
-    print(np.min(img), np.max(img))
+def harmonic_mean_thresh(img: np.ndarray, mask:Optional[np.ndarray] =None) -> tuple[np.ndarray, float]:
     img_inv = np.nanmax(img.flatten()) - img
     thresh_val = harmonic_mean(img_inv, mask)
-    print(thresh_val)
-    _, thresholded_image = cv2.threshold(img_inv, thresh_val, 255, cv2.THRESH_TOZERO_INV )
-    return thresholded_image - thresh_val
+    thresh, thresholded_image = cv2.threshold(img_inv, thresh_val, 255, cv2.THRESH_TOZERO_INV )
+    return thresholded_image, thresh_val

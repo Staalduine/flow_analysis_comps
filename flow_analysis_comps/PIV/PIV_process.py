@@ -1,39 +1,70 @@
 from pathlib import Path
+from typing import List, Optional, Union
 from openpiv import tools, pyprocess, validation, filters, scaling, windef
 import tifffile
-from video_manipulation.segment_skel import segment_ultimate, harmonic_mean_thresh
+from tqdm import tqdm
+from video_manipulation.segment_skel import segment_hyphae_general, harmonic_mean_thresh
 import cv2
 from glob import glob
 import os
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import hsv_to_rgb
-from flow_analysis_comps.PIV.definitions import PIV_params
+from flow_analysis_comps.PIV.definitions import PIV_params, segmentMode
+from collections.abc import Callable
+from numba import prange
 
 
 class AMF_PIV:
     def __init__(self, parameters: PIV_params):
         self.parameters = parameters
-        self.frame_paths = sorted(glob(
-            str(self.parameters.video_path) + os.sep + "Img*"
-        ))
-        self.segmented_img = segment_ultimate(
+        self.frame_paths = sorted(
+            glob(str(self.parameters.video_path) + os.sep + "Img*")
+        )
+        self.segmented_img = segment_hyphae_general(
             self.frame_paths[:20],
             mode=self.parameters.segment_mode,
         )
-        print(f"Found {len(self.frame_paths)} images in target directory.")
+
+        self.parameters.video_path = self.select_segment_data()
+        # print(f"Found {len(self.frame_paths)} images in target directory.")
         self.x = None
         self.y = None
         self.u = None
         self.v = None
         self.piv_mask = None
+        self.harm_mean_thresh = None
+
+    def select_segment_data(self) -> Path:
+        match self.parameters.segment_mode:
+            case segmentMode.NONE:
+                return self.parameters.video_path
+            case segmentMode.BRIGHT:
+                out_adr = self.parameters.video_path.parent / "Harm_mean_thresh"
+                out_adr.mkdir(exist_ok=True)
+                _, thresh = harmonic_mean_thresh(tifffile.imread(self.frame_paths[0]), self.segmented_img)
+                self.segment_data(thresh, out_adr)
+                return out_adr
+            case _:
+                print("Data is not pre-thresholded")
+                return self.parameters.video_path
+
+    def segment_data(
+        self,
+        threshold_val: float,
+        out_adr: Path,
+    ):
+        for frame_adr in tqdm(self.frame_paths):
+            frame = tifffile.imread(frame_adr)
+            _, frame_threshed = cv2.threshold((255 - frame), threshold_val, 255, cv2.THRESH_TOZERO_INV )
+            tifffile.imwrite(out_adr / Path(frame_adr).name, frame_threshed, imagej=True)
 
     def plot_raw_images(self, frames: tuple[int, int]):
         img1 = tifffile.imread(self.frame_paths[frames[0]])
         img2 = tifffile.imread(self.frame_paths[frames[1]])
 
-        img1 = harmonic_mean_thresh(img1)
-        img2 = harmonic_mean_thresh(img2)
+        img1, thresh = harmonic_mean_thresh(img1)
+        img2, thresh = harmonic_mean_thresh(img2)
 
         fig, ax = plt.subplot_mosaic(
             [["img1", "img2"], ["img1", "img2"]], figsize=(10, 6)
@@ -88,17 +119,12 @@ class AMF_PIV:
             image_name=self.frame_paths[0],
         )
 
-    def piv_process_windef(
-        self, frames: tuple[int, int], USE_SEGMENTATION=True, FAKE_OUTLIERS=False
-    ):
+    def piv_process_windef(self, frames: tuple[int, int]):
         settings = windef.PIVSettings()
-        print(str(self.parameters.video_path ))
-        print(str(self.frame_paths[frames[0]]))
-        print(str(self.frame_paths[frames[1]]))
 
         settings.filepath_images = self.parameters.video_path
-        settings.frame_pattern_a = 'Img_*.tif'
-        settings.frame_pattern_b = '(1+2),(3+4)'
+        settings.frame_pattern_a = "Img_*.tif"
+        settings.frame_pattern_b = "(1+3),(2+4)"
 
         settings.static_mask = ~self.segmented_img
         settings.save_path = self.parameters.video_path.parent
