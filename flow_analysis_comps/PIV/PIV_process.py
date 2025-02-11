@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import List, Optional, Union
 from openpiv import tools, pyprocess, validation, filters, scaling, windef
 import tifffile
 from tqdm import tqdm
@@ -11,8 +10,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import hsv_to_rgb
 from flow_analysis_comps.PIV.definitions import PIV_params, segmentMode
-from collections.abc import Callable
-from numba import prange
 
 
 class AMF_PIV:
