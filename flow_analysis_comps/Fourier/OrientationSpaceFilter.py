@@ -1,67 +1,53 @@
 from typing import Optional
-
 import numpy as np
-from scipy import fftpack
+from pydantic import BaseModel
 from util.coord_transforms import freqSpaceCoords
 
 
+class OSFilterParams(BaseModel):
+    freq_central: float
+    freq_width: Optional[float] = None
+    K: float = 5
+    sample_factor: int = 1
+    n: Optional[int] = None
+
+
 class OrientationSpaceFilter:
-    def __init__(
-        self,
-        freq_central,
-        freq_width: Optional[float] = None,
-        K: float = 5,
-        normEnergy=None,
-    ):
-        self.freq_central = freq_central
-        self.freq_width = freq_width
-        self.K = K
-        self.normEnergy = normEnergy
-        self.sampleFactor = 1
-        self.size = None
-        self.F = None
+    def __init__(self, params: OSFilterParams):
+        self.params = params
 
-        if freq_width is None:
-            self.freq_width = 1 / np.sqrt(2) * self.freq_central
+        if self.params.freq_width is None:
+            self.params.freq_width = 1 / np.sqrt(2) * self.params.freq_central
 
-        self.n = 2 * self.sampleFactor * np.ceil(self.K) + 1
+        self.params.n = 2 * self.params.sample_factor * np.ceil(self.params.K) + 1
 
     @property
     def angles(self):
-        return np.arange(self.n) / self.n * np.pi
+        return np.arange(self.params.n) / self.params.n * np.pi
 
-    def get_response(self, image: np.ndarray):
-        If = fftpack.fftn(image)
-        self.setup_filter(If.shape)
-        ridge_resp = self.apply_ridge_filter(If)
-        edge_resp = self.apply_edge_filter(If)
-        ang_resp = ridge_resp + edge_resp
-        return ang_resp
+    # def get_response(self, image: np.ndarray):
+    #     If = fftpack.fftn(image)
+    #     self.setup_filter(If.shape)
+    #     ridge_resp = self.apply_ridge_filter(If)
+    #     edge_resp = self.apply_edge_filter(If)
+    #     ang_resp = ridge_resp + edge_resp
+    #     self.response = OSResponse.OrientationSpaceResponse(self, ang_resp)
+    #     return self.response
 
     def get_angular_kernel(self, coords=None):
-        angular_filter = angular_kernel(self.K, self.angles, coords)
+        angular_filter = angular_kernel(self.params.K, self.angles, coords)
         return angular_filter
 
     def get_radial_filter(self, coords=None):
-        radial_filter = radial_kernel(self.freq_central, self.freq_width, coords)
+        radial_filter = radial_kernel(self.params.freq_central, self.params.freq_width, coords)
         return radial_filter
-
-    def apply_ridge_filter(self, If):
-        ridge_response = fftpack.ifftn(If[:, :, None] * self.F.real, axes=(0, 1)).real
-        return ridge_response
-
-    def apply_edge_filter(self, If:np.ndarray):
-        edge_response = 1j * (
-            fftpack.ifftn((If * -1j)[:, :, None] * (self.F.imag), axes=(0, 1)).real
-        )
-        return edge_response
 
     def setup_filter(self, imshape):
         coords = freqSpaceCoords(imshape)
 
         A = self.get_angular_kernel(coords)
         R = self.get_radial_filter(coords)
-        self.F = A * R[:, :, None]
+        return A * R[:, :, None]
 
 
 def angular_kernel(

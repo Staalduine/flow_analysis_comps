@@ -1,4 +1,3 @@
-from typing import Optional
 import numpy as np
 from scipy import fftpack
 
@@ -28,7 +27,10 @@ class freqSpaceCoords:
             np.arange(0, dim_shape[1]) - np.floor(dim_shape[1] / 2),
             np.arange(0, dim_shape[0]) - np.floor(dim_shape[0] / 2),
         )
-        self.x, self.y = fftpack.ifftshift(self.x), fftpack.ifftshift(self.y)
+        self.x, self.y = (
+            fftpack.ifftshift(self.x), 
+            fftpack.ifftshift(self.y)
+        )
         self.rho, self.theta = cart2pol(
             self.x / np.floor(dim_shape[1] / 2) / 2,
             self.y / np.floor(dim_shape[0] / 2) / 2,
