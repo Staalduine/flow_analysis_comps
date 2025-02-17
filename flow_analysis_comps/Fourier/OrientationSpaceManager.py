@@ -47,7 +47,7 @@ class orientationSpaceManager:
         ridge_resp = self.apply_ridge_filter(If)
         edge_resp = self.apply_edge_filter(If)
         ang_resp = ridge_resp + edge_resp
-        self.response = OrientationSpaceResponse(ang_resp)
+        self.response = OrientationSpaceResponse(ang_resp, self.filter.angles)
         return self
 
     def apply_ridge_filter(self, If: npt.NDArray[np.complex128]):
