@@ -3,6 +3,7 @@ from typing import Optional
 from matplotlib import pyplot as plt
 import numpy as np
 import colorcet
+from scipy import fftpack
 import skimage as ski
 from util.coord_transforms import cart2pol
 import numpy.typing as npt
@@ -25,7 +26,15 @@ class OrientationSpaceResponse:
         angles: np.ndarray,
         mask: npt.NDArray[np.bool_] = None,
     ):
+        """Create object
+
+        Args:
+            response_array (np.ndarray): Input array of image which is filtered.
+            angles (np.ndarray): Array of angles along which the filter was taken
+            mask (npt.NDArray[np.bool_], optional): Mask which is used for nlms. Defaults to None.
+        """
         self.response_array = response_array
+        self.a_hat: np.ndarray = fftpack.fft(self.response_array.real, axis=2)
         self.n = self.response_array.shape[-1]
         self.angles = angles
         self.mask = mask
@@ -38,7 +47,8 @@ class OrientationSpaceResponse:
 
     @property
     def mean_response(self) -> np.ndarray:
-        return np.mean(self.response_array, axis=2)
+        mean_response = self.a_hat[:, :, 0] / self.a_hat.shape[-1]
+        return mean_response
 
     response = property(get_resp, set_resp)
 
@@ -53,7 +63,7 @@ class OrientationSpaceResponse:
 
         return self.mean_response.real > threshold_val
 
-    def nlms_mask(self, dilation_rad: int = 3, fill_holes:bool=False):
+    def nlms_mask(self, dilation_rad: int = 3, fill_holes: bool = False):
         mean_thresh_mask: npt.NDArray[np.bool_] = self.threshold_mean()
         if self.mask:
             mean_thresh_mask = np.logical_and(mean_thresh_mask, self.mask)
@@ -61,7 +71,9 @@ class OrientationSpaceResponse:
             mean_thresh_mask, ski.morphology.disk(dilation_rad)
         )
         if fill_holes:
-            mean_thresh_mask_dil = ski.morphology.remove_small_holes(mean_thresh_mask_dil)
+            mean_thresh_mask_dil = ski.morphology.remove_small_holes(
+                mean_thresh_mask_dil
+            )
         return mean_thresh_mask_dil
 
     ## Plotting functions
@@ -72,7 +84,7 @@ class OrientationSpaceResponse:
         meanresponse = self.mean_response
         fig, ax = plt.subplots(dpi=200)
         ax.imshow(
-            meanresponse.real,
+            meanresponse.__abs__(),
             cmap="cet_CET_D1A",
             vmin=-largest_value,
             vmax=largest_value,
@@ -86,15 +98,16 @@ class OrientationSpaceResponse:
         Args:
             coord (tuple[int, int, Optional[int]]): input coordinate, can be 2d, or 3d (not implemented yets)
         """
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(1, 2)
 
         match len(coord):
             case 2:
                 # Assume img comes in as array (so y,x or z, x axes), so flip the coords
-                ax.plot(self.angles, self.response_array[coord[1], coord[0], :].real)
-                ax.set_xlim(0, np.pi)
-                ax.set_xticks(np.linspace(0, np.pi, 3, endpoint=True))
-                ax.set_xticklabels(["0", "$\pi$/2", "$\pi$"])
+                ax[0].plot(self.angles, self.response_array[coord[1], coord[0], :].real)
+                ax[0].set_xlim(0, np.pi)
+                ax[0].set_xticks(np.linspace(0, np.pi, 3, endpoint=True))
+                ax[0].set_xticklabels(["0", "$\pi$/2", "$\pi$"])
+                ax[1].plot(self.a_hat[coord[1], coord[0], :].real)
 
     def visualize_point_response(self, coord, mesh_size=128):
         print(self.angles)

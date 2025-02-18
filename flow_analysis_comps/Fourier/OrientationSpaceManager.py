@@ -10,6 +10,9 @@ from flow_analysis_comps.Fourier.OrientationSpaceResponse import (
 )
 import numpy.typing as npt
 
+from flow_analysis_comps.Fourier.NLMSPrecise import nlms_precise
+from util.coord_transforms import wraparoundN
+
 
 class orientationSpaceManager:
     def __init__(
@@ -39,14 +42,29 @@ class orientationSpaceManager:
         self.setup_imdims = img_shape
 
     def get_response(self, img: np.ndarray):
+        """Applies filter onto input image, first uses image shape to create filter arrays
+
+        Args:
+            img (np.ndarray): input image
+
+        Returns:
+            self: returns itself, but also creates a response object containing result
+        """
+
+        # Initiate filters based on image size. Scaling is just done on pixel level.
         if self.setup_imdims != img.shape:
             print(f"Initiating filters on new image with dims {img.shape}")
             self.init_filter_on_img(img)
 
+        # Fourier transform image
         If = fftpack.fftn(img)
+
+        # Apply filters
         ridge_resp = self.apply_ridge_filter(If)
         edge_resp = self.apply_edge_filter(If)
         ang_resp = ridge_resp + edge_resp
+
+        # Create response object capable of further processing results
         self.response = OrientationSpaceResponse(ang_resp, self.filter.angles)
         return self
 
@@ -69,7 +87,7 @@ class orientationSpaceManager:
 
     def update_response_at_order_FT(self, K_new, normalize=2):
         if K_new == self.filter.params.K:
-            return self.response
+            return
         else:
             n_new = 1 + 2 * K_new
             n_old = 1 + 2 * self.filter.params.K
@@ -77,7 +95,9 @@ class orientationSpaceManager:
             s_hat = s_inv / (2 * np.pi)
 
             if normalize == 2:
-                x = np.arange(1, self.n + 1) - np.floor(self.n / 2 + 1)
+                x = np.arange(1, self.response.n + 1) - np.floor(
+                    self.response.n / 2 + 1
+                )
             else:
                 lower = -self.filter.params.sample_factor * np.ceil(K_new)
                 upper = np.ceil(K_new) * self.filter.params.sample_factor
@@ -95,19 +115,45 @@ class orientationSpaceManager:
             a_hat = a_hat * f_hat
 
             filter_new = OrientationSpaceFilter(
-                self.filter.params.freq_central, self.filter.params.freq_width, K_new
+                OSFilterParams(
+                    freq_central=self.filter.params.freq_central,
+                    freq_width=self.filter.params.freq_width,
+                    K=K_new,
+                )
             )
+            self.filter = filter_new
 
             if normalize == 1:
                 Response = OrientationSpaceResponse(
-                    filter_new,
                     fftpack.ifft(
                         a_hat * a_hat.shape[2] / self.response.response_array.shape[2],
                         axis=2,
                     ),
+                    self.filter.angles,
                 )
             else:
                 Response = OrientationSpaceResponse(
-                    filter_new, fftpack.ifft(a_hat, axis=2)
+                    fftpack.ifft(a_hat, axis=2), self.filter.angles
                 )
-            return Response
+            self.response = Response
+            return
+
+    def orientation_process_1(self, order=5):
+        # Set up arrays
+        nlsm_mask = self.response.nlms_mask()
+
+        nanTemplate = np.zeros_like(nlsm_mask)
+        nanTemplate[:] = np.NaN
+        a_hat = np.rollaxis(self.response.a_hat, 2, 0)
+        a_hat = a_hat[:, nlsm_mask]
+
+        self.update_response_at_order_FT(order)
+
+        maximum_single_angle = nanTemplate
+        maximum_single_angle[nlsm_mask] = wraparoundN(
+            -np.angle(a_hat[1, :]) / 2, 0, np.pi
+        )
+        nlms_single = nlms_precise(
+            self.response.response_array.real, maximum_single_angle, mask=nlsm_mask
+        )
+        return nlms_single
