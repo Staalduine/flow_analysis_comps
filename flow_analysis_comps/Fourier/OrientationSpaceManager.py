@@ -1,4 +1,5 @@
 from typing import Optional
+from matplotlib import pyplot as plt
 import numpy as np
 from scipy import fftpack
 from flow_analysis_comps.Fourier.OrientationSpaceFilter import (
@@ -65,7 +66,7 @@ class orientationSpaceManager:
         ang_resp = ridge_resp + edge_resp
 
         # Create response object capable of further processing results
-        self.response = OrientationSpaceResponse(ang_resp, self.filter.angles)
+        self.response = OrientationSpaceResponse(ang_resp)
         return self
 
     def apply_ridge_filter(self, If: npt.NDArray[np.complex128]):
@@ -86,8 +87,9 @@ class orientationSpaceManager:
         return self.get_response(other)
 
     def update_response_at_order_FT(self, K_new, normalize=2):
+        # If same, just return
         if K_new == self.filter.params.K:
-            return
+            return self.response, self.filter
         else:
             n_new = 1 + 2 * K_new
             n_old = 1 + 2 * self.filter.params.K
@@ -121,7 +123,7 @@ class orientationSpaceManager:
                     K=K_new,
                 )
             )
-            self.filter = filter_new
+            # self.filter = filter_new
 
             if normalize == 1:
                 Response = OrientationSpaceResponse(
@@ -129,31 +131,59 @@ class orientationSpaceManager:
                         a_hat * a_hat.shape[2] / self.response.response_array.shape[2],
                         axis=2,
                     ),
-                    self.filter.angles,
                 )
             else:
-                Response = OrientationSpaceResponse(
-                    fftpack.ifft(a_hat, axis=2), self.filter.angles
-                )
-            self.response = Response
-            return
+                Response = OrientationSpaceResponse(fftpack.ifft(a_hat, axis=2))
+            return Response, filter_new
 
-    def orientation_process_1(self, order=5):
+    def get_max_angles(self, order=5):
         # Set up arrays
         nlsm_mask = self.response.nlms_mask()
 
-        nanTemplate = np.zeros_like(nlsm_mask)
+        nanTemplate = np.zeros_like(nlsm_mask, dtype=np.float32)
         nanTemplate[:] = np.NaN
         a_hat = np.rollaxis(self.response.a_hat, 2, 0)
         a_hat = a_hat[:, nlsm_mask]
-
-        self.update_response_at_order_FT(order)
 
         maximum_single_angle = nanTemplate
         maximum_single_angle[nlsm_mask] = wraparoundN(
             -np.angle(a_hat[1, :]) / 2, 0, np.pi
         )
+        return maximum_single_angle
+
+    def nlms_simple_case(self, order=5):
+        updated_response, filter = self.update_response_at_order_FT(order)
+        maximum_single_angle = self.get_max_angles(order)
         nlms_single = nlms_precise(
-            self.response.response_array.real, maximum_single_angle, mask=nlsm_mask
+            updated_response.response_array.real,
+            maximum_single_angle,
+            mask=self.response.nlms_mask(),
         )
         return nlms_single
+
+    ## Plotting functions
+    def demo_image(self, img, order=5):
+        fig, ax = plt.subplot_mosaic(
+            [["img", "."], ["orient", "colorwheel"], ["nlms", "."]],
+            width_ratios=[8, 2],
+            figsize=(5, 8),
+            dpi=200,
+        )
+
+        self.get_response(img)
+        simple_angles = self.get_max_angles(order)
+        nlms_candidates = self.nlms_simple_case(order)
+        self.response.visualize_orientation_wheel(ax=ax["colorwheel"])
+
+        img_show = ax["img"].imshow(img, cmap="cet_CET_L20")
+        ax["img"].set_aspect("equal")
+        fig.colorbar(img_show)
+
+        ax["orient"].imshow(simple_angles, cmap="cet_CET_C3_r", vmin=0, vmax=np.pi)
+        nlms_show = ax["nlms"].imshow(
+            nlms_candidates, cmap="cet_CET_L19", vmin=0, vmax=np.pi
+        )
+        fig.colorbar(nlms_show)
+        fig.tight_layout()
+
+        # return fig

@@ -19,7 +19,8 @@ class OrientationSpaceFilter:
         if self.params.freq_width is None:
             self.params.freq_width = 1 / np.sqrt(2) * self.params.freq_central
 
-        self.params.n = 2 * self.params.sample_factor * np.ceil(self.params.K) + 1
+        if self.params.n is None:
+            self.params.n = 2 * self.params.sample_factor * np.ceil(self.params.K) + 1
 
     @property
     def angles(self):

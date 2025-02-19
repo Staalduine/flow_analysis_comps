@@ -1,6 +1,7 @@
 from enum import StrEnum, auto
 from typing import Optional
 from matplotlib import pyplot as plt
+import matplotlib
 import numpy as np
 import colorcet
 from scipy import fftpack
@@ -23,7 +24,7 @@ class OrientationSpaceResponse:
     def __init__(
         self,
         response_array: np.ndarray,
-        angles: np.ndarray,
+        # angles: np.ndarray,
         mask: npt.NDArray[np.bool_] = None,
     ):
         """Create object
@@ -36,7 +37,7 @@ class OrientationSpaceResponse:
         self.response_array = response_array
         self.a_hat: np.ndarray = fftpack.fft(self.response_array.real, axis=2)
         self.n = self.response_array.shape[-1]
-        self.angles = angles
+        self.angles = np.arange(self.response_array.shape[-1]) / self.response_array.shape[-1] * np.pi
         self.mask = mask
 
     def get_resp(self):
@@ -110,7 +111,6 @@ class OrientationSpaceResponse:
                 ax[1].plot(self.a_hat[coord[1], coord[0], :].real)
 
     def visualize_point_response(self, coord, mesh_size=128):
-        print(self.angles)
         match len(coord):
             case 2:
                 line_plot = self.response_array[coord[1], coord[0], :].real
@@ -127,3 +127,17 @@ class OrientationSpaceResponse:
 
                 fig, ax = plt.subplots()
                 ax.imshow(theta_response_2)
+
+    def visualize_orientation_wheel(self, mesh_size = 128, cmap = 'cet_CET_C3_r', ax: Optional[matplotlib.axes.Axes] = None):
+        xs, ys = np.meshgrid(
+            np.linspace(-1, 1, mesh_size, endpoint=True),
+            np.linspace(-1, 1, mesh_size, endpoint=True),
+        )
+        rs, thetas_2 = cart2pol(xs, ys)
+
+        thetas_2 *= rs < 1
+        thetas_2 *= rs > 0.5
+        thetas_2 = (thetas_2 + np.pi/2) % np.pi
+        if ax is None:
+            fig, ax = plt.subplots()
+        ax.imshow(thetas_2, cmap= cmap)

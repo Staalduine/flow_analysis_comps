@@ -29,7 +29,6 @@ def nlms_precise(
     if offset_angle is None:
         offset_angle = theta_max
         offset_angle[offset_angle == np.NaN] = np.nanmean(theta_max)
-    print(theta_max.shape)
 
     # Set up size of nlms arrays
     rot_response_size = response.shape
@@ -62,8 +61,7 @@ def nlms_precise(
         angleIdx = angleIdx / np.pi * period + 1
 
     x, y = np.meshgrid(np.arange(1, ny + 1), np.arange(1, nx + 1), indexing="ij")
-    print(x.shape)
-    
+
     x_offset = np.cos(offset_angle)
     y_offset = np.sin(offset_angle)
 
@@ -76,9 +74,6 @@ def nlms_precise(
     x = np.block([Xminus[:, :, None], Xstack, Xplus[:, :, None]])
     y = np.block([Yminus[:, :, None], Ystack, Yplus[:, :, None]])
     angleIdx = np.tile(angleIdx[:, :, None], 3)
-    
-    print(x.shape)
-    print(angleIdx.shape)
 
     Xminus = 0
     Xstack = 0
@@ -92,7 +87,6 @@ def nlms_precise(
     x_ = np.arange(response.shape[0])
     y_ = np.arange(response.shape[1])
     z_ = np.arange(response.shape[2])
-    print(response.shape)
 
     if angle_multiplier != 1:
         interpMethod = "linear"
