@@ -91,7 +91,18 @@ def cart2spher(
     return rho, theta, phi
 
 
-def wraparoundN(values, lower, upper):
+def wraparoundN(values:np.ndarray, lower:float, upper:float)->np.ndarray:
+    """
+    Wrap values between an upper and lower bound. Values exceeding upper will be modulo'd.
+
+    Args:
+        values (np.ndarray): Input values
+        lower (float): Lower limit
+        upper (float): Upper limit
+
+    Returns:
+        np.ndarray: Wrapped values
+    """
     assert lower < upper, "'lower'-value must be lower than 'upper'-value"
 
     wrappedValues = values - lower

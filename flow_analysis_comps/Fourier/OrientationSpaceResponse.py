@@ -2,6 +2,7 @@ from enum import StrEnum, auto
 from typing import Optional
 from matplotlib import pyplot as plt
 import matplotlib
+import matplotlib.axes
 import numpy as np
 import colorcet
 from scipy import fftpack
@@ -140,4 +141,7 @@ class OrientationSpaceResponse:
         thetas_2 = (thetas_2 + np.pi/2) % np.pi
         if ax is None:
             fig, ax = plt.subplots()
+        ax:matplotlib.axes.Axes
         ax.imshow(thetas_2, cmap= cmap)
+        ax.set_xticks([])
+        ax.set_yticks([])

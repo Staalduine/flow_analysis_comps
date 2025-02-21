@@ -168,6 +168,7 @@ class orientationSpaceManager:
             width_ratios=[8, 2],
             figsize=(5, 8),
             dpi=200,
+            layout='constrained'
         )
 
         self.get_response(img)
@@ -184,6 +185,6 @@ class orientationSpaceManager:
             nlms_candidates, cmap="cet_CET_L19", vmin=0, vmax=np.pi
         )
         fig.colorbar(nlms_show)
-        fig.tight_layout()
+        # fig.tight_layout()
 
         # return fig
