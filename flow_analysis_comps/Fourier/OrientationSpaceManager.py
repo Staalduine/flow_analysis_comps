@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Self
 from matplotlib import pyplot as plt
 import numpy as np
 from scipy import fftpack
@@ -18,11 +18,23 @@ from util.coord_transforms import wraparoundN
 class orientationSpaceManager:
     def __init__(
         self,
-        freq_central,
+        freq_central: float,
         freq_width: Optional[float] = None,
         K: float = 5,
         radialOrder=False,
     ):
+        """
+        Creates instance of OSManager, which sets up filters, runs them, then plots the results.
+
+        Args:
+            freq_central (float): Radial frequency corresponding to object size to search for.
+            freq_width (Optional[float], optional): Breadth of frequency band to look in to. Will be set according to freq_central if not set. Defaults to None.
+            K (float, optional): Orientation order, higher means more orientation space is sampled, at the cost of using more memory. Defaults to 5.
+            radialOrder (bool, optional): Adjust radial width according to orientation order. Defaults to False.
+
+        Returns:
+            instance of object
+        """
         if radialOrder and freq_width is None:
             freq_width = freq_central / np.sqrt(K)
 
@@ -86,7 +98,16 @@ class orientationSpaceManager:
     def __mul__(self, other: np.ndarray):
         return self.get_response(other)
 
-    def update_response_at_order_FT(self, K_new, normalize=2):
+    def update_response_at_order_FT(self, K_new:float, normalize:int=2)-> tuple[OrientationSpaceResponse, OrientationSpaceFilter]:
+        """Adjust response of filter to a LOWER K-value
+
+        Args:
+            K_new (float): new K, must be lower than old K
+            normalize (int, optional): Setting for how to normalize new result, can only be used as 2. Defaults to 2.
+
+        Returns:
+            tuple[OrientationSpaceResponse, OrientationSpaceFilter]: Updated response object instance, as well as a different filter for debug purposes.
+        """
         # If same, just return
         if K_new == self.filter.params.K:
             return self.response, self.filter
@@ -123,7 +144,6 @@ class orientationSpaceManager:
                     K=K_new,
                 )
             )
-            # self.filter = filter_new
 
             if normalize == 1:
                 Response = OrientationSpaceResponse(
@@ -168,7 +188,7 @@ class orientationSpaceManager:
             width_ratios=[8, 2],
             figsize=(5, 8),
             dpi=200,
-            layout='constrained'
+            layout="constrained",
         )
 
         self.get_response(img)
@@ -185,6 +205,4 @@ class orientationSpaceManager:
             nlms_candidates, cmap="cet_CET_L19", vmin=0, vmax=np.pi
         )
         fig.colorbar(nlms_show)
-        # fig.tight_layout()
-
-        # return fig
+        return

@@ -13,6 +13,24 @@ def nlms_precise(
     offset_angle=None,
     angle_multiplier=3,
 ):
+    """Perform nonlocal maximum suppression. Sample for each point along its strongest angle, then remove all points that are not a maximum.
+
+    Args:
+        response (np.ndarray): Filter response of input image
+        theta_max (np.ndarray): Strongest orientation found along pixel
+        suppression_value (int, optional): Value to set for all suppressed pixels. Defaults to 0.
+        interp_method (str, optional): Interpolation method to sample response on non-discretized coordinates. Defaults to "linear".
+        mask (_type_, optional): Mask to remove non-desired pixels as well. Defaults to None.
+        offset_angle (_type_, optional): Angle along which to sample the image, not necessary for single orientation nlms. Defaults to None.
+        angle_multiplier (int, optional): Not sure, what this value does. Defaults to 3.
+
+    Raises:
+        NotImplementedError: Raises if a 3d grid is input, not implemented yet
+        ValueError: Raises if dimensionality is weird
+
+    Returns:
+        np.ndarray: Array with masked (nan) pixels, suppressed (default: 0) pixels and non-suppressed pixels which carry the response value of the filter. 
+    """
     # Adjust to dimensionality
     match len(theta_max.shape):
         case 3:
@@ -65,12 +83,14 @@ def nlms_precise(
     x_offset = np.cos(offset_angle)
     y_offset = np.sin(offset_angle)
 
+    # Get coordinates to sample along the strongest gradient
     Xplus, Yplus = x + x_offset, y + y_offset
     Xminus, Yminus = x - x_offset, y - y_offset
 
     Xstack = np.tile(x[:, :, None], nO)
     Ystack = np.tile(y[:, :, None], nO)
 
+    # Stack together for use in the regular grid interpolator, yielding three layers
     x = np.block([Xminus[:, :, None], Xstack, Xplus[:, :, None]])
     y = np.block([Yminus[:, :, None], Ystack, Yplus[:, :, None]])
     angleIdx = np.tile(angleIdx[:, :, None], 3)
@@ -88,17 +108,18 @@ def nlms_precise(
     y_ = np.arange(response.shape[1])
     z_ = np.arange(response.shape[2])
 
+    # Sample with X-, X and X+ coordinates.
     if angle_multiplier != 1:
-        interpMethod = "linear"
         interpolator = RegularGridInterpolator(
             (x_, y_, z_),
             response,
-            method=interpMethod,
+            method=interp_method,
             fill_value=0,
             bounds_error=False,
         )
         A = interpolator((x, y, angleIdx))
 
+    # If response value is highest in the middle, then there is a local maximum
     nlms = A[:, :, 1]
     suppress = np.logical_or(nlms < A[:, :, 0], nlms < A[:, :, 2])
     nlms[suppress] = suppression_value

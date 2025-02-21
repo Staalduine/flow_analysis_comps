@@ -26,21 +26,14 @@ class OrientationSpaceFilter:
     def angles(self):
         return np.arange(self.params.n) / self.params.n * np.pi
 
-    # def get_response(self, image: np.ndarray):
-    #     If = fftpack.fftn(image)
-    #     self.setup_filter(If.shape)
-    #     ridge_resp = self.apply_ridge_filter(If)
-    #     edge_resp = self.apply_edge_filter(If)
-    #     ang_resp = ridge_resp + edge_resp
-    #     self.response = OSResponse.OrientationSpaceResponse(self, ang_resp)
-    #     return self.response
-
     def get_angular_kernel(self, coords=None):
         angular_filter = angular_kernel(self.params.K, self.angles, coords)
         return angular_filter
 
     def get_radial_filter(self, coords=None):
-        radial_filter = radial_kernel(self.params.freq_central, self.params.freq_width, coords)
+        radial_filter = radial_kernel(
+            self.params.freq_central, self.params.freq_width, coords
+        )
         return radial_filter
 
     def setup_filter(self, imshape):
