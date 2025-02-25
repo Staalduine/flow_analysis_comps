@@ -65,8 +65,8 @@ class OrientationSpaceResponse:
 
         return self.mean_response.real > threshold_val
 
-    def nlms_mask(self, dilation_rad: int = 3, fill_holes: bool = False):
-        mean_thresh_mask: npt.NDArray[np.bool_] = self.threshold_mean()
+    def nlms_mask(self, dilation_rad: int = 3, fill_holes: bool = False, thresh_method: Optional[ThresholdMethods] = None):
+        mean_thresh_mask: npt.NDArray[np.bool_] = self.threshold_mean(thresh_method)
         if self.mask:
             mean_thresh_mask = np.logical_and(mean_thresh_mask, self.mask)
         mean_thresh_mask_dil = ski.morphology.binary_dilation(
@@ -108,7 +108,7 @@ class OrientationSpaceResponse:
                 ax[0].plot(self.angles, self.response_array[coord[1], coord[0], :].real)
                 ax[0].set_xlim(0, np.pi)
                 ax[0].set_xticks(np.linspace(0, np.pi, 3, endpoint=True))
-                ax[0].set_xticklabels(["0", "$\pi$/2", "$\pi$"])
+                ax[0].set_xticklabels(["0", r"$\pi$/2", r"$\pi$"])
                 ax[1].plot(self.a_hat[coord[1], coord[0], :].real)
 
     def visualize_point_response(self, coord, mesh_size=128):

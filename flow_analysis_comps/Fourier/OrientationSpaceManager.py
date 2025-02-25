@@ -8,6 +8,7 @@ from flow_analysis_comps.Fourier.OrientationSpaceFilter import (
 )
 from flow_analysis_comps.Fourier.OrientationSpaceResponse import (
     OrientationSpaceResponse,
+    ThresholdMethods,
 )
 import numpy.typing as npt
 
@@ -98,7 +99,9 @@ class orientationSpaceManager:
     def __mul__(self, other: np.ndarray):
         return self.get_response(other)
 
-    def update_response_at_order_FT(self, K_new:float, normalize:int=2)-> tuple[OrientationSpaceResponse, OrientationSpaceFilter]:
+    def update_response_at_order_FT(
+        self, K_new: float, normalize: int = 2
+    ) -> tuple[OrientationSpaceResponse, OrientationSpaceFilter]:
         """Adjust response of filter to a LOWER K-value
 
         Args:
@@ -156,9 +159,9 @@ class orientationSpaceManager:
                 Response = OrientationSpaceResponse(fftpack.ifft(a_hat, axis=2))
             return Response, filter_new
 
-    def get_max_angles(self, order=5):
+    def get_max_angles(self, thresh_method: Optional[ThresholdMethods] = None):
         # Set up arrays
-        nlsm_mask = self.response.nlms_mask()
+        nlsm_mask = self.response.nlms_mask(thresh_method=thresh_method)
 
         nanTemplate = np.zeros_like(nlsm_mask, dtype=np.float32)
         nanTemplate[:] = np.NaN
@@ -171,20 +174,27 @@ class orientationSpaceManager:
         )
         return maximum_single_angle
 
-    def nlms_simple_case(self, order=5):
+    def nlms_simple_case(self, order=5, thresh_method=Optional[ThresholdMethods]):
         updated_response, filter = self.update_response_at_order_FT(order)
-        maximum_single_angle = self.get_max_angles(order)
+        maximum_single_angle = self.get_max_angles(thresh_method=thresh_method)
         nlms_single = nlms_precise(
             updated_response.response_array.real,
             maximum_single_angle,
-            mask=self.response.nlms_mask(),
+            mask=self.response.nlms_mask(thresh_method=thresh_method),
         )
         return nlms_single
 
     ## Plotting functions
-    def demo_image(self, img, order=5):
+    def demo_image(
+        self, img, order=5, thresh_method: Optional[ThresholdMethods] = None
+    ):
         fig, ax = plt.subplot_mosaic(
-            [["img", "."], ["orient", "colorwheel"], ["nlms", "."]],
+            [
+                ["img", "."],
+                ["orient", "colorwheel"],
+                ["nlms", "nlms_histo"],
+                ["overlay", "."],
+            ],
             width_ratios=[8, 2],
             figsize=(5, 8),
             dpi=200,
@@ -192,8 +202,13 @@ class orientationSpaceManager:
         )
 
         self.get_response(img)
-        simple_angles = self.get_max_angles(order)
-        nlms_candidates = self.nlms_simple_case(order)
+        simple_angles = self.get_max_angles(thresh_method=thresh_method)
+        nlms_candidates = self.nlms_simple_case(order, thresh_method=thresh_method)
+        nlms_candidates = np.where(np.isnan(nlms_candidates), 0, nlms_candidates)
+
+        nlms_candidates_norm = nlms_candidates - nlms_candidates.min()
+        nlms_candidates_norm /= nlms_candidates_norm.max()
+
         self.response.visualize_orientation_wheel(ax=ax["colorwheel"])
 
         img_show = ax["img"].imshow(img, cmap="cet_CET_L20")
@@ -202,7 +217,21 @@ class orientationSpaceManager:
 
         ax["orient"].imshow(simple_angles, cmap="cet_CET_C3_r", vmin=0, vmax=np.pi)
         nlms_show = ax["nlms"].imshow(
-            nlms_candidates, cmap="cet_CET_L19", vmin=0, vmax=np.pi
+            nlms_candidates, cmap="cet_CET_L16", vmin=0, vmax=nlms_candidates.max()
         )
         fig.colorbar(nlms_show)
+
+        ax["nlms_histo"].hist(
+            nlms_candidates.flatten(), bins=50, range=(0.01, nlms_candidates.max())
+        )
+
+        ax["overlay"].imshow(img, cmap="cet_CET_L1", interpolation="none")
+        ax["overlay"].imshow(
+            nlms_candidates,
+            cmap="cet_CET_L16",
+            vmin=0,
+            vmax=nlms_candidates.max(),
+            alpha=(nlms_candidates_norm),
+            interpolation="none",
+        )
         return
