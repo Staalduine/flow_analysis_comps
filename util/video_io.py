@@ -7,8 +7,60 @@ import numpy as np
 import matplotlib
 import cv2
 import pandas as pd
-from data_structs.video_info import videoInfo, plateInfo
-from datetime import datetime, date
+from data_structs.video_info import cameraPosition, cameraSettings, videoInfo, plateInfo
+from datetime import datetime, date, timedelta
+import json
+
+
+def read_video_metadata(address: Path) -> videoInfo:
+    match address.suffix:
+        case ".txt":
+            return read_video_info_txt(address)
+        case ".json":
+            return read_video_info_json(address)
+
+
+def read_video_info_json(address: Path) -> videoInfo:
+    with open(str(address), encoding="utf-8-sig") as json_data:
+        print(json_data)
+        json_data.seek(0)
+        video_json = json.load(json_data)
+        
+    if video_json["camera"]["intensity"][0] == 0:
+        image_mode = "fluorescence"
+    elif video_json["camera"]["intensity"][1] == 0:
+        image_mode = "brightfield"
+    else:
+        image_mode = "brightfield"
+    
+    position = cameraPosition(
+        x=video_json["video"]["location"][0],
+        y=video_json["video"]["location"][1],
+        z=video_json["video"]["location"][2],
+        
+    )
+    
+    camera_settings = cameraSettings(
+        model= video_json["camera"]["model"],
+        exposure_us=video_json["camera"]["exposure_time"]*1e6,
+        frame_rate=video_json["camera"]["frame_rate"],
+        frame_size=video_json["camera"]["frame_size"],
+        binning=video_json["camera"]["binning"].split("x")[0],
+        gain=video_json["camera"]["gain"],
+        gamma=video_json["camera"]["gamma"],
+    )
+
+    info_obj = videoInfo(
+        duration=video_json["video"]["duration"],
+        frame_nr=int(
+            video_json["video"]["duration"] * video_json["camera"]["frame_rate"]
+        ),
+        mode = image_mode,
+        magnification=50.0,
+        position=position,
+        camera_settings=camera_settings,
+    )
+    return info_obj
 
 
 def read_video_info_txt(address: Path) -> videoInfo:
@@ -21,21 +73,49 @@ def read_video_info_txt(address: Path) -> videoInfo:
     )["Info"]
     # Drop all columns with no data
     raw_data = raw_data.dropna(how="all")
-    raw_data
+    for col in raw_data.index:
+        raw_data[col] = raw_data[col].strip()
     time_info = " ".join(raw_data["DateTime"].split(", ")[1:])
     time_obj = datetime.strptime(time_info, "%d %B %Y %X")
-    crossing_date = date.fromisoformat(raw_data["CrossDate"].strip())
+    crossing_date = date.fromisoformat(raw_data["CrossDate"])
 
     plate_info_obj = plateInfo(
         plate_nr=raw_data["Plate"],
-        root=raw_data["Root"].strip(),
-        strain=raw_data["Strain"].strip(),
-        treatment=raw_data["Treatment"].strip(),
+        root=raw_data["Root"],
+        strain=raw_data["Strain"],
+        treatment=raw_data["Treatment"],
         crossing_date=crossing_date,
     )
 
-    info_obj = videoInfo(plate_info=plate_info_obj, datetime=time_obj)
-    return raw_data
+    camera_settings = cameraSettings(
+        model=raw_data["Model"],
+        exposure_us=float(raw_data["ExposureTime"].split(" ")[0]),
+        frame_rate=float(raw_data["FrameRate"].split(" ")[0]),
+        frame_size=(raw_data["FrameSize"].split(" ")[0].split("x")),
+        binning=raw_data["Binning"].split("x")[0],
+        gain=raw_data["Gain"],
+        gamma=raw_data["Gamma"],
+    )
+
+    position = cameraPosition(
+        x=raw_data["X"].split(" ")[0],
+        y=raw_data["Y"].split(" ")[0],
+        z=raw_data["Z"].split(" ")[0],
+    )
+
+    info_obj = videoInfo(
+        plate_info=plate_info_obj,
+        datetime=time_obj,
+        storage_path=raw_data["StoragePath"],
+        run_nr=raw_data["Run"],
+        duration=timedelta(seconds=int(raw_data["Time"].strip().split(" ")[0])),
+        frame_nr=int(raw_data["Frames Recorded"].strip().split("/")[0]),
+        mode=raw_data["Operation"].strip().split(" ")[1].lower(),
+        magnification=float(raw_data["Operation"].strip().split()[0][:-1]),
+        camera_settings=camera_settings,
+        position=position,
+    )
+    return info_obj
 
     # raw_data["unique_id"] = [f"{address.parts[-3]}_{address.parts[-2]}"]
     # raw_data["tot_path"] = (

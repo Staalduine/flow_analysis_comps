@@ -1,14 +1,15 @@
 from enum import StrEnum, auto
 from pathlib import Path
+from typing import Optional
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 from data_structs.plate_info import plateInfo
 
 
 class videoMode(StrEnum):
-    BRIGHTFIELD: auto
-    FLUORESCENCE: auto
-    OTHER: auto
+    BRIGHTFIELD= auto()
+    FLUORESCENCE= auto()
+    OTHER= auto()
 
 
 class cameraSettings(BaseModel):
@@ -28,10 +29,10 @@ class cameraPosition(BaseModel):
 
 
 class videoInfo(BaseModel):
-    datetime: datetime
-    storage_path: Path
-    plate_info: plateInfo
-    run_nr: int
+    datetime: Optional[datetime] = None
+    storage_path: Optional[Path] = None
+    plate_info: Optional[plateInfo] = None
+    run_nr: Optional[int] = None
     duration: timedelta
     frame_nr: int
     mode: videoMode
