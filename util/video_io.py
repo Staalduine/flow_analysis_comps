@@ -6,9 +6,54 @@ import tifffile
 import numpy as np
 import matplotlib
 import cv2
+import pandas as pd
+from data_structs.video_info import videoInfo, plateInfo
+from datetime import datetime, date
 
-def read_video_info_txt(txt_address: Path):
-    pass
+
+def read_video_info_txt(address: Path) -> videoInfo:
+    if not address.exists():
+        print(f"Could not find {address}, skipping for now")
+        return
+
+    raw_data = pd.read_csv(
+        address, sep=": ", engine="python", header=0, names=["Info"], index_col=0
+    )["Info"]
+    # Drop all columns with no data
+    raw_data = raw_data.dropna(how="all")
+    raw_data
+    time_info = " ".join(raw_data["DateTime"].split(", ")[1:])
+    time_obj = datetime.strptime(time_info, "%d %B %Y %X")
+    crossing_date = date.fromisoformat(raw_data["CrossDate"].strip())
+
+    plate_info_obj = plateInfo(
+        plate_nr=raw_data["Plate"],
+        root=raw_data["Root"].strip(),
+        strain=raw_data["Strain"].strip(),
+        treatment=raw_data["Treatment"].strip(),
+        crossing_date=crossing_date,
+    )
+
+    info_obj = videoInfo(plate_info=plate_info_obj, datetime=time_obj)
+    return raw_data
+
+    # raw_data["unique_id"] = [f"{address.parts[-3]}_{address.parts[-2]}"]
+    # raw_data["tot_path"] = (
+    #     address.relative_to(analysis_folder).parent / "Img"
+    # ).as_posix()
+    # raw_data["tot_path_drop"] = ["DATA/" + raw_data["tot_path"][0]]
+    # if raw_data["Operation"].to_string().split(" ")[-1] == "Undetermined":
+    #     print(
+    #         f"Undetermined operation in {raw_data['unique_id'].to_string().split(' ')[-1]}, please amend. Assuming 50x BF."
+    #     )
+    #     raw_data["Operation"] = "  50x Brightfield"
+    # try:
+    #     txt_frame = pd.concat([txt_frame, raw_data], axis=0, ignore_index=True)
+    # except:
+    #     print(f"Weird concatenation with {address}, trying to reset index")
+    #     print(raw_data.columns)
+    #     txt_frame = pd.concat([txt_frame, raw_data], axis=0, ignore_index=True)
+
 
 def tif_folder_to_mp4(folder_path, output_file, fps=10, cmap=None):
     """
