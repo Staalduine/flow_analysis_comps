@@ -193,7 +193,7 @@ class orientationSpaceManager:
                 ["img", "."],
                 ["orient", "colorwheel"],
                 ["nlms", "nlms_histo"],
-                ["overlay", "."],
+                ["overlay", "overlay"],
             ],
             width_ratios=[8, 2],
             figsize=(5, 8),
