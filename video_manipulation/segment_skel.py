@@ -1,4 +1,5 @@
-from typing import Optional
+import os
+from typing import Optional, Union
 import cv2
 import scipy
 import imageio
@@ -10,7 +11,8 @@ from util.graph_util import generate_nx_graph, remove_spurs, from_sparse_to_grap
 from skimage.filters import threshold_yen
 
 from video_manipulation.img_util import RenyiEntropy_thresholding, find_histogram_edge
-
+from data_structs.video_info import videoMode
+import dask.array as da
 
 def mean_std_from_img_paths(
     image_addresses: list[Path],
@@ -23,6 +25,7 @@ def mean_std_from_img_paths(
     Returns:
         tuple[np.ndarray, np.ndarray]: Mean image and std_dev image
     """
+
     n = len(image_addresses)
     sum_images = None
     sum_sq_diff = None
@@ -77,7 +80,6 @@ def segment_brightfield_image(
     return segmented
 
 
-
 def skeletonize_segmented_im(segmented: np.ndarray) -> tuple[nx.Graph, dict]:
     """
     Take segmented image and skeletonize it
@@ -97,8 +99,23 @@ def skeletonize_segmented_im(segmented: np.ndarray) -> tuple[nx.Graph, dict]:
     return nx_graph_pruned, pos
 
 
+def segment_video_folder(
+    img_folder_adr: Path, seg_thresh: float = 1.15, mode: videoMode="brightfield"
+) -> np.ndarray:
+    tif_files = sorted(
+        [
+            os.path.join(img_folder_adr, f)
+            for f in os.listdir(img_folder_adr)
+            if f.lower().endswith(".tif") or f.lower().endswith(".tiff")
+        ],
+        # key=lambda x: int(os.path.basename(x)[3:].split('.')[0])  # Extract number from 'Img<nr>.tif'
+    )
+    tif_files = [Path(adr) for adr in tif_files]
+    return segment_hyphae_general(tif_files, seg_thresh=seg_thresh, mode=mode)
+
+
 def segment_hyphae_general(
-    image_addresses: list[Path], seg_thresh: float = 1.15, mode="BRIGHTFIELD"
+    image_addresses: Union[list[Path], np.ndarray], seg_thresh: float = 1.15, mode:videoMode="brightfield"
 ) -> np.ndarray:
     """
     Segmentation method for brightfield video.
@@ -108,10 +125,14 @@ def segment_hyphae_general(
 
     """
     mean_image, std_image = mean_std_from_img_paths(image_addresses)
+    segmented = _segment_hyphae_w_mean_std(mean_image, std_image, seg_thresh, mode)
+    return segmented
+
+def _segment_hyphae_w_mean_std(mean_image: np.ndarray, std_image:np.ndarray, seg_thresh:float, mode:videoMode):
     match mode:
-        case "BRIGHTFIELD":
+        case videoMode.BRIGHTFIELD:
             segmented = segment_brightfield_image(seg_thresh, mean_image, std_image)
-        case "FLUO":
+        case videoMode.FLUORESCENCE:
             segmented = segment_fluorescence_image(mean_image, threshtype="hist_edge")
         case _:
             raise ValueError(f"Wrong mode, what is {mode}?")
@@ -147,15 +168,22 @@ def segment_fluorescence_image(
 
     return segmented
 
-def harmonic_mean(pixels: np.ndarray, mask:Optional[np.ndarray]=None)-> float:
+
+def harmonic_mean(pixels: np.ndarray, mask: Optional[np.ndarray] = None) -> float:
     arr = pixels.flatten()
     if mask is not None:
-        arr = np.array([arr_val for arr_val, mask_val in zip(arr, mask.flatten()) if mask_val > 0])
+        arr = np.array(
+            [arr_val for arr_val, mask_val in zip(arr, mask.flatten()) if mask_val > 0]
+        )
     return len(arr) / np.sum(1.0 / (arr[arr > 0]))
-    
 
-def harmonic_mean_thresh(img: np.ndarray, mask:Optional[np.ndarray] =None) -> tuple[np.ndarray, float]:
+
+def harmonic_mean_thresh(
+    img: np.ndarray, mask: Optional[np.ndarray] = None
+) -> tuple[np.ndarray, float]:
     img_inv = np.nanmax(img.flatten()) - img
     thresh_val = harmonic_mean(img_inv, mask)
-    thresh, thresholded_image = cv2.threshold(img_inv, thresh_val, 255, cv2.THRESH_TOZERO_INV )
+    thresh, thresholded_image = cv2.threshold(
+        img_inv, thresh_val, 255, cv2.THRESH_TOZERO_INV
+    )
     return thresholded_image, thresh_val

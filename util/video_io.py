@@ -12,9 +12,10 @@ from datetime import datetime, date, timedelta
 import json
 import dask.array as da
 from dask import delayed
+import numpy.typing as npt
 
 
-def load_tif_series_to_dask(folder_path):
+def load_tif_series_to_dask(folder_path) -> npt.ArrayLike:
     """
     Loads a series of .tif images from a folder into a Dask array.
 
