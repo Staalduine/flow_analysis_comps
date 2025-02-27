@@ -10,6 +10,51 @@ import pandas as pd
 from data_structs.video_info import cameraPosition, cameraSettings, videoInfo, plateInfo
 from datetime import datetime, date, timedelta
 import json
+import dask.array as da
+from dask import delayed
+
+
+def load_tif_series_to_dask(folder_path):
+    """
+    Loads a series of .tif images from a folder into a Dask array.
+
+    Parameters:
+        folder_path (str): Path to the folder containing the .tif images.
+
+    Returns:
+        dask.array.Array: A Dask array representing the .tif series.
+    """
+    # Get sorted list of .tif files
+    tif_files = sorted(
+        [
+            os.path.join(folder_path, f)
+            for f in os.listdir(folder_path)
+            if f.lower().endswith(".tif")
+        ],
+        # key=lambda x: int(os.path.basename(x)[3:].split('.')[0])  # Extract number from 'Img<nr>.tif'
+    )
+
+    if not tif_files:
+        raise ValueError("No .tif files found in the specified folder.")
+
+    # Use Dask to stack images lazily
+    sample_image = tifffile.imread(tif_files[0])
+    dtype = sample_image.dtype
+    shape = (len(tif_files),) + sample_image.shape
+
+    def lazy_reader(filename):
+        return tifffile.imread(filename)
+
+    dask_array = da.stack(
+        [
+            da.from_delayed(
+                delayed(lazy_reader)(file), shape=sample_image.shape, dtype=dtype
+            )
+            for file in tif_files
+        ]
+    )
+
+    return dask_array
 
 
 def read_video_metadata(address: Path) -> videoInfo:
@@ -25,24 +70,23 @@ def read_video_info_json(address: Path) -> videoInfo:
         print(json_data)
         json_data.seek(0)
         video_json = json.load(json_data)
-        
+
     if video_json["camera"]["intensity"][0] == 0:
         image_mode = "fluorescence"
     elif video_json["camera"]["intensity"][1] == 0:
         image_mode = "brightfield"
     else:
         image_mode = "brightfield"
-    
+
     position = cameraPosition(
         x=video_json["video"]["location"][0],
         y=video_json["video"]["location"][1],
         z=video_json["video"]["location"][2],
-        
     )
-    
+
     camera_settings = cameraSettings(
-        model= video_json["camera"]["model"],
-        exposure_us=video_json["camera"]["exposure_time"]*1e6,
+        model=video_json["camera"]["model"],
+        exposure_us=video_json["camera"]["exposure_time"] * 1e6,
         frame_rate=video_json["camera"]["frame_rate"],
         frame_size=video_json["camera"]["frame_size"],
         binning=video_json["camera"]["binning"].split("x")[0],
@@ -55,7 +99,7 @@ def read_video_info_json(address: Path) -> videoInfo:
         frame_nr=int(
             video_json["video"]["duration"] * video_json["camera"]["frame_rate"]
         ),
-        mode = image_mode,
+        mode=image_mode,
         magnification=50.0,
         position=position,
         camera_settings=camera_settings,
@@ -105,7 +149,7 @@ def read_video_info_txt(address: Path) -> videoInfo:
 
     info_obj = videoInfo(
         plate_info=plate_info_obj,
-        datetime=time_obj,
+        date_time=time_obj,
         storage_path=raw_data["StoragePath"],
         run_nr=raw_data["Run"],
         duration=timedelta(seconds=int(raw_data["Time"].strip().split(" ")[0])),
