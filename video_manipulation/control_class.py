@@ -9,7 +9,84 @@ from video_manipulation.segment_skel import (
 from util.graph_util import orient, generate_index_along_sequence
 import numpy as np
 import networkx as nx
+from skimage.measure import profile_line
 
+class edgeControl:
+    """
+    Class object controlling data and actions on edges in a video.
+    Videos can contain multiple edges, each one containing different properties.
+    """
+
+    def __init__(
+        self,
+        video_info: videoInfo,
+        edge_graph: tuple[int, int],
+        # node_positions: tuple[int, int],
+        pixel_list: list[tuple[int, int]],
+        kymo_extract_settings=None,
+    ):
+        self.video_info = video_info
+        self.edge_info = edge_graph
+        # self.offset = int(np.linalg.norm(node_positions[0] - node_positions[1])) // 4
+        self.pixel_list = np.array(pixel_list)
+
+        if kymo_extract_settings is None:
+            self.kymo_extract_settings = kymoExtractProperties()
+
+        self._pixel_indices = None
+        self._segment_coords = None
+
+    @property
+    def segment_coords(self):
+        # if self._segment_coords is None:
+        self._segment_coords = []
+        start, end, step_size = (
+            self.kymo_extract_settings.step,
+            len(self.pixel_list) - self.kymo_extract_settings.step,
+            self.kymo_extract_settings.resolution,
+        )
+        segment_pixel_list = self.pixel_list[start:end:step_size]
+        prev_segment_pixel_list = self.pixel_list[0 : end - start : step_size]
+        next_segment_pixel_list = self.pixel_list[start * 2 :: step_size]
+        orientations = prev_segment_pixel_list - next_segment_pixel_list
+
+        perpendicular = np.array([orientations[:, 1], -orientations[:, 0]]).T
+        perpendicular_norm = (
+            (perpendicular.T / np.linalg.norm(perpendicular, axis=1)).T
+            * self.kymo_extract_settings.target_length
+            / 2
+        )
+
+        self._segment_coords = np.array(
+            [
+                segment_pixel_list + perpendicular_norm,
+                segment_pixel_list - perpendicular_norm,
+            ]
+        )
+        self._segment_coords = np.moveaxis(self._segment_coords, 0, 1)
+        self._segment_coords = np.array(
+            [
+                [pivot + perp, pivot - perp]
+                for pivot, perp in zip(segment_pixel_list, perpendicular_norm)
+            ]
+        )
+
+        return self._segment_coords
+    
+    def extract_edge_image(self, image):
+        edge_image = [profile_line(image, segment[0], segment[1], mode='constant') for segment in self.segment_coords]
+        len_min = np.min([len(line) for line in edge_image])
+        edge_image = [line[:len_min] for line in edge_image][::-1]
+        return np.array(edge_image)
+
+    def plot_segments(self, adjust_val, ax):
+        for point_1, point_2 in self.segment_coords:
+            ax.plot(
+                [point_1[1] * adjust_val, point_2[1] * adjust_val],
+                [point_1[0] * adjust_val, point_2[0] * adjust_val],
+                color="white",
+                alpha=0.1,
+            )
 
 class videoControl:
     ## Initiate object
@@ -81,7 +158,7 @@ class videoControl:
         return self._edge_graphs
 
     @property
-    def edges(self):
+    def edges(self) -> list[edgeControl]:
         if self._edges is None:
             self._edges = []
             for edge_graph in self.edge_graphs:
@@ -95,6 +172,13 @@ class videoControl:
                 )
                 self.edges.append(edgeControl(self.video_info, edge_graph, edge_pixels))
         return self._edges
+    
+    def get_edge_images(self):
+        edge_images = {}
+        for edge in self.edges:
+            edge_name = str(edge.edge_info)
+            edge_images[edge_name] = edge.extract_edge_image(self.array[0])
+        return edge_images
 
     ## Plotting functions
     def plot_edge_extraction(self):
@@ -114,64 +198,15 @@ class videoControl:
         ax1.set_xlabel(r"x $(\mu m)$")
         ax1.set_ylabel(r"y $(\mu m)$")
 
+        for edge in self.edges:
+            edge.plot_segments(self.space_pixel_size, ax1)
+
 
 class kymoExtractProperties(BaseModel):
     resolution: int = 1
     step: int = 15
-    target_length: int = 120
+    target_length: int = 70
     bounds: tuple[float, float] = (0.0, 1.0)
 
 
-class edgeControl:
-    """
-    Class object controlling data and actions on edges in a video.
-    Videos can contain multiple edges, each one containing different properties.
-    """
 
-    def __init__(
-        self,
-        video_info: videoInfo,
-        edge_graph: tuple[int, int],
-        # node_positions: tuple[int, int],
-        pixel_list: list[tuple[int, int]],
-    ):
-        self.video_info = video_info
-        self.edge_info = edge_graph
-        # self.offset = int(np.linalg.norm(node_positions[0] - node_positions[1])) // 4
-        self.pixel_list = pixel_list
-
-        self.kymo_extract_settings = kymoExtractProperties()
-
-        self._pixel_indices = None
-
-    @property
-    def pixel_indices(self):
-        if self._pixel_indices is None:
-            self._pixel_indices = generate_index_along_sequence(
-                len(self.pixel_list),
-                self.kymo_extract_settings.resolution,
-                # self.offset,
-            )
-        return self._pixel_indices
-
-    @property
-    def segment_coords(self):
-        if self._segment_coords is None:
-            self._segment_coords = []
-            for i in range(
-                self.kymo_extract_settings.step,
-                len(self.pixel_list) - self.kymo_extract_settings.step,
-                self.kymo_extract_settings.resolution,
-            ):
-                pivot = self.pixel_list[i]
-                orientation = np.array(self.pixel_list[i - self.kymo_extract_settings.step]) - np.array(self.pixel_list[i + self.kymo_extract_settings.step])
-                perpendicular = (
-                    [1, -orientation[0] / orientation[1]] if orientation[1] != 0 else [0, 1]
-                )
-                perpendicular_norm = np.array(perpendicular) / np.sqrt(
-                    perpendicular[0] ** 2 + perpendicular[1] ** 2
-                )
-                point1 = np.array(pivot) + self.kymo_extract_settings.target_length * perpendicular_norm / 2
-                point2 = np.array(pivot) - self.kymo_extract_settings.target_length * perpendicular_norm / 2
-                self._segment_coords.append((point1, point2))
-        return self._segment_coords
