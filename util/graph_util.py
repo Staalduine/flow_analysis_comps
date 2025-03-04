@@ -1,3 +1,4 @@
+from typing import List
 import networkx as nx
 import numpy as np
 import pandas as pd
@@ -250,3 +251,29 @@ def remove_spurs(
             nx_g.remove_edge(spur[0], spur[1])
         reconnect_degree_2(nx_g, pos, has_width=False)
     return nx_g, pos
+
+
+def orient(pixel_list, root_pos):
+    """Orients a pixel list with the root position at the begining"""
+    if np.all(root_pos == pixel_list[0]):
+        return pixel_list
+    else:
+        return list(reversed(pixel_list))
+    
+def generate_index_along_sequence(n: int, resolution=3, offset=0) -> List[int]:
+    """
+    From the length `n` of the list, generate indexes at interval `resolution`
+    with `offset` at the start and at the end.
+    :param n: length of the sequence
+    :param resolution: step between two chosen indexes
+    :param offset: offset at the begining and at the end
+    """
+    x_min = offset
+    x_max = n - 1 - offset
+    # Small case
+    if x_min > x_max:
+        return [n // 2]
+    # Normal case
+    k_max = (x_max - x_min) // resolution
+    line = [x_min + k * resolution for k in range(k_max + 1)]
+    return line
