@@ -1,6 +1,7 @@
 from matplotlib import pyplot as plt
 from pydantic import BaseModel
 from data_structs.video_info import videoInfo
+from util.coord_transforms import extract_perp_lines, validate_interpolation_order
 from util.video_io import load_tif_series_to_dask, read_video_metadata
 from video_manipulation.segment_skel import (
     _segment_hyphae_w_mean_std,
@@ -10,6 +11,8 @@ from util.graph_util import orient, generate_index_along_sequence
 import numpy as np
 import networkx as nx
 from skimage.measure import profile_line
+from scipy import ndimage as ndi
+
 
 class edgeControl:
     """
@@ -72,9 +75,12 @@ class edgeControl:
         )
 
         return self._segment_coords
-    
+
     def extract_edge_image(self, image):
-        edge_image = [profile_line(image, segment[0], segment[1], mode='constant') for segment in self.segment_coords]
+        edge_image = [
+            profile_line(image, segment[0], segment[1], mode="constant")
+            for segment in self.segment_coords
+        ]
         len_min = np.min([len(line) for line in edge_image])
         edge_image = [line[:len_min] for line in edge_image][::-1]
         return np.array(edge_image)
@@ -87,6 +93,7 @@ class edgeControl:
                 color="white",
                 alpha=0.1,
             )
+
 
 class videoControl:
     ## Initiate object
@@ -162,22 +169,51 @@ class videoControl:
         if self._edges is None:
             self._edges = []
             for edge_graph in self.edge_graphs:
-                node_positions = (
-                    self.node_positions[edge_graph[0]],
-                    self.node_positions[edge_graph[1]],
-                )
                 edge_pixels = orient(
                     self.skeleton_graph.get_edge_data(*edge_graph)["pixel_list"],
                     self.node_positions[edge_graph[0]],
                 )
                 self.edges.append(edgeControl(self.video_info, edge_graph, edge_pixels))
         return self._edges
-    
+
     def get_edge_images(self):
         edge_images = {}
+        edge_coords = {}
+
+        if "compute" in dir(self.array):
+            self.array = self.array.compute()
+
         for edge in self.edges:
-            edge_name = str(edge.edge_info)
-            edge_images[edge_name] = edge.extract_edge_image(self.array[0])
+            edge_name = edge.edge_info
+
+            edge_perp_lines = [
+                extract_perp_lines(segment[0], segment[1])
+                for segment in edge.segment_coords
+            ]
+
+            edge_coords[edge_name] = edge_perp_lines
+
+        order = validate_interpolation_order(self.array[0].dtype, None)
+        for im in self.array:
+            for key, perp_lines in edge_coords.items():
+                lines = []
+                for perp_line in perp_lines:
+                    pixels = ndi.map_coordinates(
+                        im,
+                        perp_line,
+                        prefilter=order > 1,
+                        order=order,
+                        mode="reflect",
+                        cval=0.0,
+                    )
+                    pixels = np.flip(pixels, axis=1)
+                    pixels = pixels[0:70]
+                    pixels = pixels.reshape((1, len(pixels)))
+                    # TODO(FK): Add thickness of the profile here
+                    lines.append(pixels)
+                slices = np.concatenate(lines, axis=0)
+
+
         return edge_images
 
     ## Plotting functions
@@ -207,6 +243,3 @@ class kymoExtractProperties(BaseModel):
     step: int = 15
     target_length: int = 70
     bounds: tuple[float, float] = (0.0, 1.0)
-
-
-

@@ -110,3 +110,71 @@ def wraparoundN(values:np.ndarray, lower:float, upper:float)->np.ndarray:
     wrappedValues = wrappedValues.real % upper
     wrappedValues = wrappedValues + lower
     return wrappedValues
+
+def extract_perp_lines(src, dst, linewidth=1):
+    src_row, src_col = src = np.asarray(src, dtype=float)
+    dst_row, dst_col = dst = np.asarray(dst, dtype=float)
+    d_row, d_col = dst - src
+    theta = np.arctan2(d_row, d_col)
+
+    length = int(np.ceil(np.hypot(d_row, d_col) + 1))
+    # we add one above because we include the last point in the profile
+    # (in contrast to standard numpy indexing)
+    line_col = np.linspace(src_col, dst_col, length)
+    line_row = np.linspace(src_row, dst_row, length)
+
+    # we subtract 1 from linewidth to change from pixel-counting
+    # (make this line 3 pixels wide) to point distances (the
+    # distance between pixel centers)
+    col_width = (linewidth - 1) * np.sin(-theta) / 2
+    row_width = (linewidth - 1) * np.cos(theta) / 2
+    perp_rows = np.stack(
+        [
+            np.linspace(row_i - row_width, row_i + row_width, linewidth)
+            for row_i in line_row
+        ]
+    )
+    perp_cols = np.stack(
+        [
+            np.linspace(col_i - col_width, col_i + col_width, linewidth)
+            for col_i in line_col
+        ]
+    )
+    return np.stack([perp_rows, perp_cols])
+
+
+def validate_interpolation_order(image_dtype, order):
+    """Validate and return spline interpolation's order.
+
+    Parameters
+    ----------
+    image_dtype : dtype
+        Image dtype.
+    order : int, optional
+        The order of the spline interpolation. The order has to be in
+        the range 0-5. See `skimage.transform.warp` for detail.
+
+    Returns
+    -------
+    order : int
+        if input order is None, returns 0 if image_dtype is bool and 1
+        otherwise. Otherwise, image_dtype is checked and input order
+        is validated accordingly (order > 0 is not supported for bool
+        image dtype)
+
+    """
+
+    if order is None:
+        return 0 if image_dtype == bool else 1
+
+    if order < 0 or order > 5:
+        raise ValueError("Spline interpolation order has to be in the " "range 0-5.")
+
+    if image_dtype == bool and order != 0:
+        raise ValueError(
+            "Input image dtype is bool. Interpolation is not defined "
+            "with bool data type. Please set order to 0 or explicitely "
+            "cast input image to another data type."
+        )
+
+    return order
