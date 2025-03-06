@@ -18,7 +18,7 @@ class treatmentTypes(StrEnum):
 
 
 class plateInfo(BaseModel):
-    plate_nr: int
+    plate_nr: str
     root: rootTypes
     strain: strainTypes
     treatment: treatmentTypes

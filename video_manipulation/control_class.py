@@ -14,6 +14,33 @@ import numpy as np
 import networkx as nx
 from skimage.measure import profile_line
 from scipy import ndimage as ndi
+from scipy.signal import butter, filtfilt
+
+
+def low_pass_filter(coords, cutoff_freq=.01, order=2):
+    """
+    Applies a low-pass Butterworth filter to (x, y) coordinates.
+
+    Parameters:
+    - coords: np.ndarray of shape (N, 2), where N is the number of points [(x1, y1), (x2, y2), ...]
+    - cutoff_freq: Cutoff frequency (0 < f < 0.5, relative to Nyquist frequency)
+    - order: Order of the Butterworth filter (higher means sharper cutoff)
+
+    Returns:
+    - Filtered np.ndarray of shape (N, 2)
+    """
+    coords = np.asarray(coords)
+    if coords.ndim != 2 or coords.shape[1] != 2:
+        raise ValueError("Input must be an array of shape (N, 2) representing (x, y) coordinates.")
+
+    # Create Butterworth low-pass filter
+    b, a = butter(N=order, Wn=cutoff_freq, btype='lowpass', analog=False)
+
+    # Apply the filter to both x and y coordinates separately
+    x_filtered = filtfilt(b, a, coords[:, 0])
+    y_filtered = filtfilt(b, a, coords[:, 1])
+
+    return np.column_stack((x_filtered, y_filtered))
 
 
 class edgeControl:
@@ -34,6 +61,7 @@ class edgeControl:
         self.edge_info = edge_graph
         # self.offset = int(np.linalg.norm(node_positions[0] - node_positions[1])) // 4
         self.pixel_list = np.array(pixel_list)
+        self.pixel_list = low_pass_filter(self.pixel_list)
 
         if kymo_extract_settings is None:
             self.kymo_extract_settings = kymoExtractProperties()
