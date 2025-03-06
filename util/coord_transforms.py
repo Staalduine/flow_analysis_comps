@@ -140,7 +140,7 @@ def extract_perp_lines(src, dst, linewidth=1):
             for col_i in line_col
         ]
     )
-    return np.stack([perp_rows, perp_cols])
+    return np.squeeze(np.stack([perp_rows, perp_cols]).T)
 
 
 def validate_interpolation_order(image_dtype, order):
