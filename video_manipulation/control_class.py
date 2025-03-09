@@ -68,6 +68,18 @@ class edgeControl:
 
         self._pixel_indices = None
         self._segment_coords = None
+        
+        # These values get assigned by video object
+        self.edge_coords = None
+        self.edge_video: list | np.ndarray = []
+        
+    @property
+    def kymograph(self):
+        if self.edge_video is not None:
+            return self.edge_video.mean(axis=2)
+        else:
+            print("Attempted to get kymograhps without edge extraction. Please run edge extraction first!!! Returning None")
+            return None
 
     @property
     def segment_coords(self):
@@ -224,8 +236,9 @@ class videoControl:
         if "compute" in dir(self.array):
             self.array = self.array.compute()
 
+        # Number of edges is assumed small (<20)
         for edge in self.edges:
-            edge_name = str(edge.edge_info)
+            # edge_name = str(edge.edge_info)
 
             # Get coordinates for each line, truncate to target length
             edge_perp_lines = [
@@ -235,20 +248,23 @@ class videoControl:
                 for segment in edge.segment_coords
             ]  # dims are [length, width, (x, y)]
 
-            edge_coords[edge_name] = np.array(edge_perp_lines)
+            # edge_coords[edge_name] = np.array(edge_perp_lines)
+            edge.edge_coords = np.array(edge_perp_lines)
 
         # Set up dict indices
-        for key in edge_coords.keys():
-            edge_images[key] = []
+        # for key in edge_coords.keys():
+        #     edge_images[key] = []
 
         order = validate_interpolation_order(self.array[0].dtype, None)
 
         # Load image, take data, add data to arrays
+        # Best to do this in video object, so it only has to iterate over image stack once
         for im in self.array:
-            for key, perp_lines in edge_coords.items():
+            for edge in self.edges:
+            # for key, perp_lines in edge_coords.items():
                 # Rearrange axes for map_coordinates to:
                 # [coord, width, length]
-                perp_lines = np.moveaxis(perp_lines, 2, 0)
+                perp_lines = np.moveaxis(edge.edge_coords, 2, 0)
                 edge_im = ndi.map_coordinates(
                     im,
                     perp_lines,
@@ -257,11 +273,17 @@ class videoControl:
                     mode="reflect",
                     cval=0.0,
                 )
-                edge_images[key].append(edge_im)
+                edge.edge_video.append(edge_im)
         
-        for key, video in edge_images.items():
-            edge_images[key] = np.array(video)
+        # TODO: Redo this with initializing the array first. No appends needed.
+        for edge in self.edges:
+            edge.edge_video = np.array(edge.edge_video)
         return edge_images
+    
+    def get_kymographs(self):
+        kymographs = {}
+        for edge in self.edges:
+            kymographs[edge.edge_info] = edge.kymograph
     
     def save_edge_videos(self, out_adr_folder:Path):
         videos_dict = self.get_edge_images()
