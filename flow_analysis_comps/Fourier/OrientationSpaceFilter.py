@@ -10,9 +10,9 @@ class OSFilterParams(BaseModel):
     K: float = 5
     sample_factor: int = 1
     n: Optional[int] = None
-    x_spacing:float = 1.0
-    y_spacing:float = 1.0
-    z_spacing:float = 1.0
+    x_spacing:Optional[float] = 1.0
+    y_spacing:Optional[float] = 1.0
+    z_spacing:Optional[float] = 1.0
 
 
 class OrientationSpaceFilter:
@@ -40,7 +40,7 @@ class OrientationSpaceFilter:
         return radial_filter
 
     def setup_filter(self, imshape):
-        coords = freqSpaceCoords(imshape)
+        coords = freqSpaceCoords(imshape, x_spacing=self.params.x_spacing, y_spacing=self.params.y_spacing)
 
         A = self.get_angular_kernel(coords)
         R = self.get_radial_filter(coords)

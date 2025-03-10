@@ -227,7 +227,7 @@ class orientationSpaceManager:
 
         self.get_response(img)
         simple_angles = self.get_max_angles(thresh_method=thresh_method)
-        simple_speeds = np.tan(simple_angles)  # um.s-1
+        simple_speeds = np.tan(simple_angles) / pixel_size_time * pixel_size_space  # um.s-1
         nlms_candidates = self.nlms_simple_case(order, thresh_method=thresh_method)
         nlms_candidates = np.where(np.isnan(nlms_candidates), 0, nlms_candidates)
 
@@ -269,10 +269,10 @@ class orientationSpaceManager:
         #     extent=kymo_extent,
         # )
         
-        ax["overlay"].imshow(simple_speeds, cmap="cet_CET_C4", extent=kymo_extent, vmin=-2, vmax = 2)
+        ax["overlay"].imshow(simple_speeds, cmap="cet_CET_C4", extent=kymo_extent, vmin=-6, vmax = 6)
 
         ax["total_histo"].hist(
-            simple_speeds[nlms_candidates > histo_thresh], bins=150, range=(-2, 2)
+            simple_speeds[nlms_candidates > histo_thresh], bins=150, range=(-6, 6)
         )
         ax["temporal_histo"].imshow(simple_angles, extent=kymo_extent, cmap="cet_CET_D9")
         return
