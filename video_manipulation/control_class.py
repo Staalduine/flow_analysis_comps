@@ -14,7 +14,7 @@ import numpy as np
 import networkx as nx
 from skimage.measure import profile_line
 from scipy import ndimage as ndi
-from scipy.signal import butter, filtfilt
+from scipy.signal import butter, filtfilt, sosfiltfilt
 
 
 def low_pass_filter(coords, cutoff_freq=.01, order=2):
@@ -34,11 +34,11 @@ def low_pass_filter(coords, cutoff_freq=.01, order=2):
         raise ValueError("Input must be an array of shape (N, 2) representing (x, y) coordinates.")
 
     # Create Butterworth low-pass filter
-    b, a = butter(N=order, Wn=cutoff_freq, btype='lowpass', analog=False)
+    b = butter(N=order, Wn=cutoff_freq, btype='lowpass', analog=False, output='sos')
 
     # Apply the filter to both x and y coordinates separately
-    x_filtered = filtfilt(b, a, coords[:, 0])
-    y_filtered = filtfilt(b, a, coords[:, 1])
+    x_filtered = sosfiltfilt(b, coords[:, 0], padlen=100)
+    y_filtered = sosfiltfilt(b, coords[:, 1], padlen=100)
 
     return np.column_stack((x_filtered, y_filtered))
 
@@ -168,14 +168,14 @@ class videoControl:
     def mean_img(self):
         "Image stack averaged across time"
         if self._mean_img is None:
-            self._mean_img = self.array.mean(axis=0).compute()
+            self._mean_img = self.array[:20].mean(axis=0).compute()
         return self._mean_img
 
     @property
     def std_img(self):
         "Standard deviation of pixels across time"
         if self._std_img is None:
-            self._std_img = self.array.std(axis=0).compute()
+            self._std_img = self.array[:20].std(axis=0).compute()
         return self._std_img
 
     @property
@@ -231,14 +231,12 @@ class videoControl:
         """
 
         edge_images = {}
-        edge_coords = {}
 
         if "compute" in dir(self.array):
             self.array = self.array.compute()
 
         # Number of edges is assumed small (<20)
         for edge in self.edges:
-            # edge_name = str(edge.edge_info)
 
             # Get coordinates for each line, truncate to target length
             edge_perp_lines = [
@@ -248,12 +246,7 @@ class videoControl:
                 for segment in edge.segment_coords
             ]  # dims are [length, width, (x, y)]
 
-            # edge_coords[edge_name] = np.array(edge_perp_lines)
             edge.edge_coords = np.array(edge_perp_lines)
-
-        # Set up dict indices
-        # for key in edge_coords.keys():
-        #     edge_images[key] = []
 
         order = validate_interpolation_order(self.array[0].dtype, None)
 
@@ -261,9 +254,6 @@ class videoControl:
         # Best to do this in video object, so it only has to iterate over image stack once
         for im in self.array:
             for edge in self.edges:
-            # for key, perp_lines in edge_coords.items():
-                # Rearrange axes for map_coordinates to:
-                # [coord, width, length]
                 perp_lines = np.moveaxis(edge.edge_coords, 2, 0)
                 edge_im = ndi.map_coordinates(
                     im,

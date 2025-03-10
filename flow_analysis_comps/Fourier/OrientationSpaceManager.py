@@ -186,7 +186,7 @@ class orientationSpaceManager:
 
     ## Plotting functions
     def demo_image(
-        self, img, order=5, thresh_method: Optional[ThresholdMethods] = None
+        self, img, order=5, thresh_method: Optional[ThresholdMethods] = None, invert = False
     ):
         fig, ax = plt.subplot_mosaic(
             [
@@ -200,6 +200,9 @@ class orientationSpaceManager:
             dpi=200,
             layout="constrained",
         )
+
+        if invert:
+            img = img.max() - img
 
         self.get_response(img)
         simple_angles = self.get_max_angles(thresh_method=thresh_method)

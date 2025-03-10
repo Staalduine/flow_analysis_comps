@@ -61,7 +61,7 @@ class OrientationSpaceResponse:
             case "rosin":
                 threshold_val = ski.filters.threshold_triangle(self.mean_response.real)
             case _:
-                threshold_val = ski.filters.threshold_triangle(self.mean_response.real)
+                threshold_val = 0
 
         return self.mean_response.real > threshold_val
 
