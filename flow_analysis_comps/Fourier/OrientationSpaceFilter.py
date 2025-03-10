@@ -10,6 +10,9 @@ class OSFilterParams(BaseModel):
     K: float = 5
     sample_factor: int = 1
     n: Optional[int] = None
+    x_spacing:float = 1.0
+    y_spacing:float = 1.0
+    z_spacing:float = 1.0
 
 
 class OrientationSpaceFilter:

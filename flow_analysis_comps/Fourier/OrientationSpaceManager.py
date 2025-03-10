@@ -23,6 +23,8 @@ class orientationSpaceManager:
         freq_width: Optional[float] = None,
         K: float = 5,
         radialOrder=False,
+        x_spacing: Optional[float] = None,
+        y_spacing: Optional[float] = None,
     ):
         """
         Creates instance of OSManager, which sets up filters, runs them, then plots the results.
@@ -39,7 +41,13 @@ class orientationSpaceManager:
         if radialOrder and freq_width is None:
             freq_width = freq_central / np.sqrt(K)
 
-        params = OSFilterParams(freq_central=freq_central, freq_width=freq_width, K=K)
+        params = OSFilterParams(
+            freq_central=freq_central,
+            freq_width=freq_width,
+            K=K,
+            x_spacing=x_spacing,
+            y_spacing=y_spacing,
+        )
         self.filter: OrientationSpaceFilter = OrientationSpaceFilter(params)
         self.filter_arrays: Optional[npt.NDArray[np.complex128]] = None
         self.setup_imdims = None
@@ -186,19 +194,32 @@ class orientationSpaceManager:
 
     ## Plotting functions
     def demo_image(
-        self, img, order=5, thresh_method: Optional[ThresholdMethods] = None, invert = False
+        self,
+        img,
+        pixel_size_space,
+        pixel_size_time,
+        order=5,
+        thresh_method: Optional[ThresholdMethods] = None,
+        invert=False,
+        histo_thresh=0.5,
     ):
         fig, ax = plt.subplot_mosaic(
             [
-                ["img", "."],
-                ["orient", "colorwheel"],
-                ["nlms", "nlms_histo"],
+                ["img", "img"],
+                ["nlms", "nlms"],
                 ["overlay", "overlay"],
+                ["total_histo", "temporal_histo"],
             ],
-            width_ratios=[8, 2],
-            figsize=(5, 8),
+            # width_ratios=[8, 2],
+            figsize=(8, 8),
             dpi=200,
             layout="constrained",
+        )
+        kymo_extent = (
+            0,
+            pixel_size_space * img.shape[1],
+            pixel_size_time * img.shape[0],
+            0,
         )
 
         if invert:
@@ -206,29 +227,38 @@ class orientationSpaceManager:
 
         self.get_response(img)
         simple_angles = self.get_max_angles(thresh_method=thresh_method)
+        simple_speeds = 1 / np.tan(simple_angles)  # um.s-1
         nlms_candidates = self.nlms_simple_case(order, thresh_method=thresh_method)
         nlms_candidates = np.where(np.isnan(nlms_candidates), 0, nlms_candidates)
 
         nlms_candidates_norm = nlms_candidates - nlms_candidates.min()
         nlms_candidates_norm /= nlms_candidates_norm.max()
 
-        self.response.visualize_orientation_wheel(ax=ax["colorwheel"])
+        # self.response.visualize_orientation_wheel(ax=ax["colorwheel"])
 
-        img_show = ax["img"].imshow(img, cmap="cet_CET_L20")
+        img_show = ax["img"].imshow(img, cmap="cet_CET_L20", extent=kymo_extent)
         ax["img"].set_aspect("equal")
-        fig.colorbar(img_show)
+        # fig.colorbar(img_show)
 
-        ax["orient"].imshow(simple_angles, cmap="cet_CET_C3_r", vmin=0, vmax=np.pi)
         nlms_show = ax["nlms"].imshow(
-            nlms_candidates, cmap="cet_CET_L16", vmin=0, vmax=nlms_candidates.max()
+            nlms_candidates,
+            cmap="cet_CET_L16",
+            vmin=0,
+            vmax=nlms_candidates.max(),
+            extent=kymo_extent,
         )
-        fig.colorbar(nlms_show)
+        # fig.colorbar(nlms_show)
 
-        ax["nlms_histo"].hist(
-            nlms_candidates.flatten(), bins=50, range=(0.01, nlms_candidates.max())
+        # ax["nlms_histo"].hist(
+        #     nlms_candidates.flatten(), bins=50, range=(0.01, nlms_candidates.max())
+        # )
+
+        ax["overlay"].imshow(
+            img,
+            cmap="cet_CET_L1",
+            interpolation="none",
+            extent=kymo_extent,
         )
-
-        ax["overlay"].imshow(img, cmap="cet_CET_L1", interpolation="none")
         ax["overlay"].imshow(
             nlms_candidates,
             cmap="cet_CET_L16",
@@ -236,5 +266,11 @@ class orientationSpaceManager:
             vmax=nlms_candidates.max(),
             alpha=(nlms_candidates_norm),
             interpolation="none",
+            extent=kymo_extent,
         )
+
+        ax["total_histo"].hist(
+            simple_speeds[nlms_candidates > histo_thresh], bins=50, range=(-10, 10)
+        )
+        ax["temporal_histo"].imshow(simple_angles, extent=kymo_extent)
         return

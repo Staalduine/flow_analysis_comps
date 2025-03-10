@@ -17,7 +17,7 @@ from scipy import ndimage as ndi
 from scipy.signal import butter, filtfilt, sosfiltfilt
 
 
-def low_pass_filter(coords, cutoff_freq=.01, order=2):
+def low_pass_filter(coords, cutoff_freq=0.01, order=2):
     """
     Applies a low-pass Butterworth filter to (x, y) coordinates.
 
@@ -31,16 +31,38 @@ def low_pass_filter(coords, cutoff_freq=.01, order=2):
     """
     coords = np.asarray(coords)
     if coords.ndim != 2 or coords.shape[1] != 2:
-        raise ValueError("Input must be an array of shape (N, 2) representing (x, y) coordinates.")
+        raise ValueError(
+            "Input must be an array of shape (N, 2) representing (x, y) coordinates."
+        )
 
     # Create Butterworth low-pass filter
-    b = butter(N=order, Wn=cutoff_freq, btype='lowpass', analog=False, output='sos')
+    b = butter(N=order, Wn=cutoff_freq, btype="lowpass", analog=False, output="sos")
 
     # Apply the filter to both x and y coordinates separately
     x_filtered = sosfiltfilt(b, coords[:, 0], padlen=100)
     y_filtered = sosfiltfilt(b, coords[:, 1], padlen=100)
 
     return np.column_stack((x_filtered, y_filtered))
+
+
+def resample_trail(trail):
+    trail = np.array(trail)  # Ensure it's an array
+    distances = np.sqrt(np.sum(np.diff(trail, axis=0) ** 2, axis=1))
+    cumulative_distances = np.insert(
+        np.cumsum(distances), 0, 0
+    )  # Insert 0 at the start
+
+    new_distances = np.arange(
+        0, cumulative_distances[-1], 1
+    )  # New samples at distance 1
+    new_trail = np.array(
+        [
+            np.interp(new_distances, cumulative_distances, trail[:, dim])
+            for dim in range(trail.shape[1])
+        ]
+    ).T  # Interpolate each coordinate separately
+
+    return new_trail  # Ensure integer pixel coordinates
 
 
 class edgeControl:
@@ -61,24 +83,28 @@ class edgeControl:
         self.edge_info = edge_graph
         # self.offset = int(np.linalg.norm(node_positions[0] - node_positions[1])) // 4
         self.pixel_list = np.array(pixel_list)
-        self.pixel_list = low_pass_filter(self.pixel_list)
+        self.pixel_list = resample_trail(low_pass_filter(self.pixel_list))
 
         if kymo_extract_settings is None:
             self.kymo_extract_settings = kymoExtractProperties()
+        else:
+            self.kymo_extract_settings = kymo_extract_settings
 
         self._pixel_indices = None
         self._segment_coords = None
-        
+
         # These values get assigned by video object
         self.edge_coords = None
         self.edge_video: list | np.ndarray = []
-        
+
     @property
     def kymograph(self):
         if self.edge_video is not None:
             return self.edge_video.mean(axis=2)
         else:
-            print("Attempted to get kymograhps without edge extraction. Please run edge extraction first!!! Returning None")
+            print(
+                "Attempted to get kymograhps without edge extraction. Please run edge extraction first!!! Returning None"
+            )
             return None
 
     @property
@@ -140,19 +166,22 @@ class edgeControl:
 
 class videoControl:
     ## Initiate object
-    def __init__(self, video_folder_adr, video_info_adr, edge_length_threshold = 200):
+    def __init__(self, video_folder_adr, video_info_adr, edge_length_threshold=200, resolution=1):
         self.video_info = read_video_metadata(video_info_adr)
         self.array: np.ndarray = load_tif_series_to_dask(
             video_folder_adr
         )  # Dims are t, y, x
         self.time_pixel_size = 1 / self.video_info.camera_settings.frame_rate
         self.space_pixel_size = (
-            2
-            * 1.725
+            1.725
+            # * 2
             / (self.video_info.magnification)
             * self.video_info.camera_settings.binning
-        )  # um.pixel
+            * resolution
+        )  # um/pixel
         self.edge_len_thresh = edge_length_threshold
+        self.kymo_extract_settings = kymoExtractProperties(resolution=resolution)
+
 
         self._mean_img = None
         self._std_img = None
@@ -218,7 +247,9 @@ class videoControl:
                     self.node_positions[edge_graph[0]],
                 )
                 if len(edge_pixels) > self.edge_len_thresh:
-                    self.edges.append(edgeControl(self.video_info, edge_graph, edge_pixels))
+                    self.edges.append(
+                        edgeControl(self.video_info, edge_graph, edge_pixels, self.kymo_extract_settings)
+                    )
         return self._edges
 
     def get_edge_images(self) -> dict[str, np.ndarray]:
@@ -237,7 +268,6 @@ class videoControl:
 
         # Number of edges is assumed small (<20)
         for edge in self.edges:
-
             # Get coordinates for each line, truncate to target length
             edge_perp_lines = [
                 extract_perp_lines(segment[0], segment[1])[
@@ -264,36 +294,40 @@ class videoControl:
                     cval=0.0,
                 )
                 edge.edge_video.append(edge_im)
-        
+
         # TODO: Redo this with initializing the array first. No appends needed.
         for edge in self.edges:
             edge.edge_video = np.array(edge.edge_video)
         return edge_images
-    
+
     def get_kymographs(self):
         kymographs = {}
         for edge in self.edges:
             kymographs[edge.edge_info] = edge.kymograph
-    
-    def save_edge_videos(self, out_adr_folder:Path):
+
+    def save_edge_videos(self, out_adr_folder: Path):
         videos_dict = self.get_edge_images()
         for title, array in videos_dict.items():
             filename = out_adr_folder / (title[1:-1] + ".mp4")
             t_max, x_max, y_max = array.shape
             min_val, max_val = np.min(array), np.max(array)
-            
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-            out = cv2.VideoWriter(filename, fourcc, self.video_info.camera_settings.frame_rate, (y_max, x_max))
-            
+
+            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+            out = cv2.VideoWriter(
+                filename,
+                fourcc,
+                self.video_info.camera_settings.frame_rate,
+                (y_max, x_max),
+            )
+
             for t in range(t_max):
                 frame = array[t]
                 frame = ((frame - min_val) / (max_val - min_val) * 255).astype(np.uint8)
                 frame_colored = cv2.applyColorMap(frame, cv2.COLORMAP_VIRIDIS)
                 out.write(frame_colored)
-            
-            out.release()
-            print(f'Video saved as {filename}')
 
+            out.release()
+            print(f"Video saved as {filename}")
 
     ## Plotting functions
     def plot_edge_extraction(self):
@@ -310,8 +344,8 @@ class videoControl:
             ],
             cmap="cet_CET_L20",
         )
-        ax1.set_xlabel(r'x $\mu m$')
-        ax1.set_ylabel(r'y $\mu m$')
+        ax1.set_xlabel(r"x $\mu m$")
+        ax1.set_ylabel(r"y $\mu m$")
 
         for edge in self.edges:
             edge.plot_segments(self.space_pixel_size, ax1)
