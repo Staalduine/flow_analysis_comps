@@ -227,7 +227,7 @@ class orientationSpaceManager:
 
         self.get_response(img)
         simple_angles = self.get_max_angles(thresh_method=thresh_method)
-        simple_speeds = 1 / np.tan(simple_angles)  # um.s-1
+        simple_speeds = np.tan(simple_angles)  # um.s-1
         nlms_candidates = self.nlms_simple_case(order, thresh_method=thresh_method)
         nlms_candidates = np.where(np.isnan(nlms_candidates), 0, nlms_candidates)
 
@@ -253,24 +253,26 @@ class orientationSpaceManager:
         #     nlms_candidates.flatten(), bins=50, range=(0.01, nlms_candidates.max())
         # )
 
-        ax["overlay"].imshow(
-            img,
-            cmap="cet_CET_L1",
-            interpolation="none",
-            extent=kymo_extent,
-        )
-        ax["overlay"].imshow(
-            nlms_candidates,
-            cmap="cet_CET_L16",
-            vmin=0,
-            vmax=nlms_candidates.max(),
-            alpha=(nlms_candidates_norm),
-            interpolation="none",
-            extent=kymo_extent,
-        )
+        # ax["overlay"].imshow(
+        #     img,
+        #     cmap="cet_CET_L1",
+        #     interpolation="none",
+        #     extent=kymo_extent,
+        # )
+        # ax["overlay"].imshow(
+        #     nlms_candidates,
+        #     cmap="cet_CET_L16",
+        #     vmin=0,
+        #     vmax=nlms_candidates.max(),
+        #     alpha=(nlms_candidates_norm),
+        #     interpolation="none",
+        #     extent=kymo_extent,
+        # )
+        
+        ax["overlay"].imshow(simple_speeds, cmap="cet_CET_C4", extent=kymo_extent, vmin=-2, vmax = 2)
 
         ax["total_histo"].hist(
-            simple_speeds[nlms_candidates > histo_thresh], bins=50, range=(-10, 10)
+            simple_speeds[nlms_candidates > histo_thresh], bins=150, range=(-2, 2)
         )
-        ax["temporal_histo"].imshow(simple_angles, extent=kymo_extent)
+        ax["temporal_histo"].imshow(simple_angles, extent=kymo_extent, cmap="cet_CET_D9")
         return

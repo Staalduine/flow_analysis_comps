@@ -99,7 +99,7 @@ class edgeControl:
 
     @property
     def kymograph(self):
-        if self.edge_video is not None:
+        if len(self.edge_video) > 0:
             return self.edge_video.mean(axis=2)
         else:
             print(
@@ -174,7 +174,7 @@ class videoControl:
         self.time_pixel_size = 1 / self.video_info.camera_settings.frame_rate
         self.space_pixel_size = (
             1.725
-            # * 2
+            * 2
             / (self.video_info.magnification)
             * self.video_info.camera_settings.binning
             * resolution
