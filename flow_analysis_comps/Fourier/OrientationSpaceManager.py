@@ -202,6 +202,7 @@ class orientationSpaceManager:
         thresh_method: Optional[ThresholdMethods] = None,
         invert=False,
         histo_thresh=0.5,
+        speed_extent = 10
     ):
         fig, ax = plt.subplot_mosaic(
             [
@@ -247,32 +248,19 @@ class orientationSpaceManager:
             vmax=nlms_candidates.max(),
             extent=kymo_extent,
         )
-        # fig.colorbar(nlms_show)
 
-        # ax["nlms_histo"].hist(
-        #     nlms_candidates.flatten(), bins=50, range=(0.01, nlms_candidates.max())
-        # )
-
-        # ax["overlay"].imshow(
-        #     img,
-        #     cmap="cet_CET_L1",
-        #     interpolation="none",
-        #     extent=kymo_extent,
-        # )
-        # ax["overlay"].imshow(
-        #     nlms_candidates,
-        #     cmap="cet_CET_L16",
-        #     vmin=0,
-        #     vmax=nlms_candidates.max(),
-        #     alpha=(nlms_candidates_norm),
-        #     interpolation="none",
-        #     extent=kymo_extent,
-        # )
+        time_histo = []
+        for speed_row, mask_row in zip(simple_speeds, nlms_candidates):
+            speed_row = np.where(mask_row > histo_thresh, speed_row, np.nan)
+            histo_moment = np.histogram(speed_row, 500, (-speed_extent, speed_extent))[0]
+            time_histo.append(histo_moment)
+        time_histo = np.array(time_histo)
         
-        ax["overlay"].imshow(simple_speeds, cmap="cet_CET_C4", extent=kymo_extent, vmin=-6, vmax = 6)
+        ax["overlay"].imshow(simple_speeds, cmap="cet_CET_C4", extent=kymo_extent, vmin=-speed_extent, vmax = speed_extent)
 
         ax["total_histo"].hist(
-            simple_speeds[nlms_candidates > histo_thresh], bins=150, range=(-6, 6)
+            simple_speeds[nlms_candidates > histo_thresh], bins=150, range=(-speed_extent, speed_extent)
         )
-        ax["temporal_histo"].imshow(simple_angles, extent=kymo_extent, cmap="cet_CET_D9")
+        ax["temporal_histo"].imshow(time_histo.T, cmap="cet_CET_L8", extent=(0, len(time_histo) * pixel_size_time, -speed_extent, speed_extent))
+        ax["temporal_histo"].set_aspect('auto')
         return
