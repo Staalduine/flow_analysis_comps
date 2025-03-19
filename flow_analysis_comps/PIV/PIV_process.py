@@ -146,7 +146,7 @@ class AMF_PIV:
         settings.save_folder_suffix = "PIV_output"
         settings.save_plot = False
         settings.sig2noise_threshold = self.parameters.stn_threshold
-        settings.dt = 1/20
+        # settings.dt = 1/20
         settings.show_all_plots = False
         settings.show_plot = False
 
