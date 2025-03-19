@@ -2,7 +2,11 @@ from pathlib import Path
 from openpiv import tools, pyprocess, validation, filters, scaling, windef
 import tifffile
 from tqdm import tqdm
-from video_manipulation.segment_skel import segment_hyphae_general, harmonic_mean_thresh
+from flow_analysis_comps.data_structs.video_info import videoMode
+from flow_analysis_comps.video_manipulation.segment_skel import (
+    segment_hyphae_general,
+    harmonic_mean_thresh,
+)
 import cv2
 from glob import glob
 import os
@@ -19,8 +23,9 @@ class AMF_PIV:
             glob(str(self.parameters.video_path) + os.sep + "Img*")
         )
         self.segmented_img = segment_hyphae_general(
-            self.frame_paths[:20],
-            mode=self.parameters.segment_mode,
+            self.frame_paths[:200:10],
+            mode=videoMode.BRIGHTFIELD,
+            # seg_thresh=1000
         )
 
         self.parameters.video_path = self.select_segment_data()
@@ -34,14 +39,18 @@ class AMF_PIV:
 
     def select_segment_data(self) -> Path:
         match self.parameters.segment_mode:
-            case segmentMode.NONE:
+            case videoMode.FLUORESCENCE:
                 return self.parameters.video_path
-            case segmentMode.BRIGHT:
+            case videoMode.BRIGHTFIELD:
                 out_adr = self.parameters.video_path.parent / "Harm_mean_thresh"
                 out_adr.mkdir(exist_ok=True)
-                _, thresh = harmonic_mean_thresh(tifffile.imread(self.frame_paths[0]), self.segmented_img)
+                _, thresh = harmonic_mean_thresh(
+                    tifffile.imread(self.frame_paths[0]), self.segmented_img
+                )
+                print(f"Threshold used: {thresh}")
                 self.segment_data(thresh, out_adr)
                 return out_adr
+                # return self.parameters.video_path
             case _:
                 print("Data is not pre-thresholded")
                 return self.parameters.video_path
@@ -53,8 +62,12 @@ class AMF_PIV:
     ):
         for frame_adr in tqdm(self.frame_paths):
             frame = tifffile.imread(frame_adr)
-            _, frame_threshed = cv2.threshold((255 - frame), threshold_val, 255, cv2.THRESH_TOZERO_INV )
-            tifffile.imwrite(out_adr / Path(frame_adr).name, frame_threshed, imagej=True)
+            _, frame_threshed = cv2.threshold(
+                (frame.max() - frame), threshold_val, 255, cv2.THRESH_TOZERO_INV
+            )
+            tifffile.imwrite(
+                out_adr / Path(frame_adr).name, frame_threshed, imagej=True
+            )
 
     def plot_raw_images(self, frames: tuple[int, int]):
         img1 = tifffile.imread(self.frame_paths[frames[0]])
@@ -120,16 +133,22 @@ class AMF_PIV:
         settings = windef.PIVSettings()
 
         settings.filepath_images = self.parameters.video_path
-        settings.frame_pattern_a = "Img_*.tif"
-        settings.frame_pattern_b = "(1+3),(2+4)"
+        settings.frame_pattern_a = "Img*.tif"
+        settings.frame_pattern_b = "(1+2),(2+3)"
+        settings.min_max_u_disp=(-5, 5)
+        settings.min_max_v_disp=(-5, 5)
 
-        settings.static_mask = ~self.segmented_img
+        settings.windowsizes =(32,16, 8, 4)
+        settings.overlap = ( 16, 8, 4, 2)
+
+        settings.static_mask = ~self.segmented_img.astype(np.bool_)
         settings.save_path = self.parameters.video_path.parent
         settings.save_folder_suffix = "PIV_output"
-        settings.save_plot = True
+        settings.save_plot = False
         settings.sig2noise_threshold = self.parameters.stn_threshold
-        # settings.show_all_plots = True
-        # settings.show_plot = True
+        settings.dt = 1/20
+        settings.show_all_plots = False
+        settings.show_plot = False
 
         windef.piv(settings)
 

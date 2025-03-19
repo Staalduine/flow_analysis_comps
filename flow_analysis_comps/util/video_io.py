@@ -7,7 +7,12 @@ import numpy as np
 import matplotlib
 import cv2
 import pandas as pd
-from data_structs.video_info import cameraPosition, cameraSettings, videoInfo, plateInfo
+from flow_analysis_comps.data_structs.video_info import (
+    cameraPosition,
+    cameraSettings,
+    videoInfo,
+    plateInfo,
+)
 from datetime import datetime, date, timedelta
 import json
 import dask.array as da
@@ -30,7 +35,7 @@ def load_tif_series_to_dask(folder_path) -> npt.ArrayLike:
         [
             os.path.join(folder_path, f)
             for f in os.listdir(folder_path)
-            if f.lower().endswith(".tif")
+            if f.lower().endswith(".tif") or f.lower().endswith(".tiff")
         ],
         # key=lambda x: int(os.path.basename(x)[3:].split('.')[0])  # Extract number from 'Img<nr>.tif'
     )
