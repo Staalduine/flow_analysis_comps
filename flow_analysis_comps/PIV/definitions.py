@@ -2,6 +2,8 @@ from enum import StrEnum
 from pydantic import BaseModel, PositiveInt
 from pathlib import Path
 
+from flow_analysis_comps.data_structs.video_info import videoMode
+
 
 class segmentMode(StrEnum):
     NONE : str =  "NONE"
@@ -15,7 +17,7 @@ class preProcessMode(StrEnum):
 
 class PIV_params(BaseModel):
     video_path: Path
-    segment_mode: segmentMode
+    segment_mode: videoMode
     fps: float
     window_size: PositiveInt
     search_size: PositiveInt

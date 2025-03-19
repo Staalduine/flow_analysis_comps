@@ -1,7 +1,7 @@
 from typing import Optional
 import numpy as np
 from pydantic import BaseModel
-from util.coord_transforms import freqSpaceCoords
+from flow_analysis_comps.util.coord_transforms import freqSpaceCoords
 
 
 class OSFilterParams(BaseModel):

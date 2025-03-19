@@ -2,19 +2,24 @@ from pathlib import Path
 import cv2
 from matplotlib import pyplot as plt
 from pydantic import BaseModel
-from data_structs.video_info import videoInfo
-from util.coord_transforms import extract_perp_lines, validate_interpolation_order
-from util.video_io import load_tif_series_to_dask, read_video_metadata
-from video_manipulation.segment_skel import (
+from flow_analysis_comps.data_structs.video_info import videoInfo
+from flow_analysis_comps.util.coord_transforms import (
+    extract_perp_lines,
+    validate_interpolation_order,
+)
+from flow_analysis_comps.util.video_io import (
+    load_tif_series_to_dask,
+    read_video_metadata,
+)
+from flow_analysis_comps.video_manipulation.segment_skel import (
     _segment_hyphae_w_mean_std,
     skeletonize_segmented_im,
 )
-from util.graph_util import orient, generate_index_along_sequence
+from flow_analysis_comps.util.graph_util import orient
 import numpy as np
-import networkx as nx
 from skimage.measure import profile_line
 from scipy import ndimage as ndi
-from scipy.signal import butter, filtfilt, sosfiltfilt
+from scipy.signal import butter, sosfiltfilt
 
 
 def low_pass_filter(coords, cutoff_freq=0.01, order=2):
@@ -166,7 +171,9 @@ class edgeControl:
 
 class videoControl:
     ## Initiate object
-    def __init__(self, video_folder_adr, video_info_adr, edge_length_threshold=200, resolution=1):
+    def __init__(
+        self, video_folder_adr, video_info_adr, edge_length_threshold=200, resolution=1
+    ):
         self.video_info = read_video_metadata(video_info_adr)
         self.array: np.ndarray = load_tif_series_to_dask(
             video_folder_adr
@@ -181,7 +188,6 @@ class videoControl:
         )  # um/pixel
         self.edge_len_thresh = edge_length_threshold
         self.kymo_extract_settings = kymoExtractProperties(resolution=resolution)
-
 
         self._mean_img = None
         self._std_img = None
@@ -248,7 +254,12 @@ class videoControl:
                 )
                 if len(edge_pixels) > self.edge_len_thresh:
                     self.edges.append(
-                        edgeControl(self.video_info, edge_graph, edge_pixels, self.kymo_extract_settings)
+                        edgeControl(
+                            self.video_info,
+                            edge_graph,
+                            edge_pixels,
+                            self.kymo_extract_settings,
+                        )
                     )
         return self._edges
 

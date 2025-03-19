@@ -7,12 +7,12 @@ import numpy as np
 from pathlib import Path
 from skimage.morphology import skeletonize
 import networkx as nx
-from util.graph_util import generate_nx_graph, remove_spurs, from_sparse_to_graph
+from flow_analysis_comps.util.graph_util import generate_nx_graph, remove_spurs, from_sparse_to_graph
 from skimage.filters import threshold_yen
 
-from video_manipulation.img_util import RenyiEntropy_thresholding, find_histogram_edge
-from data_structs.video_info import videoMode
-import dask.array as da
+from flow_analysis_comps.video_manipulation.img_util import RenyiEntropy_thresholding, find_histogram_edge
+from flow_analysis_comps.data_structs.video_info import videoMode
+# import dask.array as da
 
 def mean_std_from_img_paths(
     image_addresses: list[Path],
@@ -133,7 +133,7 @@ def _segment_hyphae_w_mean_std(mean_image: np.ndarray, std_image:np.ndarray, seg
         case videoMode.BRIGHTFIELD:
             segmented = segment_brightfield_image(seg_thresh, mean_image, std_image)
         case videoMode.FLUORESCENCE:
-            segmented = segment_fluorescence_image(mean_image, threshtype="hist_edge")
+            segmented = segment_fluorescence_image(mean_image, threshtype="Yen")
         case _:
             raise ValueError(f"Wrong mode, what is {mode}?")
     return segmented

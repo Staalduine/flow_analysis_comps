@@ -13,7 +13,8 @@ from flow_analysis_comps.Fourier.OrientationSpaceResponse import (
 import numpy.typing as npt
 
 from flow_analysis_comps.Fourier.NLMSPrecise import nlms_precise
-from util.coord_transforms import wraparoundN
+from flow_analysis_comps.util.coord_transforms import wraparoundN
+from copy import copy
 
 
 class orientationSpaceManager:
@@ -202,25 +203,26 @@ class orientationSpaceManager:
         thresh_method: Optional[ThresholdMethods] = None,
         invert=False,
         histo_thresh=0.5,
-        speed_extent = 10
+        speed_extent=10,
+        inner_pad=5,
     ):
         fig, ax = plt.subplot_mosaic(
             [
-                ["img", "img"],
+                # ["img", "img"],
                 ["nlms", "nlms"],
-                ["overlay", "overlay"],
+                # ["overlay", "overlay"],
                 ["total_histo", "temporal_histo"],
             ],
             # width_ratios=[8, 2],
-            figsize=(8, 8),
+            figsize=(8, 6),
             dpi=200,
             layout="constrained",
         )
         kymo_extent = (
-            0,
+            pixel_size_space,
             pixel_size_space * img.shape[1],
-            pixel_size_time * img.shape[0],
-            0,
+            pixel_size_time * (img.shape[0] - inner_pad),
+            inner_pad * pixel_size_time,
         )
 
         if invert:
@@ -228,39 +230,64 @@ class orientationSpaceManager:
 
         self.get_response(img)
         simple_angles = self.get_max_angles(thresh_method=thresh_method)
-        simple_speeds = np.tan(simple_angles) / pixel_size_time * pixel_size_space  # um.s-1
+        simple_speeds = (
+            np.tan(simple_angles) / pixel_size_time * pixel_size_space
+        )  # um.s-1
         nlms_candidates = self.nlms_simple_case(order, thresh_method=thresh_method)
         nlms_candidates = np.where(np.isnan(nlms_candidates), 0, nlms_candidates)
 
-        nlms_candidates_norm = nlms_candidates - nlms_candidates.min()
-        nlms_candidates_norm /= nlms_candidates_norm.max()
+        if inner_pad > 0:
+            nlms_candidates = nlms_candidates[inner_pad:-inner_pad]
+            simple_speeds = simple_speeds[inner_pad:-inner_pad]
+
+        # nlms_candidates_norm = nlms_candidates - nlms_candidates.min()
+        # nlms_candidates_norm /= nlms_candidates_norm.max()
 
         # self.response.visualize_orientation_wheel(ax=ax["colorwheel"])
 
-        img_show = ax["img"].imshow(img, cmap="cet_CET_L20", extent=kymo_extent)
-        ax["img"].set_aspect("equal")
+        # img_show = ax["img"].imshow(img, cmap="cet_CET_L20", extent=kymo_extent)
+        # ax["img"].set_aspect("equal")
         # fig.colorbar(img_show)
+
+        palette = copy(plt.get_cmap("cet_CET_L16"))
+        palette.set_under("white", 1.0)
 
         nlms_show = ax["nlms"].imshow(
             nlms_candidates,
-            cmap="cet_CET_L16",
-            vmin=0,
+            cmap=palette,
+            vmin=histo_thresh,
             vmax=nlms_candidates.max(),
             extent=kymo_extent,
         )
 
+        ax["nlms"].set_ylabel("time (s)")
+        ax["nlms"].set_xlabel(r"Curvilinear position ($\mu m$)")
+
         time_histo = []
         for speed_row, mask_row in zip(simple_speeds, nlms_candidates):
             speed_row = np.where(mask_row > histo_thresh, speed_row, np.nan)
-            histo_moment = np.histogram(speed_row, 500, (-speed_extent, speed_extent))[0]
+            histo_moment = np.histogram(speed_row, 500, (-speed_extent, speed_extent))[
+                0
+            ]
             time_histo.append(histo_moment)
         time_histo = np.array(time_histo)
-        
-        ax["overlay"].imshow(simple_speeds, cmap="cet_CET_C4", extent=kymo_extent, vmin=-speed_extent, vmax = speed_extent)
 
         ax["total_histo"].hist(
-            simple_speeds[nlms_candidates > histo_thresh], bins=150, range=(-speed_extent, speed_extent)
+            simple_speeds[nlms_candidates > histo_thresh],
+            bins=150,
+            range=(-speed_extent, speed_extent),
         )
-        ax["temporal_histo"].imshow(time_histo.T, cmap="cet_CET_L8", extent=(0, len(time_histo) * pixel_size_time, -speed_extent, speed_extent))
-        ax["temporal_histo"].set_aspect('auto')
+        ax["total_histo"].set_ylabel("frequency")
+        ax["total_histo"].set_xlabel(r"velocity ($\mu m / s$)")
+        ax["total_histo"].axvline(0, c="black", alpha=0.4)
+        ax["temporal_histo"].imshow(
+            time_histo.T,
+            cmap="cet_CET_L8",
+            extent=(0, len(time_histo) * pixel_size_time, -speed_extent, speed_extent),
+        )
+        ax["temporal_histo"].set_ylabel(r"velocity ($\mu m / s$)")
+        ax["temporal_histo"].set_xlabel("time (s)")
+        for ax_title in ax:
+            ax[ax_title].set_aspect("auto")
+
         return
