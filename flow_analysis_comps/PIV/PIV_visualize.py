@@ -65,30 +65,33 @@ class PIV_visualize:
 
         return PIV_data
 
-    def calculate_vortex_potential(self, dist:float):
+    def calculate_vortex_potential(self, dist:float, index_stop = -1, speed_threshold = 1e-5):
         data = self.current_frame_data
         data["vortex"] = 0.0
+        data["speed_present"] = data["abs"] > speed_threshold
         for index, rows in self.current_frame_data.iterrows():
             data["diff_x"] = data["x"] - data["x"][index]
             data["diff_y"] = data["y"] - data["y"][index]
             data["diff_dist"] = np.linalg.norm([data["diff_x"], data["diff_y"]], axis=0)
-            data["dist_bool"] = -np.arctan(data["diff_dist"]) + np.pi /2
+            data["dist_bool"] = data["diff_dist"] < dist
             data["diff_theta"] = (np.arctan2(data["diff_y"], data["diff_x"])) - data[
                 "speed_dir"
             ]
-            data.loc[index, "vortex"] = np.mean(
-                np.sin(data["diff_theta"]) * data["dist_bool"] * data["abs"] ** 2
-            )
+            data.loc[index, "vortex"] = np.sum(
+                np.sin(data["diff_theta"]) * data["dist_bool"] * data["speed_present"]
+            ) / np.sum(data["dist_bool"])
+            if index == index_stop:
+                break
         self.current_frame_data = data
 
-    def plot_vortex_potential(self, dist:float=30, fig=None, ax=None):
-        self.calculate_vortex_potential(dist)
+    def plot_vortex_potential(self, dist:float=30, data_shown = "vortex", fig=None, ax=None, index_stop = -1, speed_threshold = 1e-5):
+        self.calculate_vortex_potential(dist, index_stop=index_stop, speed_threshold=speed_threshold)
 
         if ax is None:
             fig, ax = plt.subplots()
-        color_data = self.current_frame_data["vortex"]
-        data_max = color_data.abs().max()
-
+        color_data = self.current_frame_data[data_shown]
+        data_max = float(color_data.abs().max()
+)
         scatter_plot = ax.scatter(
             self.current_frame_data["x"],
             self.current_frame_data["y"],
@@ -97,7 +100,7 @@ class PIV_visualize:
             vmin=-data_max,
             vmax=data_max,
         )
-        ax.set_title(f"Vortex potential (frame {self.current_frame_index})")
+        ax.set_title(f"{data_shown} (frame {self.current_frame_index})")
         ax.set_aspect("equal")
         fig.colorbar(scatter_plot)
 
