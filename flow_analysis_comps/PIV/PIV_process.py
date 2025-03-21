@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Optional
 from openpiv import tools, pyprocess, validation, filters, scaling, windef
 import tifffile
 from tqdm import tqdm
@@ -15,9 +16,16 @@ import numpy as np
 from matplotlib.colors import hsv_to_rgb
 from flow_analysis_comps.PIV.definitions import PIV_params, segmentMode
 
+from flow_analysis_comps.PIV.PIV_visualize import PIV_visualize, visualizerParams
+
 
 class AMF_PIV:
-    def __init__(self, parameters: PIV_params):
+    def __init__(
+        self,
+        parameters: PIV_params,
+        visualize_folder: Optional[Path] = None,
+        visualize_params: Optional[visualizerParams] = None,
+    ):
         self.parameters = parameters
         self.frame_paths = sorted(
             glob(str(self.parameters.video_path) + os.sep + "Img*")
@@ -36,6 +44,10 @@ class AMF_PIV:
         self.v = None
         self.piv_mask = None
         self.harm_mean_thresh = None
+
+        self.visualizer = None
+        if visualize_folder is not None:
+            self.visualizer = PIV_visualize(visualize_folder, visualize_params)
 
     def select_segment_data(self) -> Path:
         match self.parameters.segment_mode:
@@ -135,11 +147,11 @@ class AMF_PIV:
         settings.filepath_images = self.parameters.video_path
         settings.frame_pattern_a = "Img*.tif"
         settings.frame_pattern_b = "(1+2),(2+3)"
-        settings.min_max_u_disp=(-5, 5)
-        settings.min_max_v_disp=(-5, 5)
+        settings.min_max_u_disp = (-5, 5)
+        settings.min_max_v_disp = (-5, 5)
 
-        settings.windowsizes =(32,16, 8, 4)
-        settings.overlap = ( 16, 8, 4, 2)
+        settings.windowsizes = (32, 16, 8, 4)
+        settings.overlap = (16, 8, 4, 2)
 
         settings.static_mask = ~self.segmented_img.astype(np.bool_)
         settings.save_path = self.parameters.video_path.parent
@@ -151,6 +163,10 @@ class AMF_PIV:
         settings.show_plot = False
 
         windef.piv(settings)
+
+        self.visualizer = PIV_visualize(
+            settings.save_path / "OpenPIV_results_8_PIV_output"
+        )
 
     def piv_process(
         self, frames: tuple[int, int], USE_SEGMENTATION=True, FAKE_OUTLIERS=False

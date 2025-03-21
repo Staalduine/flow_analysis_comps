@@ -7,6 +7,7 @@ import colorcet
 
 import pandas as pd
 from pydantic import BaseModel
+import scipy.interpolate
 
 
 class visualizerParams(BaseModel):
@@ -14,12 +15,18 @@ class visualizerParams(BaseModel):
     pixels_per_micrometer: float = 1.0
     use_mask: bool = True
     use_flags: bool = True
+    output_pattern: str = "PIV_output"
 
 
 class PIV_visualize:
     def __init__(self, txt_folder: Path, parameters: Optional[visualizerParams] = None):
         self.folder_address = txt_folder
-        self.txt_files = sorted(list(self.folder_address.glob("*.txt")))
+        self.txt_folder = next(
+            self.folder_address.glob(f"*{parameters.output_pattern}")
+        )
+        self.img_folder = next(self.folder_address.glob("Img"))
+        self.txt_files = sorted(list(self.txt_folder.glob("*.txt")))
+        self.img_files = sorted(list(self.img_folder.glob("*.ti*")))
         self.params = parameters
         self.pixel_extent: tuple[int, int] = (1, 1)
 
@@ -65,7 +72,9 @@ class PIV_visualize:
 
         return PIV_data
 
-    def calculate_vortex_potential(self, dist:float, index_stop = -1, speed_threshold = 1e-5):
+    def calculate_vortex_potential(
+        self, dist: float, index_stop=-1, speed_threshold=1e-5
+    ):
         data = self.current_frame_data
         data["vortex"] = 0.0
         data["speed_present"] = data["abs"] > speed_threshold
@@ -84,27 +93,60 @@ class PIV_visualize:
                 break
         self.current_frame_data = data
 
-    def plot_vortex_potential(self, dist:float=30, data_shown = "vortex", fig=None, ax=None, index_stop = -1, speed_threshold = 1e-5):
-        self.calculate_vortex_potential(dist, index_stop=index_stop, speed_threshold=speed_threshold)
+    def plot_vortex_potential(
+        self,
+        dist: float = 30,
+        data_shown="vortex",
+        fig=None,
+        ax=None,
+        index_stop=-1,
+        speed_threshold=1e-5,
+    ):
+        self.calculate_vortex_potential(
+            dist, index_stop=index_stop, speed_threshold=speed_threshold
+        )
 
         if ax is None:
             fig, ax = plt.subplots()
         color_data = self.current_frame_data[data_shown]
-        data_max = float(color_data.abs().max()
-)
-        scatter_plot = ax.scatter(
-            self.current_frame_data["x"],
-            self.current_frame_data["y"],
-            c=color_data,
+
+        linspace_x = np.arange(4, self.current_frame_data["x"].max(), 2)
+        linspace_y = np.arange(4, self.current_frame_data["y"].max(), 2)
+        mx, my = np.meshgrid(linspace_x, linspace_y)
+
+        points = np.array(
+            [self.current_frame_data["x"], self.current_frame_data["y"]]
+        ).T
+        values = np.array(color_data)
+        xi = np.array([mx.flatten(), my.flatten()]).T
+        print(xi.shape)
+
+        grid_interpolation = scipy.interpolate.griddata(
+            points, values, xi, method="cubic", fill_value=0.0
+        )
+        grid_interpolation = grid_interpolation.reshape(
+            (len(linspace_y), len(linspace_x))
+        )
+
+        data_max = float(abs(grid_interpolation.flatten()).max())
+
+        ax.imshow(
+            grid_interpolation,
             cmap="cet_CET_D1A",
+            origin='lower',
             vmin=-data_max,
             vmax=data_max,
+            extent=(
+                0, self.current_frame_data["x"].max(),
+                0, self.current_frame_data["y"].max(),            
+            )
         )
+
         ax.set_title(f"{data_shown} (frame {self.current_frame_index})")
         ax.set_aspect("equal")
-        fig.colorbar(scatter_plot)
+        
 
-    def show_current_frame(self, dpi=200, scale=20, ax=None):
+    def show_quiver_plot(self, dpi=200, scale=20, ax=None):
         graph_ratio = self.pixel_extent[1] / self.pixel_extent[0] * 0.8
         if ax is None:
             fig, ax = plt.subplots(figsize=(5, 5 * graph_ratio), dpi=dpi)
@@ -123,3 +165,7 @@ class PIV_visualize:
         ax.set_xlabel(r"x $(\mu m)$")
         ax.set_ylabel(r"y $(\mu m)$")
         ax.set_aspect("equal")
+
+    def show_raw_img(self, ax=None):
+        if ax is None:
+            fig, ax = plt.subplots()
