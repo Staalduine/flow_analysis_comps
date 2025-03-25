@@ -1,5 +1,7 @@
 from pathlib import Path
 from typing import Optional
+from matplotlib.axes import Axes
+from matplotlib.image import AxesImage
 import numpy as np
 import matplotlib.pyplot as plt
 from glob import glob
@@ -8,6 +10,7 @@ import colorcet
 import pandas as pd
 from pydantic import BaseModel
 import scipy.interpolate
+import tifffile
 
 
 class visualizerParams(BaseModel):
@@ -29,6 +32,7 @@ class PIV_visualize:
         self.img_files = sorted(list(self.img_folder.glob("*.ti*")))
         self.params = parameters
         self.pixel_extent: tuple[int, int] = (1, 1)
+        self.graph_ratio = 1
 
         if parameters is None:
             self.params = visualizerParams()
@@ -47,7 +51,7 @@ class PIV_visualize:
         # Txt data comes out this way
         PIV_data.rename({"# x": "x"}, axis=1, inplace=True)
 
-        self.pixel_extent = (int(PIV_data["x"].max()), int(PIV_data["y"].max()))
+        self._set_pixel_extent(PIV_data)
 
         if self.params.use_mask:
             PIV_data = PIV_data[PIV_data["mask"] == 0]
@@ -71,6 +75,10 @@ class PIV_visualize:
         )
 
         return PIV_data
+
+    def _set_pixel_extent(self, PIV_data):
+        self.pixel_extent = (int(PIV_data["x"].max()), int(PIV_data["y"].max()))
+        self.graph_ratio = self.pixel_extent[1] / self.pixel_extent[0] * 0.8
 
     def calculate_vortex_potential(
         self, dist: float, index_stop=-1, speed_threshold=1e-5
@@ -101,7 +109,7 @@ class PIV_visualize:
         ax=None,
         index_stop=-1,
         speed_threshold=1e-5,
-    ):
+    ) -> tuple[Axes, AxesImage]:
         self.calculate_vortex_potential(
             dist, index_stop=index_stop, speed_threshold=speed_threshold
         )
@@ -119,7 +127,6 @@ class PIV_visualize:
         ).T
         values = np.array(color_data)
         xi = np.array([mx.flatten(), my.flatten()]).T
-        print(xi.shape)
 
         grid_interpolation = scipy.interpolate.griddata(
             points, values, xi, method="cubic", fill_value=0.0
@@ -128,28 +135,30 @@ class PIV_visualize:
             (len(linspace_y), len(linspace_x))
         )
 
-        data_max = float(abs(grid_interpolation.flatten()).max())
+        # data_max = float(abs(grid_interpolation.flatten()).max())
+        data_max = 0.5
 
-        ax.imshow(
+        vortex_image = ax.imshow(
             grid_interpolation,
             cmap="cet_CET_D1A",
-            origin='lower',
+            origin="lower",
             vmin=-data_max,
             vmax=data_max,
             extent=(
-                0, self.current_frame_data["x"].max(),
-                0, self.current_frame_data["y"].max(),            
-            )
+                0,
+                self.current_frame_data["x"].max(),
+                0,
+                self.current_frame_data["y"].max(),
+            ),
         )
 
-        ax.set_title(f"{data_shown} (frame {self.current_frame_index})")
+        ax.set_title(f"{data_shown} frame {self.current_frame_index}")
         ax.set_aspect("equal")
-        
+        return vortex_image
 
     def show_quiver_plot(self, dpi=200, scale=20, ax=None):
-        graph_ratio = self.pixel_extent[1] / self.pixel_extent[0] * 0.8
         if ax is None:
-            fig, ax = plt.subplots(figsize=(5, 5 * graph_ratio), dpi=dpi)
+            fig, ax = plt.subplots(figsize=(5, 5 * self.graph_ratio), dpi=dpi)
         ax.quiver(
             self.current_frame_data["x"] / self.params.pixels_per_micrometer,
             self.current_frame_data["y"] / self.params.pixels_per_micrometer,
@@ -169,3 +178,16 @@ class PIV_visualize:
     def show_raw_img(self, ax=None):
         if ax is None:
             fig, ax = plt.subplots()
+        img = tifffile.imread(self.img_files[self.current_frame_index])[::-1]
+        ax.imshow(img, origin="lower", cmap="cet_CET_L20")
+        ax.set_title(f"Raw image frame {self.current_frame_index}")
+
+    def plot_full_figure(self, dpi=300):
+        fig, ax = plt.subplots(1, 3, figsize=(5 * 2.7, 5 * self.graph_ratio), dpi=dpi, layout="constrained")
+        self.show_raw_img(ax[0])
+        self.show_quiver_plot(ax=ax[1], scale=18)
+        vortex_image = self.plot_vortex_potential(ax=ax[2], speed_threshold=1e-1)
+
+        fig.colorbar(vortex_image)
+        # fig.tight_layout()
+        return fig
