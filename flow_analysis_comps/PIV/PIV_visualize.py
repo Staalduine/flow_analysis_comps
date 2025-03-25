@@ -11,6 +11,7 @@ import pandas as pd
 from pydantic import BaseModel
 import scipy.interpolate
 import tifffile
+from tqdm import tqdm
 
 
 class visualizerParams(BaseModel):
@@ -41,6 +42,7 @@ class PIV_visualize:
         self.current_frame_data: Optional[pd.DataFrame] = self.import_txt(
             self.current_frame_index
         )
+        self.mean_frame_data = self.current_frame_data.copy(deep=True)
 
     def set_image_index(self, index: int):
         self.current_frame_index = index
@@ -76,6 +78,17 @@ class PIV_visualize:
 
         return PIV_data
 
+    def get_mean_orient(self):
+        self.mean_frame_data.loc[:, "speed_dir"] = 0
+        # self.mean_frame_data["speed_dir"][:] = 0
+        for i in tqdm(range(len(self.txt_files))):
+            self.set_image_index(i)
+            speed_dir = self.current_frame_data["speed_dir"]
+            speed_dir = speed_dir.fillna(0)
+            self.mean_frame_data["speed_dir"] += speed_dir
+            print(self.mean_frame_data["speed_dir"])
+        self.mean_frame_data["speed_dir"] /= len(self.txt_files)
+
     def _set_pixel_extent(self, PIV_data):
         self.pixel_extent = (int(PIV_data["x"].max()), int(PIV_data["y"].max()))
         self.graph_ratio = self.pixel_extent[1] / self.pixel_extent[0] * 0.8
@@ -101,32 +114,32 @@ class PIV_visualize:
                 break
         self.current_frame_data = data
 
-    def plot_vortex_potential(
+    def plot_grid_interp_frame_data(
         self,
-        dist: float = 30,
+        vortex_dist: float = 30,
         data_shown="vortex",
         fig=None,
         ax=None,
         index_stop=-1,
         speed_threshold=1e-5,
+        pull_from_mean_data=False,
+        cmap = "cet_CET_D1A"
     ) -> tuple[Axes, AxesImage]:
-        self.calculate_vortex_potential(
-            dist, index_stop=index_stop, speed_threshold=speed_threshold
-        )
+        if data_shown == "vortex":
+            self.calculate_vortex_potential(
+                vortex_dist, index_stop=index_stop, speed_threshold=speed_threshold
+            )
 
         if ax is None:
             fig, ax = plt.subplots()
-        color_data = self.current_frame_data[data_shown]
 
-        linspace_x = np.arange(4, self.current_frame_data["x"].max(), 2)
-        linspace_y = np.arange(4, self.current_frame_data["y"].max(), 2)
-        mx, my = np.meshgrid(linspace_x, linspace_y)
+        if pull_from_mean_data:
+            color_data = self.mean_frame_data[data_shown]
+        else:
+            color_data = self.current_frame_data[data_shown]
 
-        points = np.array(
-            [self.current_frame_data["x"], self.current_frame_data["y"]]
-        ).T
+        linspace_x, linspace_y, xi, points = self.create_interp_grid([self.current_frame_data, self.mean_frame_data][pull_from_mean_data])
         values = np.array(color_data)
-        xi = np.array([mx.flatten(), my.flatten()]).T
 
         grid_interpolation = scipy.interpolate.griddata(
             points, values, xi, method="cubic", fill_value=0.0
@@ -135,12 +148,12 @@ class PIV_visualize:
             (len(linspace_y), len(linspace_x))
         )
 
-        # data_max = float(abs(grid_interpolation.flatten()).max())
-        data_max = 0.5
+        data_max = float(abs(grid_interpolation.flatten()).max())
+        # data_max = 0.5
 
         vortex_image = ax.imshow(
             grid_interpolation,
-            cmap="cet_CET_D1A",
+            cmap=cmap,
             origin="lower",
             vmin=-data_max,
             vmax=data_max,
@@ -155,6 +168,19 @@ class PIV_visualize:
         ax.set_title(f"{data_shown} frame {self.current_frame_index}")
         ax.set_aspect("equal")
         return vortex_image
+
+    def create_interp_grid(self, frame_used):
+        linspace_x = np.arange(4, frame_used["x"].max(), 2)
+        linspace_y = np.arange(4, frame_used["y"].max(), 2)
+        mx, my = np.meshgrid(linspace_x, linspace_y)
+
+        points = np.array(
+            [frame_used["x"], frame_used["y"]]
+        ).T
+
+        xi = np.array([mx.flatten(), my.flatten()]).T
+
+        return linspace_x, linspace_y, xi, points
 
     def show_quiver_plot(self, dpi=200, scale=20, ax=None):
         if ax is None:
@@ -183,10 +209,12 @@ class PIV_visualize:
         ax.set_title(f"Raw image frame {self.current_frame_index}")
 
     def plot_full_figure(self, dpi=300):
-        fig, ax = plt.subplots(1, 3, figsize=(5 * 2.7, 5 * self.graph_ratio), dpi=dpi, layout="constrained")
+        fig, ax = plt.subplots(
+            1, 3, figsize=(5 * 2.7, 5 * self.graph_ratio), dpi=dpi, layout="constrained"
+        )
         self.show_raw_img(ax[0])
         self.show_quiver_plot(ax=ax[1], scale=18)
-        vortex_image = self.plot_vortex_potential(ax=ax[2], speed_threshold=1e-1)
+        vortex_image = self.plot_grid_interp_frame_data(ax=ax[2], speed_threshold=1e-1)
 
         fig.colorbar(vortex_image)
         # fig.tight_layout()
