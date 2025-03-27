@@ -34,4 +34,4 @@ piv_param_obj = PIV_params(
 
 amf_piv_obj = AMF_PIV(piv_param_obj)
 # amf_piv_obj.piv_process(frame_ids, FAKE_OUTLIERS=False)
-amf_piv_obj.piv_process_windef(frame_ids)
+amf_piv_obj.run_full_video(frame_ids)

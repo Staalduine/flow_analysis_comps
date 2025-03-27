@@ -1,5 +1,5 @@
 from enum import StrEnum
-from pydantic import BaseModel, PositiveInt
+from pydantic import BaseModel, PositiveInt, field_validator
 from pathlib import Path
 
 from flow_analysis_comps.data_structs.video_info import videoMode
@@ -18,9 +18,14 @@ class preProcessMode(StrEnum):
 class PIV_params(BaseModel):
     video_path: Path
     segment_mode: videoMode
-    fps: float
-    window_size: PositiveInt
-    search_size: PositiveInt
-    overlap_size: PositiveInt
+    window_size_start: PositiveInt
+    number_of_passes: PositiveInt
     stn_threshold: float
-    px_per_mm: float
+    max_speed_px_per_frame: float
+    
+    @field_validator("window_size_start")
+    @classmethod
+    def check_power_of_two(cls, value):
+        if value <= 0 or (value & (value - 1)) != 0:
+            raise ValueError("The number must be a power of 2.")
+        return value

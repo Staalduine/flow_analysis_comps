@@ -7,9 +7,10 @@ from flow_analysis_comps.data_structs.plate_info import plateInfo
 
 
 class videoMode(StrEnum):
-    BRIGHTFIELD= auto()
-    FLUORESCENCE= auto()
-    OTHER= auto()
+    BRIGHTFIELD = auto()
+    FLUORESCENCE = auto()
+    NO_THRESHOLD = auto()
+    OTHER = auto()
 
 
 class cameraSettings(BaseModel):

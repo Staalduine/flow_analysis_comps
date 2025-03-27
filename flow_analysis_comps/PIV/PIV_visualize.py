@@ -24,13 +24,7 @@ class visualizerParams(BaseModel):
 
 class PIV_visualize:
     def __init__(self, txt_folder: Path, parameters: Optional[visualizerParams] = None):
-        self.folder_address = txt_folder
-        self.txt_folder = next(
-            self.folder_address.glob(f"*{parameters.output_pattern}")
-        )
-        self.img_folder = next(self.folder_address.glob("Img"))
-        self.txt_files = sorted(list(self.txt_folder.glob("*.txt")))
-        self.img_files = sorted(list(self.img_folder.glob("*.ti*")))
+        self._get_info_from_folder(txt_folder, parameters)
         self.params = parameters
         self.pixel_extent: tuple[int, int] = (1, 1)
         self.graph_ratio = 1
@@ -43,6 +37,15 @@ class PIV_visualize:
             self.current_frame_index
         )
         self.mean_frame_data = self.current_frame_data.copy(deep=True)
+
+    def _get_info_from_folder(self, txt_folder:Path, parameters:visualizerParams):
+        self.folder_address = txt_folder
+        self.txt_folder = next(
+            self.folder_address.glob(f"*{parameters.output_pattern}")
+        )
+        self.img_folder = next(self.folder_address.glob("Img"))
+        self.txt_files = sorted(list(self.txt_folder.glob("*.txt")))
+        self.img_files = sorted(list(self.img_folder.glob("*.ti*")))
 
     def set_image_index(self, index: int):
         self.current_frame_index = index
