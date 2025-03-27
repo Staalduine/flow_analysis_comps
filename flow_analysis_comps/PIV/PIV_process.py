@@ -43,9 +43,9 @@ class AMF_PIV:
             for i in range(self.parameters.number_of_passes)
         )
         overlap_sizes = tuple(window_size // 2 for window_size in window_sizes)
-        
+
         print(window_sizes, overlap_sizes)
-        
+
         speed_thresholds = (
             -self.parameters.max_speed_px_per_frame,
             self.parameters.max_speed_px_per_frame,
@@ -85,7 +85,7 @@ class AMF_PIV:
         windef.piv(self.windef_settings)
 
         output_folder_number = self.windef_settings.windowsizes[
-            self.windef_settings.num_iterations
+            self.windef_settings.num_iterations - 1
         ]
         output_folder_name = f"OpenPIV_results_{output_folder_number}_PIV_output"
 
