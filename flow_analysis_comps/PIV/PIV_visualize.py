@@ -23,14 +23,20 @@ class visualizerParams(BaseModel):
 
 
 class PIV_visualize:
-    def __init__(self, txt_folder: Path, parameters: Optional[visualizerParams] = None):
-        self._get_info_from_folder(txt_folder, parameters)
-        self.params = parameters
-        self.pixel_extent: tuple[int, int] = (1, 1)
-        self.graph_ratio = 1
-
+    def __init__(
+        self,
+        root_folder: Path,
+        txt_folder: Path,
+        parameters: Optional[visualizerParams] = None,
+    ):
         if parameters is None:
             self.params = visualizerParams()
+        else:
+            self.params = parameters
+
+        self._get_info_from_folder(root_folder, txt_folder=txt_folder)
+        self.pixel_extent: tuple[int, int] = (1, 1)
+        self.graph_ratio = 1
 
         self.current_frame_index: int = 0
         self.current_frame_data: Optional[pd.DataFrame] = self.import_txt(
@@ -38,12 +44,19 @@ class PIV_visualize:
         )
         self.mean_frame_data = self.current_frame_data.copy(deep=True)
 
-    def _get_info_from_folder(self, txt_folder:Path, parameters:visualizerParams):
-        self.folder_address = txt_folder
-        self.txt_folder = next(
-            self.folder_address.glob(f"*{parameters.output_pattern}")
-        )
-        self.img_folder = next(self.folder_address.glob("Img"))
+    def _get_info_from_folder(
+        self,
+        root_folder: Path,
+        txt_folder: Optional[Path] = None,
+    ):
+        self.root_folder = root_folder
+        if txt_folder is None:
+            self.txt_folder = next(
+                self.root_folder.glob(f"*{self.params.output_pattern}")
+            )
+        else:
+            self.txt_folder = txt_folder
+        self.img_folder = next(self.root_folder.glob("Img"))
         self.txt_files = sorted(list(self.txt_folder.glob("*.txt")))
         self.img_files = sorted(list(self.img_folder.glob("*.ti*")))
 
@@ -89,7 +102,6 @@ class PIV_visualize:
             speed_dir = self.current_frame_data["speed_dir"]
             speed_dir = speed_dir.fillna(0)
             self.mean_frame_data["speed_dir"] += speed_dir
-            print(self.mean_frame_data["speed_dir"])
         self.mean_frame_data["speed_dir"] /= len(self.txt_files)
 
     def _set_pixel_extent(self, PIV_data):
@@ -126,7 +138,7 @@ class PIV_visualize:
         index_stop=-1,
         speed_threshold=1e-5,
         pull_from_mean_data=False,
-        cmap = "cet_CET_D1A"
+        cmap="cet_CET_D1A",
     ) -> tuple[Axes, AxesImage]:
         if data_shown == "vortex":
             self.calculate_vortex_potential(
@@ -141,7 +153,9 @@ class PIV_visualize:
         else:
             color_data = self.current_frame_data[data_shown]
 
-        linspace_x, linspace_y, xi, points = self.create_interp_grid([self.current_frame_data, self.mean_frame_data][pull_from_mean_data])
+        linspace_x, linspace_y, xi, points = self.create_interp_grid(
+            [self.current_frame_data, self.mean_frame_data][pull_from_mean_data]
+        )
         values = np.array(color_data)
 
         grid_interpolation = scipy.interpolate.griddata(
@@ -177,9 +191,7 @@ class PIV_visualize:
         linspace_y = np.arange(4, frame_used["y"].max(), 2)
         mx, my = np.meshgrid(linspace_x, linspace_y)
 
-        points = np.array(
-            [frame_used["x"], frame_used["y"]]
-        ).T
+        points = np.array([frame_used["x"], frame_used["y"]]).T
 
         xi = np.array([mx.flatten(), my.flatten()]).T
 

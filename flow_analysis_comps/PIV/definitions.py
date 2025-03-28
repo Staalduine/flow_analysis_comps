@@ -16,7 +16,7 @@ class preProcessMode(StrEnum):
 
 
 class PIV_params(BaseModel):
-    video_path: Path
+    root_path: Path
     segment_mode: videoMode
     window_size_start: PositiveInt
     number_of_passes: PositiveInt
