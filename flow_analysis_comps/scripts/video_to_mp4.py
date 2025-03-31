@@ -17,7 +17,7 @@ def process(run_info_index, process_args):
         video_json = json.load(json_data)
     fps = int(video_json["metadata"]["camera"]["frame_rate"])
 
-        # Get sorted list of .tif files
+    # Get sorted list of .tif files
     tif_files = sorted(
         [f for f in os.listdir(video_folder) if f.lower().endswith(".tif")],
     )
@@ -38,7 +38,9 @@ def process(run_info_index, process_args):
 
     # Initialize video writer
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    video_writer = cv2.VideoWriter(os.path.join(path, "Video.mp4"), fourcc, fps, (width, height))
+    video_writer = cv2.VideoWriter(
+        os.path.join(path, "Video.mp4"), fourcc, fps, (width, height)
+    )
 
     # Write frames to video
     for frame in frames:

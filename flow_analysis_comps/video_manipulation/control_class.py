@@ -3,7 +3,7 @@ import cv2
 from matplotlib import pyplot as plt
 from pydantic import BaseModel
 from flow_analysis_comps.data_structs.video_info import videoInfo
-from flow_analysis_comps.util.coord_transforms import (
+from flow_analysis_comps.util.coord_space_util import (
     extract_perp_lines,
     validate_interpolation_order,
 )
