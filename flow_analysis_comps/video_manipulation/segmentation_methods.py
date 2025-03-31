@@ -1,5 +1,5 @@
 import os
-from typing import Optional, Union
+from typing import Union
 import cv2
 import scipy
 import imageio
@@ -7,12 +7,20 @@ import numpy as np
 from pathlib import Path
 from skimage.morphology import skeletonize
 import networkx as nx
-from flow_analysis_comps.util.graph_util import generate_nx_graph, remove_spurs, from_sparse_to_graph
+from flow_analysis_comps.util.graph_util import (
+    generate_nx_graph,
+    remove_spurs,
+    from_sparse_to_graph,
+)
 from skimage.filters import threshold_yen
 
-from flow_analysis_comps.video_manipulation.img_util import RenyiEntropy_thresholding, find_histogram_edge
+from flow_analysis_comps.video_manipulation.threshold_methods import (
+    RenyiEntropy_thresholding,
+    find_histogram_edge,
+)
 from flow_analysis_comps.data_structs.video_info import videoMode
 # import dask.array as da
+
 
 def mean_std_from_img_paths(
     image_addresses: list[Path],
@@ -100,7 +108,7 @@ def skeletonize_segmented_im(segmented: np.ndarray) -> tuple[nx.Graph, dict]:
 
 
 def segment_video_folder(
-    img_folder_adr: Path, seg_thresh: float = 1.15, mode: videoMode="brightfield"
+    img_folder_adr: Path, seg_thresh: float = 1.15, mode: videoMode = "brightfield"
 ) -> np.ndarray:
     tif_files = sorted(
         [
@@ -115,7 +123,9 @@ def segment_video_folder(
 
 
 def segment_hyphae_general(
-    image_addresses: Union[list[Path], np.ndarray], seg_thresh: float = 1.15, mode:videoMode="brightfield"
+    image_addresses: Union[list[Path], np.ndarray],
+    seg_thresh: float = 1.15,
+    mode: videoMode = "brightfield",
 ) -> np.ndarray:
     """
     Segmentation method for brightfield video.
@@ -128,7 +138,10 @@ def segment_hyphae_general(
     segmented = _segment_hyphae_w_mean_std(mean_image, std_image, seg_thresh, mode)
     return segmented
 
-def _segment_hyphae_w_mean_std(mean_image: np.ndarray, std_image:np.ndarray, seg_thresh:float, mode:videoMode):
+
+def _segment_hyphae_w_mean_std(
+    mean_image: np.ndarray, std_image: np.ndarray, seg_thresh: float, mode: videoMode
+):
     match mode:
         case videoMode.BRIGHTFIELD:
             segmented = segment_brightfield_image(seg_thresh, mean_image, std_image)
@@ -169,21 +182,3 @@ def segment_fluorescence_image(
     return segmented
 
 
-def harmonic_mean(pixels: np.ndarray, mask: Optional[np.ndarray] = None) -> float:
-    arr = pixels.flatten()
-    if mask is not None:
-        arr = np.array(
-            [arr_val for arr_val, mask_val in zip(arr, mask.flatten()) if mask_val > 0]
-        )
-    return len(arr) / np.sum(1.0 / (arr[arr > 0]))
-
-
-def harmonic_mean_thresh(
-    img: np.ndarray, mask: Optional[np.ndarray] = None
-) -> tuple[np.ndarray, float]:
-    img_inv = np.nanmax(img.flatten()) - img
-    thresh_val = harmonic_mean(img_inv, mask)
-    thresh, thresholded_image = cv2.threshold(
-        img_inv, thresh_val, 255, cv2.THRESH_TOZERO_INV
-    )
-    return thresholded_image, thresh_val

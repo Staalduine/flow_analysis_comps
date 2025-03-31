@@ -37,7 +37,6 @@ def load_tif_series_to_dask(folder_path) -> npt.ArrayLike:
             for f in os.listdir(folder_path)
             if f.lower().endswith(".tif") or f.lower().endswith(".tiff")
         ],
-        # key=lambda x: int(os.path.basename(x)[3:].split('.')[0])  # Extract number from 'Img<nr>.tif'
     )
 
     if not tif_files:
@@ -166,23 +165,6 @@ def read_video_info_txt(address: Path) -> videoInfo:
         position=position,
     )
     return info_obj
-
-    # raw_data["unique_id"] = [f"{address.parts[-3]}_{address.parts[-2]}"]
-    # raw_data["tot_path"] = (
-    #     address.relative_to(analysis_folder).parent / "Img"
-    # ).as_posix()
-    # raw_data["tot_path_drop"] = ["DATA/" + raw_data["tot_path"][0]]
-    # if raw_data["Operation"].to_string().split(" ")[-1] == "Undetermined":
-    #     print(
-    #         f"Undetermined operation in {raw_data['unique_id'].to_string().split(' ')[-1]}, please amend. Assuming 50x BF."
-    #     )
-    #     raw_data["Operation"] = "  50x Brightfield"
-    # try:
-    #     txt_frame = pd.concat([txt_frame, raw_data], axis=0, ignore_index=True)
-    # except:
-    #     print(f"Weird concatenation with {address}, trying to reset index")
-    #     print(raw_data.columns)
-    #     txt_frame = pd.concat([txt_frame, raw_data], axis=0, ignore_index=True)
 
 
 def tif_folder_to_mp4(folder_path, output_file, fps=10, cmap=None):

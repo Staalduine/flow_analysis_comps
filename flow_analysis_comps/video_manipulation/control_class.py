@@ -11,7 +11,7 @@ from flow_analysis_comps.util.video_io import (
     load_tif_series_to_dask,
     read_video_metadata,
 )
-from flow_analysis_comps.video_manipulation.segment_skel import (
+from flow_analysis_comps.video_manipulation.segmentation_methods import (
     _segment_hyphae_w_mean_std,
     skeletonize_segmented_im,
 )
@@ -86,7 +86,6 @@ class edgeControl:
     ):
         self.video_info = video_info
         self.edge_info = edge_graph
-        # self.offset = int(np.linalg.norm(node_positions[0] - node_positions[1])) // 4
         self.pixel_list = np.array(pixel_list)
         self.pixel_list = resample_trail(low_pass_filter(self.pixel_list))
 
@@ -103,51 +102,52 @@ class edgeControl:
         self.edge_video: list | np.ndarray = []
 
     @property
-    def kymograph(self):
+    def _kymograph(self):
         if len(self.edge_video) > 0:
             return self.edge_video.mean(axis=2)
         else:
-            print(
-                "Attempted to get kymograhps without edge extraction. Please run edge extraction first!!! Returning None"
+            raise InterruptedError(
+                "Attempted to get kymograhps without edge extraction. Please get kymographs using the .get_kymographs() function in the video object."
             )
-            return None
 
     @property
     def segment_coords(self):
-        if self._segment_coords is None:
-            self._segment_coords = []
-            start, end, step_size = (
-                self.kymo_extract_settings.step,
-                len(self.pixel_list) - self.kymo_extract_settings.step,
-                self.kymo_extract_settings.resolution,
-            )
-            if end < start:
-                return None
-            segment_pixel_list = self.pixel_list[start:end:step_size]
-            prev_segment_pixel_list = self.pixel_list[0 : end - start : step_size]
-            next_segment_pixel_list = self.pixel_list[start * 2 :: step_size]
-            orientations = prev_segment_pixel_list - next_segment_pixel_list
+        if self._segment_coords is not None:
+            return self._segment_coords
 
-            perpendicular = np.array([orientations[:, 1], -orientations[:, 0]]).T
-            perpendicular_norm = (
-                (perpendicular.T / np.linalg.norm(perpendicular, axis=1)).T
-                * self.kymo_extract_settings.target_length
-                / 2
-            )
+        self._segment_coords = []
+        start, end, step_size = (
+            self.kymo_extract_settings.step,
+            len(self.pixel_list) - self.kymo_extract_settings.step,
+            self.kymo_extract_settings.resolution,
+        )
+        if end < start:
+            return None
+        segment_pixel_list = self.pixel_list[start:end:step_size]
+        prev_segment_pixel_list = self.pixel_list[0 : end - start : step_size]
+        next_segment_pixel_list = self.pixel_list[start * 2 :: step_size]
+        orientations = prev_segment_pixel_list - next_segment_pixel_list
 
-            self._segment_coords = np.array(
-                [
-                    segment_pixel_list + perpendicular_norm,
-                    segment_pixel_list - perpendicular_norm,
-                ]
-            )
-            self._segment_coords = np.moveaxis(self._segment_coords, 0, 1)
-            self._segment_coords = np.array(
-                [
-                    [pivot + perp, pivot - perp]
-                    for pivot, perp in zip(segment_pixel_list, perpendicular_norm)
-                ]
-            )
+        perpendicular = np.array([orientations[:, 1], -orientations[:, 0]]).T
+        perpendicular_norm = (
+            (perpendicular.T / np.linalg.norm(perpendicular, axis=1)).T
+            * self.kymo_extract_settings.target_length
+            / 2
+        )
+
+        self._segment_coords = np.array(
+            [
+                segment_pixel_list + perpendicular_norm,
+                segment_pixel_list - perpendicular_norm,
+            ]
+        )
+        self._segment_coords = np.moveaxis(self._segment_coords, 0, 1)
+        self._segment_coords = np.array(
+            [
+                [pivot + perp, pivot - perp]
+                for pivot, perp in zip(segment_pixel_list, perpendicular_norm)
+            ]
+        )
         return self._segment_coords
 
     def extract_edge_image(self, image):
@@ -172,11 +172,16 @@ class edgeControl:
 class videoControl:
     ## Initiate object
     def __init__(
-        self, video_folder_adr, video_info_adr, edge_length_threshold=200, resolution=1
+        self,
+        video_folder_adr,
+        video_info_adr,
+        edge_length_threshold=200,
+        resolution=1,
+        video_folder_add="Img",
     ):
         self.video_info = read_video_metadata(video_info_adr)
         self.array: np.ndarray = load_tif_series_to_dask(
-            video_folder_adr
+            video_folder_adr / video_folder_add
         )  # Dims are t, y, x
         self.time_pixel_size = 1 / self.video_info.camera_settings.frame_rate
         self.space_pixel_size = (
@@ -246,22 +251,28 @@ class videoControl:
     @property
     def edges(self) -> list[edgeControl]:
         if self._edges is None:
-            self._edges = []
-            for edge_graph in self.edge_graphs:
-                edge_pixels = orient(
-                    self.skeleton_graph.get_edge_data(*edge_graph)["pixel_list"],
-                    self.node_positions[edge_graph[0]],
-                )
-                if len(edge_pixels) > self.edge_len_thresh:
-                    self.edges.append(
-                        edgeControl(
-                            self.video_info,
-                            edge_graph,
-                            edge_pixels,
-                            self.kymo_extract_settings,
-                        )
-                    )
+            self.get_edge_objects_from_graphs()
         return self._edges
+
+    def get_edge_objects_from_graphs(self):
+        self._edges = []
+        for edge_graph in self.edge_graphs:
+            edge_pixels = orient(
+                self.skeleton_graph.get_edge_data(*edge_graph)["pixel_list"],
+                self.node_positions[edge_graph[0]],
+            )
+
+            if len(edge_pixels) < self.edge_len_thresh:
+                continue
+
+            edge_obj = edgeControl(
+                self.video_info,
+                edge_graph,
+                edge_pixels,
+                self.kymo_extract_settings,
+            )
+
+            self._edges.append(edge_obj)
 
     def get_edge_images(self) -> dict[str, np.ndarray]:
         """
@@ -312,9 +323,16 @@ class videoControl:
         return edge_images
 
     def get_kymographs(self):
+        if len(self.edges) == 0:
+            raise ValueError("No edges found")
+
+        if len(self.edges[0].edge_video) == 0:
+            self.get_edge_images()
+
         kymographs = {}
         for edge in self.edges:
-            kymographs[edge.edge_info] = edge.kymograph
+            kymographs[edge.edge_info] = edge._kymograph
+        return kymographs
 
     def save_edge_videos(self, out_adr_folder: Path):
         videos_dict = self.get_edge_images()

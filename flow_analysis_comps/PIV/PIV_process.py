@@ -3,7 +3,7 @@ from openpiv import tools, pyprocess, validation, filters, scaling, windef
 import tifffile
 from tqdm import tqdm
 from flow_analysis_comps.data_structs.video_info import videoMode
-from flow_analysis_comps.video_manipulation.segment_skel import (
+from flow_analysis_comps.video_manipulation.segmentation_methods import (
     segment_hyphae_general,
     harmonic_mean_thresh,
 )
