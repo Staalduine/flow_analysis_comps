@@ -8,6 +8,7 @@ from flow_analysis_comps.Classic.classic_image_util import (
     speed_from_orientation_image,
 )
 from flow_analysis_comps.Classic.model_parameters import videoDeltas, GST_params
+from flow_analysis_comps.Classic.plot_classic import plot_fields, plot_summary
 
 
 
@@ -67,3 +68,9 @@ class kymoAnalyser:
         imgGSTMax = extract_orientations(image, self.GST_params)
 
         return imgGSTMax
+
+    def plot_kymo_fields(self):
+        plot_fields(self.kymograph_decomposed_directions, self.speed_images, self.video_deltas)
+
+    def plot_summary(self):
+        plot_summary(self.kymograph_decomposed_directions, self.speed_images, self.video_deltas)
