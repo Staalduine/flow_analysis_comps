@@ -1,4 +1,3 @@
-from pydantic import BaseModel
 from pathlib import Path
 from tqdm import tqdm
 import os
@@ -45,7 +44,7 @@ def load_tif_series_to_dask(folder_path) -> npt.ArrayLike:
     # Use Dask to stack images lazily
     sample_image = tifffile.imread(tif_files[0])
     dtype = sample_image.dtype
-    shape = (len(tif_files),) + sample_image.shape
+    # shape = (len(tif_files),) + sample_image.shape
 
     def lazy_reader(filename):
         return tifffile.imread(filename)

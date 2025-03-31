@@ -3,9 +3,11 @@ from openpiv import tools, pyprocess, validation, filters, scaling, windef
 import tifffile
 from tqdm import tqdm
 from flow_analysis_comps.data_structs.video_info import videoMode
+from flow_analysis_comps.video_manipulation.threshold_methods import (
+    harmonic_mean_thresh,
+)
 from flow_analysis_comps.video_manipulation.segmentation_methods import (
     segment_hyphae_general,
-    harmonic_mean_thresh,
 )
 import cv2
 from glob import glob
@@ -13,7 +15,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import hsv_to_rgb
-from flow_analysis_comps.PIV.definitions import PIV_params, segmentMode
+from flow_analysis_comps.PIV.definitions import PIV_params
 
 
 class AMF_PIV:
@@ -135,18 +137,18 @@ class AMF_PIV:
         settings.filepath_images = self.parameters.video_path
         settings.frame_pattern_a = "Img*.tif"
         settings.frame_pattern_b = "(1+2),(2+3)"
-        settings.min_max_u_disp=(-5, 5)
-        settings.min_max_v_disp=(-5, 5)
+        settings.min_max_u_disp = (-5, 5)
+        settings.min_max_v_disp = (-5, 5)
 
-        settings.windowsizes =(32,16, 8, 4)
-        settings.overlap = ( 16, 8, 4, 2)
+        settings.windowsizes = (32, 16, 8, 4)
+        settings.overlap = (16, 8, 4, 2)
 
         settings.static_mask = ~self.segmented_img.astype(np.bool_)
         settings.save_path = self.parameters.video_path.parent
         settings.save_folder_suffix = "PIV_output"
         settings.save_plot = False
         settings.sig2noise_threshold = self.parameters.stn_threshold
-        settings.dt = 1/20
+        settings.dt = 1 / 20
         settings.show_all_plots = False
         settings.show_plot = False
 
