@@ -102,7 +102,7 @@ class edgeControl:
         self.edge_video: list | np.ndarray = []
 
     @property
-    def _kymograph(self):
+    def kymograph(self):
         if len(self.edge_video) > 0:
             return self.edge_video.mean(axis=2)
         else:
@@ -331,7 +331,7 @@ class videoControl:
 
         kymographs = {}
         for edge in self.edges:
-            kymographs[edge.edge_info] = edge._kymograph
+            kymographs[edge.edge_info] = edge.kymograph
         return kymographs
 
     def save_edge_videos(self, out_adr_folder: Path):
