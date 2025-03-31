@@ -1,7 +1,7 @@
 import numpy as np
 import skimage as ski
 from scipy.signal import resample
-from scipy.interpolate import interpn, RegularGridInterpolator, LinearNDInterpolator
+from scipy.interpolate import RegularGridInterpolator
 
 
 def nlms_precise(

@@ -36,12 +36,8 @@ class freqSpaceCoords:
         # print(self.x, self.y)
         self.x, self.y = (fftpack.ifftshift(self.x), fftpack.ifftshift(self.y))
         self.rho, self.theta = cart2pol(
-            self.x 
-            / np.floor(dim_shape[1] / 2) 
-            / 2,
-            self.y 
-            / np.floor(dim_shape[0] / 2) 
-            / 2,
+            self.x / np.floor(dim_shape[1] / 2) / 2,
+            self.y / np.floor(dim_shape[0] / 2) / 2,
         )
 
     def _init_3d(self, dim_shape):
@@ -177,12 +173,12 @@ def validate_interpolation_order(image_dtype, order):
     """
 
     if order is None:
-        return 0 if image_dtype == bool else 1
+        return 0 if image_dtype is bool else 1
 
     if order < 0 or order > 5:
         raise ValueError("Spline interpolation order has to be in the range 0-5.")
 
-    if image_dtype == bool and order != 0:
+    if image_dtype is bool and order != 0:
         raise ValueError(
             "Input image dtype is bool. Interpolation is not defined "
             "with bool data type. Please set order to 0 or explicitely "

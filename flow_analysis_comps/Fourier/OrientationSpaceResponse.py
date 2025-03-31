@@ -4,10 +4,10 @@ from matplotlib import pyplot as plt
 import matplotlib
 import matplotlib.axes
 import numpy as np
-import colorcet
+import colorcet  # noqa: F401
 from scipy import fftpack
 import skimage as ski
-from flow_analysis_comps.util.coord_transforms import cart2pol
+from flow_analysis_comps.util.coord_space_util import cart2pol
 import numpy.typing as npt
 
 
