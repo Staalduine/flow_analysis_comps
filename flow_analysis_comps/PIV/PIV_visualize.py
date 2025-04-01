@@ -28,9 +28,10 @@ class PIV_visualize:
         root_folder: Path,
         txt_folder: Path,
         parameters: Optional[visualizerParams] = None,
+        limit_data=True,
     ):
         if parameters is None:
-            self.params = visualizerParams()
+            self.params = visualizerParams(use_mask=limit_data, use_flags=limit_data)
         else:
             self.params = parameters
 
@@ -95,14 +96,19 @@ class PIV_visualize:
         return PIV_data
 
     def get_mean_orient(self):
-        self.mean_frame_data.loc[:, "speed_dir"] = 0
-        # self.mean_frame_data["speed_dir"][:] = 0
+        sample_data = self.current_frame_data["speed_dir"].to_numpy()
+        speeds_array = np.zeros((len(self.txt_files), *sample_data.shape))
+        # print(sample_data.shape)
+        # self.mean_frame_data.loc[:, "speed_dir"] = 0
+        # # self.mean_frame_data["speed_dir"][:] = 0
         for i in tqdm(range(len(self.txt_files))):
             self.set_image_index(i)
-            speed_dir = self.current_frame_data["speed_dir"]
-            speed_dir = speed_dir.fillna(0)
-            self.mean_frame_data["speed_dir"] += speed_dir
-        self.mean_frame_data["speed_dir"] /= len(self.txt_files)
+            speeds_array[i] = self.current_frame_data["speed_dir"].to_numpy()
+            # print(speed_dir.shape)
+        speeds_array = np.nanmean(speeds_array, axis=0)
+        speeds_interpolated = self.interpolate_from_dataframe(self.current_frame_data, speeds_array)
+
+        return speeds_interpolated
 
     def _set_pixel_extent(self, PIV_data):
         self.pixel_extent = (int(PIV_data["x"].max()), int(PIV_data["y"].max()))
@@ -152,18 +158,12 @@ class PIV_visualize:
             color_data = self.mean_frame_data[data_shown]
         else:
             color_data = self.current_frame_data[data_shown]
-
-        linspace_x, linspace_y, xi, points = self.create_interp_grid(
-            [self.current_frame_data, self.mean_frame_data][pull_from_mean_data]
-        )
+        
         values = np.array(color_data)
 
-        grid_interpolation = scipy.interpolate.griddata(
-            points, values, xi, method="cubic", fill_value=0.0
-        )
-        grid_interpolation = grid_interpolation.reshape(
-            (len(linspace_y), len(linspace_x))
-        )
+        frame_input = [self.current_frame_data, self.mean_frame_data][pull_from_mean_data]
+
+        grid_interpolation = self.interpolate_from_dataframe(frame_input, values)
 
         data_max = float(abs(grid_interpolation.flatten()).max())
         # data_max = 0.5
@@ -185,6 +185,21 @@ class PIV_visualize:
         ax.set_title(f"{data_shown} frame {self.current_frame_index}")
         ax.set_aspect("equal")
         return vortex_image
+
+    def interpolate_from_dataframe(self, dataframe, values):
+        linspace_x, linspace_y, xi, points = self.create_interp_grid(
+            dataframe
+            # [self.current_frame_data, self.mean_frame_data][pull_from_mean_data]
+        )
+
+        grid_interpolation = scipy.interpolate.griddata(
+            points, values, xi, method="cubic", fill_value=0.0
+        )
+        grid_interpolation = grid_interpolation.reshape(
+            (len(linspace_y), len(linspace_x))
+        )
+        
+        return grid_interpolation
 
     def create_interp_grid(self, frame_used):
         linspace_x = np.arange(4, frame_used["x"].max(), 2)

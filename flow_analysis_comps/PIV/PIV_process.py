@@ -122,8 +122,8 @@ class AMF_PIV:
         ax["img1"].imshow(img1, cmap=plt.cm.gray)
         ax["img2"].imshow(img2, cmap=plt.cm.gray)
 
-    def start_visualizer(self, output_file):
-        self.visualizer = PIV_visualize(self.parameters.root_path, output_file)
+    def start_visualizer(self, output_file, limit_data=True):
+        self.visualizer = PIV_visualize(self.parameters.root_path, output_file, limit_data=limit_data)
 
     # def plot_segmentation(self):
     #     fig, ax = plt.subplots()
