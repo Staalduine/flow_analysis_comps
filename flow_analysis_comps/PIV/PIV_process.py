@@ -63,13 +63,14 @@ class AMF_PIV:
         self.windef_settings.windowsizes = window_sizes
         self.windef_settings.overlap = overlap_sizes
         self.windef_settings.static_mask = ~self.segmented_img.astype(np.bool_)
-        self.windef_settings.save_path = self.parameters.root_path.parent
+        self.windef_settings.save_path = self.parameters.root_path
         self.windef_settings.save_folder_suffix = "PIV_output"
         self.windef_settings.save_plot = False
         # self.windef_settings.sig2noise_validate=True
         self.windef_settings.sig2noise_threshold = self.parameters.stn_threshold
         self.windef_settings.show_all_plots = False
         self.windef_settings.show_plot = False
+        self.windef_settings.scale_plot = 8
 
         self.visualizer = None
 
@@ -91,7 +92,9 @@ class AMF_PIV:
         output_folder_name = f"OpenPIV_results_{output_folder_number}_PIV_output"
 
         self.visualizer = PIV_visualize(
-            self.windef_settings.save_path / output_folder_name
+            self.windef_settings.save_path,
+            self.windef_settings.save_path / output_folder_name,
+
         )
 
     def run_single_frame(self, frame_idxs: Optional[tuple[int, int]] = None):
@@ -119,7 +122,7 @@ class AMF_PIV:
         fig, ax = plt.subplot_mosaic(
             [["img1", "img2"], ["img1", "img2"]], figsize=(10, 6)
         )
-        ax["img1"].imshow(img1, cmap=plt.cm.gray)
+        ax["img1"].imshow(img1 * self.segmented_img, cmap=plt.cm.gray)
         ax["img2"].imshow(img2, cmap=plt.cm.gray)
 
     def start_visualizer(self, output_file, limit_data=True):

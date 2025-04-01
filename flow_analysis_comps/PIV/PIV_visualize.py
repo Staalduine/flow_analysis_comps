@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 from matplotlib.axes import Axes
 from matplotlib.image import AxesImage
 import numpy as np
@@ -95,20 +95,31 @@ class PIV_visualize:
 
         return PIV_data
 
-    def get_mean_orient(self):
-        sample_data = self.current_frame_data["speed_dir"].to_numpy()
-        speeds_array = np.zeros((len(self.txt_files), *sample_data.shape))
-        # print(sample_data.shape)
-        # self.mean_frame_data.loc[:, "speed_dir"] = 0
-        # # self.mean_frame_data["speed_dir"][:] = 0
+    def get_mean_direction(self):
+        speed_dir_array = self.collect_data_over_time("speed_dir")
+        speed_dir_array = scipy.stats.circmean(
+            speed_dir_array + np.pi, axis=0, nan_policy="omit"
+        )
+        speeds_interpolated = self.interpolate_from_dataframe(
+            self.current_frame_data, speed_dir_array
+        )
+        return speeds_interpolated
+
+    def get_mean_speed(self):
+        speed_abs_array = self.collect_data_over_time("abs")
+        speed_abs_array = np.nanmean(speed_abs_array, axis=0)
+        speed_abs_interpolated = self.interpolate_from_dataframe(
+            self.current_frame_data, speed_abs_array
+        )
+        return speed_abs_interpolated
+
+    def collect_data_over_time(self, data_name):
+        sample_data = self.current_frame_data[data_name].to_numpy()
+        data_time_array = np.zeros((len(self.txt_files), *sample_data.shape))
         for i in tqdm(range(len(self.txt_files))):
             self.set_image_index(i)
-            speeds_array[i] = self.current_frame_data["speed_dir"].to_numpy()
-            # print(speed_dir.shape)
-        speeds_array = np.nanmean(speeds_array, axis=0)
-        speeds_interpolated = self.interpolate_from_dataframe(self.current_frame_data, speeds_array)
-
-        return speeds_interpolated
+            data_time_array[i] = self.current_frame_data[data_name].to_numpy()
+        return data_time_array
 
     def _set_pixel_extent(self, PIV_data):
         self.pixel_extent = (int(PIV_data["x"].max()), int(PIV_data["y"].max()))
@@ -158,10 +169,12 @@ class PIV_visualize:
             color_data = self.mean_frame_data[data_shown]
         else:
             color_data = self.current_frame_data[data_shown]
-        
+
         values = np.array(color_data)
 
-        frame_input = [self.current_frame_data, self.mean_frame_data][pull_from_mean_data]
+        frame_input = [self.current_frame_data, self.mean_frame_data][
+            pull_from_mean_data
+        ]
 
         grid_interpolation = self.interpolate_from_dataframe(frame_input, values)
 
@@ -198,12 +211,12 @@ class PIV_visualize:
         grid_interpolation = grid_interpolation.reshape(
             (len(linspace_y), len(linspace_x))
         )
-        
+
         return grid_interpolation
 
     def create_interp_grid(self, frame_used):
-        linspace_x = np.arange(4, frame_used["x"].max(), 2)
-        linspace_y = np.arange(4, frame_used["y"].max(), 2)
+        linspace_x = np.arange(4, frame_used["x"].max(), 4)
+        linspace_y = np.arange(4, frame_used["y"].max(), 4)
         mx, my = np.meshgrid(linspace_x, linspace_y)
 
         points = np.array([frame_used["x"], frame_used["y"]]).T
