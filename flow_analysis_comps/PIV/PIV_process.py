@@ -4,9 +4,11 @@ from openpiv import tools, pyprocess, validation, filters, scaling, windef
 import tifffile
 from tqdm import tqdm
 from flow_analysis_comps.data_structs.video_info import videoMode
-from flow_analysis_comps.video_manipulation.segment_skel import (
-    segment_hyphae_general,
+from flow_analysis_comps.video_manipulation.threshold_methods import (
     harmonic_mean_thresh,
+)
+from flow_analysis_comps.video_manipulation.segmentation_methods import (
+    segment_hyphae_general,
 )
 import cv2
 from glob import glob
@@ -28,7 +30,7 @@ class AMF_PIV:
         self.parameters = parameters
 
         self.frame_paths = sorted(
-            glob(str(self.parameters.video_path) + os.sep + "Img*")
+            glob(str(self.parameters.root_path / "Img") + os.sep + "Img*")
         )
         if len(self.frame_paths) == 0:
             raise FileNotFoundError("No images in given folder")
@@ -44,7 +46,6 @@ class AMF_PIV:
         )
         overlap_sizes = tuple(window_size // 2 for window_size in window_sizes)
 
-        print(window_sizes, overlap_sizes)
 
         speed_thresholds = (
             -self.parameters.max_speed_px_per_frame,
@@ -54,7 +55,7 @@ class AMF_PIV:
         self.windef_settings = windef.PIVSettings()
 
         self.windef_settings.num_iterations = self.parameters.number_of_passes
-        self.windef_settings.filepath_images = self.parameters.video_path
+        self.windef_settings.filepath_images = self.parameters.root_path / "Img"
         self.windef_settings.frame_pattern_a = "Img*.tif"
         self.windef_settings.frame_pattern_b = "(1+2),(2+3)"
         self.windef_settings.min_max_u_disp = speed_thresholds
@@ -62,7 +63,7 @@ class AMF_PIV:
         self.windef_settings.windowsizes = window_sizes
         self.windef_settings.overlap = overlap_sizes
         self.windef_settings.static_mask = ~self.segmented_img.astype(np.bool_)
-        self.windef_settings.save_path = self.parameters.video_path.parent
+        self.windef_settings.save_path = self.parameters.root_path.parent
         self.windef_settings.save_folder_suffix = "PIV_output"
         self.windef_settings.save_plot = False
         # self.windef_settings.sig2noise_validate=True
@@ -120,4 +121,7 @@ class AMF_PIV:
         )
         ax["img1"].imshow(img1, cmap=plt.cm.gray)
         ax["img2"].imshow(img2, cmap=plt.cm.gray)
+
+    def start_visualizer(self, output_file):
+        self.visualizer = PIV_visualize(self.parameters.root_path, output_file)
 

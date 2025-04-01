@@ -1,4 +1,4 @@
-from typing import Optional, Self
+from typing import Optional
 from matplotlib import pyplot as plt
 import numpy as np
 from scipy import fftpack
@@ -13,7 +13,7 @@ from flow_analysis_comps.Fourier.OrientationSpaceResponse import (
 import numpy.typing as npt
 
 from flow_analysis_comps.Fourier.NLMSPrecise import nlms_precise
-from flow_analysis_comps.util.coord_transforms import wraparoundN
+from flow_analysis_comps.util.coord_space_util import wraparoundN
 from copy import copy
 
 
@@ -252,7 +252,7 @@ class orientationSpaceManager:
         palette = copy(plt.get_cmap("cet_CET_L16"))
         palette.set_under("white", 1.0)
 
-        nlms_show = ax["nlms"].imshow(
+        ax["nlms"].imshow(
             nlms_candidates,
             cmap=palette,
             vmin=histo_thresh,
