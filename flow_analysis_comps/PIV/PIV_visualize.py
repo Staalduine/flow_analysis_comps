@@ -213,6 +213,10 @@ class PIV_visualize:
         )
 
         return grid_interpolation
+    
+    def speed_against_point_distance(self, point:tuple[float, float]):
+        distance = np.linalg.norm([(self.current_frame_data["x"] - point[0]).to_numpy(), (self.current_frame_data["y"] - point[0]).to_numpy()], axis=0)
+        return distance, self.current_frame_data["abs"]
 
     def create_interp_grid(self, frame_used):
         linspace_x = np.arange(4, frame_used["x"].max(), 4)
