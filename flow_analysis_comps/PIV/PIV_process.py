@@ -4,9 +4,11 @@ from openpiv import tools, pyprocess, validation, filters, scaling, windef
 import tifffile
 from tqdm import tqdm
 from flow_analysis_comps.data_structs.video_info import videoMode
-from flow_analysis_comps.video_manipulation.segment_skel import (
-    segment_hyphae_general,
+from flow_analysis_comps.video_manipulation.threshold_methods import (
     harmonic_mean_thresh,
+)
+from flow_analysis_comps.video_manipulation.segmentation_methods import (
+    segment_hyphae_general,
 )
 import cv2
 from glob import glob
