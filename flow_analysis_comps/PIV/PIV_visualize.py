@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 from matplotlib.axes import Axes
 from matplotlib.image import AxesImage
 import numpy as np
@@ -10,6 +10,7 @@ import colorcet
 import pandas as pd
 from pydantic import BaseModel
 import scipy.interpolate
+import scipy.stats
 import tifffile
 from tqdm import tqdm
 
@@ -28,9 +29,10 @@ class PIV_visualize:
         root_folder: Path,
         txt_folder: Path,
         parameters: Optional[visualizerParams] = None,
+        limit_data=True,
     ):
         if parameters is None:
-            self.params = visualizerParams()
+            self.params = visualizerParams(use_mask=limit_data, use_flags=limit_data)
         else:
             self.params = parameters
 
@@ -94,22 +96,54 @@ class PIV_visualize:
 
         return PIV_data
 
-    def get_mean_orient(self):
-        self.mean_frame_data.loc[:, "speed_dir"] = 0
-        # self.mean_frame_data["speed_dir"][:] = 0
+    def get_mean_direction(self):
+        speed_dir_array = self.collect_data_over_time("speed_dir")
+        speed_dir_array = scipy.stats.circmean(
+            speed_dir_array + np.pi, axis=0, nan_policy="omit"
+        )
+        speeds_interpolated = self.interpolate_from_dataframe(speed_dir_array)
+        return speeds_interpolated
+
+    def get_mean_speed(self):
+        speed_abs_array = self.collect_data_over_time("abs")
+        speed_abs_array = np.nanmean(speed_abs_array, axis=0)
+        speed_abs_interpolated = self.interpolate_from_dataframe(speed_abs_array)
+        return speed_abs_interpolated
+
+    def get_mean_generic(self, array_name, IS_MEAN_CIRCULAR: bool = False):
+        def partial_circ_mean(data):
+            return scipy.stats.circmean(data + np.pi, axis=0, nan_policy="omit")
+
+        def partial_linear_mean(data):
+            return np.nanmean(data, axis=0)
+
+        match IS_MEAN_CIRCULAR:
+            case True:
+                mean_method = partial_circ_mean
+            case False:
+                mean_method = partial_linear_mean
+            case _:
+                raise TypeError("IS_MEAN_CIRCULAR is meant to be bool")
+
+        total_array = self.collect_data_over_time(array_name)
+        total_array = mean_method(total_array)
+        total_array_interpolated = self.interpolate_from_dataframe(total_array)
+        return total_array_interpolated
+
+    def collect_data_over_time(self, data_name):
+        sample_data = self.current_frame_data[data_name].to_numpy()
+        data_time_array = np.zeros((len(self.txt_files), *sample_data.shape))
         for i in tqdm(range(len(self.txt_files))):
             self.set_image_index(i)
-            speed_dir = self.current_frame_data["speed_dir"]
-            speed_dir = speed_dir.fillna(0)
-            self.mean_frame_data["speed_dir"] += speed_dir
-        self.mean_frame_data["speed_dir"] /= len(self.txt_files)
+            data_time_array[i] = self.current_frame_data[data_name].to_numpy()
+        return data_time_array
 
     def _set_pixel_extent(self, PIV_data):
         self.pixel_extent = (int(PIV_data["x"].max()), int(PIV_data["y"].max()))
         self.graph_ratio = self.pixel_extent[1] / self.pixel_extent[0] * 0.8
 
     def calculate_vortex_potential(
-        self, dist: float, index_stop=-1, speed_threshold=1e-5
+        self, dist: float = 30, index_stop=-1, speed_threshold=1e-5
     ):
         data = self.current_frame_data
         data["vortex"] = 0.0
@@ -131,19 +165,14 @@ class PIV_visualize:
 
     def plot_grid_interp_frame_data(
         self,
-        vortex_dist: float = 30,
         data_shown="vortex",
         fig=None,
         ax=None,
-        index_stop=-1,
-        speed_threshold=1e-5,
         pull_from_mean_data=False,
         cmap="cet_CET_D1A",
     ) -> tuple[Axes, AxesImage]:
         if data_shown == "vortex":
-            self.calculate_vortex_potential(
-                vortex_dist, index_stop=index_stop, speed_threshold=speed_threshold
-            )
+            self.calculate_vortex_potential()
 
         if ax is None:
             fig, ax = plt.subplots()
@@ -153,17 +182,13 @@ class PIV_visualize:
         else:
             color_data = self.current_frame_data[data_shown]
 
-        linspace_x, linspace_y, xi, points = self.create_interp_grid(
-            [self.current_frame_data, self.mean_frame_data][pull_from_mean_data]
-        )
         values = np.array(color_data)
 
-        grid_interpolation = scipy.interpolate.griddata(
-            points, values, xi, method="cubic", fill_value=0.0
-        )
-        grid_interpolation = grid_interpolation.reshape(
-            (len(linspace_y), len(linspace_x))
-        )
+        frame_input = [self.current_frame_data, self.mean_frame_data][
+            pull_from_mean_data
+        ]
+
+        grid_interpolation = self.interpolate_from_dataframe(values, frame_input)
 
         data_max = float(abs(grid_interpolation.flatten()).max())
         # data_max = 0.5
@@ -174,21 +199,51 @@ class PIV_visualize:
             origin="lower",
             vmin=-data_max,
             vmax=data_max,
-            extent=(
+            extent=[
                 0,
                 self.current_frame_data["x"].max(),
                 0,
                 self.current_frame_data["y"].max(),
-            ),
+            ],
         )
 
         ax.set_title(f"{data_shown} frame {self.current_frame_index}")
         ax.set_aspect("equal")
         return vortex_image
 
+    def interpolate_from_dataframe(
+        self, values, dataframe: Optional[pd.DataFrame] = None
+    ):
+        if dataframe is None:
+            dataframe = self.current_frame_data
+        linspace_x, linspace_y, xi, points = self.create_interp_grid(dataframe)
+
+        grid_interpolation = scipy.interpolate.griddata(
+            points, values, xi, method="cubic", fill_value=0.0
+        )
+        grid_interpolation = grid_interpolation.reshape(
+            (len(linspace_y), len(linspace_x))
+        )
+
+        return grid_interpolation
+
+    def speed_against_point_distance(self, point: tuple[float, float]):
+        mesh_x = self.current_frame_data["x"]
+        print(mesh_x)
+        print(mesh_x.shape)
+
+        distance = np.linalg.norm(
+            [
+                (self.current_frame_data["x"] - point[0]).to_numpy(),
+                (self.current_frame_data["y"] - point[1]).to_numpy(),
+            ],
+            axis=0,
+        )
+        return distance, self.current_frame_data["abs"]
+
     def create_interp_grid(self, frame_used):
-        linspace_x = np.arange(4, frame_used["x"].max(), 2)
-        linspace_y = np.arange(4, frame_used["y"].max(), 2)
+        linspace_x = np.arange(4, frame_used["x"].max(), 4)
+        linspace_y = np.arange(4, frame_used["y"].max(), 4)
         mx, my = np.meshgrid(linspace_x, linspace_y)
 
         points = np.array([frame_used["x"], frame_used["y"]]).T
@@ -229,7 +284,7 @@ class PIV_visualize:
         )
         self.show_raw_img(ax[0])
         self.show_quiver_plot(ax=ax[1], scale=18)
-        vortex_image = self.plot_grid_interp_frame_data(ax=ax[2], speed_threshold=1e-1)
+        vortex_image = self.plot_grid_interp_frame_data(ax=ax[2])
 
         fig.colorbar(vortex_image)
         # fig.tight_layout()
