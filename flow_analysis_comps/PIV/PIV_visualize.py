@@ -227,11 +227,7 @@ class PIV_visualize:
 
         return grid_interpolation
 
-    def speed_against_point_distance(self, point: tuple[float, float]):
-        mesh_x = self.current_frame_data["x"]
-        print(mesh_x)
-        print(mesh_x.shape)
-
+    def speed_against_point_distance(self, point: tuple[float, float]):       
         distance = np.linalg.norm(
             [
                 (self.current_frame_data["x"] - point[0]).to_numpy(),
