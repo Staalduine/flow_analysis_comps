@@ -110,7 +110,7 @@ class PIV_visualize:
         speed_abs_interpolated = self.interpolate_from_dataframe(speed_abs_array)
         return speed_abs_interpolated
 
-    def get_mean_generic(self, array_name, IS_MEAN_CIRCULAR: bool = False):
+    def get_mean_generic(self, array_name, IS_MEAN_CIRCULAR: bool = False, IMAGE_OUTPUT = True):
         def partial_circ_mean(data):
             return scipy.stats.circmean(data + np.pi, axis=0, nan_policy="omit")
 
@@ -127,7 +127,10 @@ class PIV_visualize:
 
         total_array = self.collect_data_over_time(array_name)
         total_array = mean_method(total_array)
-        total_array_interpolated = self.interpolate_from_dataframe(total_array)
+        if IMAGE_OUTPUT:
+            total_array_interpolated = self.interpolate_from_dataframe(total_array)
+        else:
+            total_array_interpolated = total_array
         return total_array_interpolated
 
     def collect_data_over_time(self, data_name):
@@ -248,19 +251,29 @@ class PIV_visualize:
 
         return linspace_x, linspace_y, xi, points
 
-    def show_quiver_plot(self, dpi=200, scale=20, ax=None):
+    def show_mean_quiver_plot(self, dpi=200, scale=10, ax=None):
+        image = tifffile.imread(self.img_files[0])
+
         if ax is None:
             fig, ax = plt.subplots(figsize=(5, 5 * self.graph_ratio), dpi=dpi)
+
+        ax.imshow(image, origin="lower", extent = [
+            0,
+            self.current_frame_data["x"].max() / self.params.pixels_per_micrometer,
+            self.current_frame_data["y"].max() / self.params.pixels_per_micrometer,
+            0
+        ])
         ax.quiver(
             self.current_frame_data["x"] / self.params.pixels_per_micrometer,
             self.current_frame_data["y"] / self.params.pixels_per_micrometer,
-            self.current_frame_data["u"],
-            self.current_frame_data["v"],
-            self.current_frame_data["abs"],
+            self.get_mean_generic("u", IMAGE_OUTPUT=False),
+            self.get_mean_generic("v", IMAGE_OUTPUT=False),
+            self.get_mean_generic("abs", IMAGE_OUTPUT=False),
             scale=scale,
             cmap="cet_CET_L8",
+            pivot="middle"
         )
-        ax.set_title(f"PIV results frame {self.current_frame_index}")
+        ax.set_title(f"PIV results MEAN")
         ax.set_xlim(0, self.pixel_extent[0])
         ax.set_ylim(0, self.pixel_extent[1])
         ax.set_xlabel(r"x $(\mu m)$")
@@ -279,7 +292,7 @@ class PIV_visualize:
             1, 3, figsize=(5 * 2.7, 5 * self.graph_ratio), dpi=dpi, layout="constrained"
         )
         self.show_raw_img(ax[0])
-        self.show_quiver_plot(ax=ax[1], scale=18)
+        self.show_mean_quiver_plot(ax=ax[1], scale=18)
         vortex_image = self.plot_grid_interp_frame_data(ax=ax[2])
 
         fig.colorbar(vortex_image)
