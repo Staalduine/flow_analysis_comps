@@ -17,6 +17,7 @@ import json
 import dask.array as da
 from dask import delayed
 import numpy.typing as npt
+from imageio import imread
 
 
 def load_tif_series_to_dask(folder_path) -> npt.ArrayLike:
@@ -166,7 +167,7 @@ def read_video_info_txt(address: Path) -> videoInfo:
     return info_obj
 
 
-def tif_folder_to_mp4(folder_path, output_file, fps=10, cmap=None):
+def tif_folder_to_mp4(folder_path:Path, output_file:Path, fps:int=10, cmap=None, suffix=".tif"):
     """
     Converts a folder of single-channel .tif images to an MP4 video.
 
@@ -178,7 +179,7 @@ def tif_folder_to_mp4(folder_path, output_file, fps=10, cmap=None):
     """
     # Get sorted list of .tif files
     tif_files = sorted(
-        [f for f in os.listdir(folder_path) if f.lower().endswith(".tif")],
+        [f for f in os.listdir(folder_path) if f.lower().endswith(suffix)],
     )
 
     if not tif_files:
@@ -189,7 +190,10 @@ def tif_folder_to_mp4(folder_path, output_file, fps=10, cmap=None):
     for tif_file in tqdm(tif_files, desc="Reading files"):
         # Read the .tif image
         img_path = os.path.join(folder_path, tif_file)
-        image = tifffile.imread(img_path)
+        if suffix == ".tif":
+            image = tifffile.imread(img_path)
+        else:
+            image = cv2.imread(img_path)
 
         if cmap:
             # Apply colormap if specified
@@ -200,13 +204,14 @@ def tif_folder_to_mp4(folder_path, output_file, fps=10, cmap=None):
             colored_image = (colormap(norm_image)[:, :, :3] * 255).astype(
                 np.uint8
             )  # Apply colormap and convert to RGB
-            # colored_image = cv2.cvtColor(
-            #     colored_image, cv2.COLOR_RGB2BGR
-            # )  # Convert RGB to BGR for OpenCV
             frames.append(colored_image)
         else:
             # Convert single-channel image to 3-channel grayscale
-            frames.append(cv2.cvtColor(image, cv2.COLOR_GRAY2BGR))
+            if len(image.shape) == 2:
+                frames.append(cv2.cvtColor(image, cv2.COLOR_GRAY2BGR))
+            else:
+                frames.append(image)
+
     # Get frame dimensions
     height, width, _ = frames[0].shape
 

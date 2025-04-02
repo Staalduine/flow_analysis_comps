@@ -3,17 +3,17 @@ from flow_analysis_comps.PIV.PIV_process import AMF_PIV
 from flow_analysis_comps.PIV.definitions import PIV_params
 # from flow_analysis_comps.data_structs.video_info import videoMode
 
-data_adr = Path(r"U:\test_data\20250122_Plate017")
+data_adr = Path(r"G:\AMOLF_Data\AMOLF-SHIMIZU Dropbox\Simon van Staalduine")
 plate_id = r"20250122_Plate017"
-video_id = r"043"
-frame_id1 = r"Img0000.tif"
-frame_id2 = r"Img0001.tif"
+video_id = r"vortex_stable"
+frame_id1 = r"Img_0000.tif"
+frame_id2 = r"Img_0001.tif"
 filter_mode = "Img"
 # filter_mode = "aharm_thresh"
 
 raw_img_adr = data_adr / video_id / "Img"
 
-fps = 20
+fps = 1
 winsize = 10  # pixels, interrogation window size in frame A
 searchsize = 12  # pixels, search area size in frame B
 overlap = 4  # pixels
@@ -34,4 +34,4 @@ piv_param_obj = PIV_params(
 
 amf_piv_obj = AMF_PIV(piv_param_obj)
 # amf_piv_obj.piv_process(frame_ids, FAKE_OUTLIERS=False)
-amf_piv_obj.piv_process_windef(frame_ids)
+amf_piv_obj.run_full_video(frame_ids)
