@@ -73,4 +73,4 @@ class kymoAnalyser:
         plot_fields(self.kymograph_decomposed_directions, self.speed_images, self.video_deltas)
 
     def plot_summary(self):
-        plot_summary(self.kymograph_decomposed_directions, self.speed_images, self.video_deltas)
+        return plot_summary(self.kymograph_decomposed_directions, self.speed_images, self.video_deltas)

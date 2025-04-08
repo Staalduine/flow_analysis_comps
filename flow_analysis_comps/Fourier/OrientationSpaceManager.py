@@ -240,15 +240,6 @@ class orientationSpaceManager:
             nlms_candidates = nlms_candidates[inner_pad:-inner_pad]
             simple_speeds = simple_speeds[inner_pad:-inner_pad]
 
-        # nlms_candidates_norm = nlms_candidates - nlms_candidates.min()
-        # nlms_candidates_norm /= nlms_candidates_norm.max()
-
-        # self.response.visualize_orientation_wheel(ax=ax["colorwheel"])
-
-        # img_show = ax["img"].imshow(img, cmap="cet_CET_L20", extent=kymo_extent)
-        # ax["img"].set_aspect("equal")
-        # fig.colorbar(img_show)
-
         palette = copy(plt.get_cmap("cet_CET_L16"))
         palette.set_under("white", 1.0)
 
@@ -290,4 +281,4 @@ class orientationSpaceManager:
         for ax_title in ax:
             ax[ax_title].set_aspect("auto")
 
-        return
+        return fig, ax
