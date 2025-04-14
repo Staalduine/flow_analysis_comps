@@ -22,6 +22,14 @@ dependencies = [
     # "latex (>=0.7.0,<0.8.0)"
 ]
 
+[tool.poetry]
+name = "flow-analysis-comps"
+version = "0.1.0"
+description = "Different flow velocity analysis methods"
+authors = ["Simon van Staalduine <s.vstaald@amolf.nl>"]
+readme = "README.md"
+requires-python = ">=3.12"
+
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

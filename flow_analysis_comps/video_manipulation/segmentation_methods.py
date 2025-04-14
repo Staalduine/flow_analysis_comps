@@ -134,6 +134,11 @@ def segment_hyphae_general(
     threshtype:     Type of threshold to apply to segmentation. Can be hist_edge, Renyi or Yen
 
     """
+    # if mode == videoMode.NO_THRESHOLD:
+    #     example_im = imageio.imread(image_addresses[0])
+    #     segmented = np.ones_like(example_im) * 255
+    #     return segmented
+    
     mean_image, std_image = mean_std_from_img_paths(image_addresses)
     segmented = _segment_hyphae_w_mean_std(mean_image, std_image, seg_thresh, mode)
     return segmented
@@ -176,7 +181,7 @@ def segment_fluorescence_image(
             thresh = threshold_yen(smooth_im_blur)
             segmented = (smooth_im_blur >= thresh).astype(np.uint8) * 255
         case _:
-            print("threshold type has a typo! rito pls fix.")
+            print("threshold type has a typo! pls fix.")
             raise ValueError
 
     return segmented
