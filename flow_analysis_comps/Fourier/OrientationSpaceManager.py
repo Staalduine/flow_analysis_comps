@@ -281,4 +281,4 @@ class orientationSpaceManager:
         for ax_title in ax:
             ax[ax_title].set_aspect("auto")
 
-        return fig, ax
+        return fig, ax, time_histo

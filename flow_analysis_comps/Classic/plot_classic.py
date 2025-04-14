@@ -109,6 +109,7 @@ def plot_summary(fourier_images, speed_images, video_deltas: videoDeltas):
         speed_histo.T,
         extent=[0, len(speed_histo) * video_deltas.delta_t, -speedmax, speedmax],
         origin="lower",
+        cmap="cet_CET_L16"
     )
     ax["temporal histogram"].set_xlabel("time (s)")
     ax["temporal histogram"].set_ylabel("Speed ($\mu m / s$)")
