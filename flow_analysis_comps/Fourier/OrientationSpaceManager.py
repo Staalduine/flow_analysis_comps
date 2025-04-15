@@ -257,7 +257,7 @@ class orientationSpaceManager:
         time_histo = []
         for speed_row, mask_row in zip(simple_speeds, nlms_candidates):
             speed_row = np.where(mask_row > histo_thresh, speed_row, np.nan)
-            histo_moment = np.histogram(speed_row, 150, (-speed_extent, speed_extent))[
+            histo_moment = np.histogram(speed_row, 500, (-speed_extent, speed_extent))[
                 0
             ]
             time_histo.append(histo_moment)
