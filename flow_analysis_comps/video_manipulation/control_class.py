@@ -285,8 +285,8 @@ class videoControl:
 
         edge_images = {}
 
-        # if "compute" in dir(self.array):
-        #     self.array = self.array.compute()
+        if "compute" in dir(self.array):
+            self.array = self.array.compute()
 
         # Number of edges is assumed small (<20)
         for edge in self.edges:
