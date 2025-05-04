@@ -1,5 +1,6 @@
 from pathlib import Path
 import cv2
+import imageio
 from matplotlib import pyplot as plt
 from pydantic import BaseModel
 from flow_analysis_comps.data_structs.video_info import videoInfo
@@ -179,6 +180,7 @@ class videoControl:
         resolution=1,
         video_folder_add="Img",
     ):
+        self.root_folder = video_folder_adr
         self.video_info = read_video_metadata(video_info_adr)
         self.array: np.ndarray = load_tif_series_to_dask(
             video_folder_adr / video_folder_add
@@ -273,6 +275,13 @@ class videoControl:
             )
 
             self._edges.append(edge_obj)
+            
+    def save_mp4_video(self):
+        video_array = self.array.compute()
+        writer = imageio.get_writer(self.root_folder / "Video.mp4", fps=int(self.video_info.camera_settings.frame_rate), codec='libx264')
+        for frame in video_array:
+            writer.append_data(frame)
+        writer.close()
 
     def get_edge_images(self) -> dict[str, np.ndarray]:
         """
