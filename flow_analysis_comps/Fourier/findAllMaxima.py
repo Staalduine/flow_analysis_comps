@@ -5,7 +5,6 @@ from joblib import Parallel, delayed
 from flow_analysis_comps.Fourier.utils.Interpolation import interpft, interpft1
 
 
-
 def roots_batch(coeffs_batch):
     roots_out = []
     for coeffs in coeffs_batch:
@@ -17,7 +16,9 @@ def roots_batch(coeffs_batch):
     return roots_out
 
 
-def interpft_extrema_fast(x, dim=0, sorted_output=False, TOL=1e-10, dofft=True, n_jobs=-1):
+def interpft_extrema_fast(
+    x, dim=1, sorted_output=False, TOL=1e-10, dofft=False, n_jobs=-1
+):
     x = np.asarray(x)
 
     if dim != 0:
@@ -42,19 +43,21 @@ def interpft_extrema_fast(x, dim=0, sorted_output=False, TOL=1e-10, dofft=True, 
     freq = freq[:, np.newaxis]
 
     dx_h = x_h * (1j * freq)
-    dx2_h = x_h * -(freq ** 2)
+    dx2_h = x_h * -(freq**2)
 
     dx_h = fftshift(dx_h, axes=0)
     dx_h_flat = dx_h.reshape((dx_h.shape[0], -1))
 
     coeffs_batch = [dx_h_flat[:, i] for i in range(dx_h_flat.shape[1])]
-    roots_out = Parallel(n_jobs=n_jobs)(delayed(np.roots)(coeff[::-1]) for coeff in coeffs_batch)
+    roots_out = Parallel(n_jobs=n_jobs)(
+        delayed(np.roots)(coeff[::-1]) for coeff in coeffs_batch
+    )
 
     max_roots = max(len(r) for r in roots_out)
     r = np.full((max_roots, len(roots_out)), np.nan, dtype=complex)
 
     for i, ri in enumerate(roots_out):
-        r[:len(ri), i] = ri
+        r[: len(ri), i] = ri
 
     r = r.reshape((max_roots,) + x.shape[1:])
 
@@ -85,7 +88,9 @@ def interpft_extrema_fast(x, dim=0, sorted_output=False, TOL=1e-10, dofft=True, 
     minima[minima_map] = extrema[minima_map]
 
     other = np.full_like(extrema, np.nan)
-    other[(~maxima_map & ~minima_map) & real_map] = extrema[(~maxima_map & ~minima_map) & real_map]
+    other[(~maxima_map & ~minima_map) & real_map] = extrema[
+        (~maxima_map & ~minima_map) & real_map
+    ]
 
     maxima_value = interpft1([0, 2 * np.pi], x_h, maxima)
     minima_value = interpft1([0, 2 * np.pi], x_h, minima)

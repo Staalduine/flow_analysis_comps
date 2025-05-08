@@ -169,7 +169,7 @@ class orientationSpaceManager:
             return Response, filter_new
 
     def get_max_angles(self, thresh_method: Optional[ThresholdMethods] = None):
-        # Set up arrays
+        # mask out the non-nlms elements
         nlsm_mask = self.response.nlms_mask(thresh_method=thresh_method)
 
         nanTemplate = np.zeros_like(nlsm_mask, dtype=np.float32)
