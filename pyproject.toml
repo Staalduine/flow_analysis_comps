@@ -8,6 +8,7 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.11,<4.0"
 dependencies = [
+    # "python (>=3.11.0,<3.12.0)",
     "openpiv (>=0.25.3,<0.26.0)",
     "pydantic (>=2.10.5,<3.0.0)",
     "pandas (>=2.2.3,<3.0.0)",
@@ -15,11 +16,12 @@ dependencies = [
     "pytest (>=7.0.0,<9.0.0)",
     "jupyter (>=1.1.1,<2.0.0)",
     "dask (>=2025.1.0,<2026.0.0)",
-    # "jupyterlab (>=4.3.4,<5.0.0)",
+    "jupyterlab (>=4.3.4,<5.0.0)",
     "ipympl (>=0.9.6,<0.10.0)",
     "colorcet (>=3.1.0,<4.0.0)",
     # "numba (>=0.61.0,<0.62.0)",
     # "latex (>=0.7.0,<0.8.0)"
+    "joblib (>=1.5.0,<2.0.0)"
 ]
 
 [tool.poetry]
@@ -28,13 +30,13 @@ version = "0.1.0"
 description = "Different flow velocity analysis methods"
 authors = ["Simon van Staalduine <s.vstaald@amolf.nl>"]
 readme = "README.md"
-requires-python = ">=3.12"
+# requires-python = ">=3.12"
 
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.poetry.group.dev.dependencies]
-ipykernel = "^6.29.5"
+# [tool.poetry.group.dev.dependencies]
+# ipykernel = "^6.29.5"
 

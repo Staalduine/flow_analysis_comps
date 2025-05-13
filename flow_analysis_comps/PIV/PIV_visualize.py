@@ -96,19 +96,6 @@ class PIV_visualize:
 
         return PIV_data
 
-    def get_mean_direction(self):
-        speed_dir_array = self.collect_data_over_time("speed_dir")
-        speed_dir_array = scipy.stats.circmean(
-            speed_dir_array + np.pi, axis=0, nan_policy="omit"
-        )
-        speeds_interpolated = self.interpolate_from_dataframe(speed_dir_array)
-        return speeds_interpolated
-
-    def get_mean_speed(self):
-        speed_abs_array = self.collect_data_over_time("abs")
-        speed_abs_array = np.nanmean(speed_abs_array, axis=0)
-        speed_abs_interpolated = self.interpolate_from_dataframe(speed_abs_array)
-        return speed_abs_interpolated
 
     def get_mean_generic(self, array_name, IS_MEAN_CIRCULAR: bool = False, IMAGE_OUTPUT = True):
         def partial_circ_mean(data):
@@ -132,6 +119,14 @@ class PIV_visualize:
         else:
             total_array_interpolated = total_array
         return total_array_interpolated
+    
+    def build_temporal_histogram(self, array_name:str, histo_range: tuple[float, float], bin_count:int):
+        total_array = self.collect_data_over_time(array_name)
+        histogram = []
+        for img in total_array:
+            histo_line, _ = np.histogram(img.flatten(), bins=bin_count, range=histo_range)
+            histogram.append(histo_line)
+        return np.array(histogram)
 
     def collect_data_over_time(self, data_name):
         sample_data = self.current_frame_data[data_name].to_numpy()
@@ -293,8 +288,8 @@ class PIV_visualize:
         )
         self.show_raw_img(ax[0])
         self.show_mean_quiver_plot(ax=ax[1], scale=18)
-        vortex_image = self.plot_grid_interp_frame_data(ax=ax[2])
-
-        fig.colorbar(vortex_image)
+        # vortex_image = self.plot_grid_interp_frame_data(ax=ax[2])
+        # fig.colorbar(vortex_image)
+        
         # fig.tight_layout()
         return fig
