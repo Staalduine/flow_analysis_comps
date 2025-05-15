@@ -1,6 +1,7 @@
 from typing import Optional
 import numpy as np
 import cv2
+import pandas as pd
 
 from flow_analysis_comps.Classic.classic_image_util import (
     filter_kymo_right,
@@ -74,3 +75,7 @@ class kymoAnalyser:
 
     def plot_summary(self):
         return plot_summary(self.kymograph_decomposed_directions, self.speed_images, self.video_deltas)
+    
+    def return_summary_frames(self):
+        speed_fields = self.speed_images
+        
