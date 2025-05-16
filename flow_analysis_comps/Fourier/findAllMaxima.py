@@ -2,6 +2,7 @@ import numpy as np
 from numpy.fft import fft, fftshift
 from numpy.polynomial import Polynomial
 from joblib import Parallel, delayed
+from tqdm import tqdm
 from flow_analysis_comps.Fourier.utils.Interpolation import interpft1
 
 
@@ -17,7 +18,7 @@ def roots_batch(coeffs_batch):
 
 
 def interpft_extrema_fast(
-    filter_response, dim=1, sorted_output=False, TOL=1e-10, dofft=False, n_jobs=-1
+    filter_response, dim=1, sorted_output=False, TOL=1e-10, do_fft=False, n_jobs=-1
 ):
     # Ensure filter_response is a numpy array
     filter_response = np.asarray(filter_response)
@@ -36,7 +37,7 @@ def interpft_extrema_fast(
         return tuple(np.moveaxis(arr, 0, dim) for arr in (empty, empty, empty, filter_response, filter_response, filter_response))
 
     # Ensure response is in frequency domain
-    filter_response_fft = fft(filter_response, axis=0) if dofft else filter_response
+    filter_response_fft = fft(filter_response, axis=0) if do_fft else filter_response
 
     # Get Nyquist frequency of response
     nyquist = int(np.ceil((response_depth + 1) / 2))
@@ -48,20 +49,20 @@ def interpft_extrema_fast(
 
     # Create frequency array
     response_frequencies = np.concatenate([np.arange(nyquist), -np.arange(nyquist - 1, 0, -1)])
-    response_frequencies = response_frequencies[:, np.newaxis]
+    response_frequencies = response_frequencies[..., np.newaxis, np.newaxis]  # Add new axis for broadcasting
 
     # Compute derivatives
     response_fft_derivative1 = filter_response_fft * (1j * response_frequencies)
     response_fft_derivative2 = filter_response_fft * -(response_frequencies**2)
 
-    # Shift first derivative to center
+    # Shift first derivative to center, flatten it
     response_fft_derivative1 = fftshift(response_fft_derivative1, axes=0)
     response_fft_deriv1_flat = response_fft_derivative1.reshape((response_fft_derivative1.shape[0], -1))
 
     # Compute coefficients for polynomial roots
     coefficients = [response_fft_deriv1_flat[:, i] for i in range(response_fft_deriv1_flat.shape[1])]
     roots_out = Parallel(n_jobs=n_jobs)(
-        delayed(np.roots)(coefficient[::-1]) for coefficient in coefficients
+        delayed(np.roots)(coefficient[::-1]) for coefficient in tqdm(coefficients, desc="Finding roots", total=len(coefficients))
     )
 
     # Find maximum number of roots, allocate space for output
