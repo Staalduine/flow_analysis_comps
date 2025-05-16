@@ -2,7 +2,7 @@ import numpy as np
 from numpy.fft import fft, fftshift
 from numpy.polynomial import Polynomial
 from joblib import Parallel, delayed
-from flow_analysis_comps.Fourier.utils.Interpolation import interpft, interpft1
+from flow_analysis_comps.Fourier.utils.Interpolation import interpft1
 
 
 def roots_batch(coeffs_batch):
@@ -17,51 +17,66 @@ def roots_batch(coeffs_batch):
 
 
 def interpft_extrema_fast(
-    x, dim=1, sorted_output=False, TOL=1e-10, dofft=False, n_jobs=-1
+    filter_response, dim=1, sorted_output=False, TOL=1e-10, dofft=False, n_jobs=-1
 ):
-    x = np.asarray(x)
+    # Ensure filter_response is a numpy array
+    filter_response = np.asarray(filter_response)
 
+    # Make sure response is in first dimension
     if dim != 0:
-        x = np.moveaxis(x, dim, 0)
+        filter_response = np.moveaxis(filter_response, dim, 0)
 
-    s = x.shape
-    n = s[0]
+    # Get response shape
+    response_shape = filter_response.shape
+    response_depth = response_shape[0]
 
-    if n == 1:
-        empty = np.zeros_like(x)
-        return tuple(np.moveaxis(arr, 0, dim) for arr in (empty, empty, empty, x, x, x))
+    # Check if response depth is valid
+    if response_depth == 1:
+        empty = np.zeros_like(filter_response)
+        return tuple(np.moveaxis(arr, 0, dim) for arr in (empty, empty, empty, filter_response, filter_response, filter_response))
 
-    x_h = fft(x, axis=0) if dofft else x
+    # Ensure response is in frequency domain
+    filter_response_fft = fft(filter_response, axis=0) if dofft else filter_response
 
-    nyquist = int(np.ceil((n + 1) / 2))
+    # Get Nyquist frequency of response
+    nyquist = int(np.ceil((response_depth + 1) / 2))
 
-    if n % 2 == 0:
-        x_h[nyquist - 1] /= 2
-        x_h = np.insert(x_h, nyquist, x_h[nyquist - 1], axis=0)
+    # Adjust filter response for even/odd response depth
+    if response_depth % 2 == 0:
+        filter_response_fft[nyquist - 1] /= 2
+        filter_response_fft = np.insert(filter_response_fft, nyquist, filter_response_fft[nyquist - 1], axis=0)
 
-    freq = np.concatenate([np.arange(nyquist), -np.arange(nyquist - 1, 0, -1)])
-    freq = freq[:, np.newaxis]
+    # Create frequency array
+    response_frequencies = np.concatenate([np.arange(nyquist), -np.arange(nyquist - 1, 0, -1)])
+    response_frequencies = response_frequencies[:, np.newaxis]
 
-    dx_h = x_h * (1j * freq)
-    dx2_h = x_h * -(freq**2)
+    # Compute derivatives
+    response_fft_derivative1 = filter_response_fft * (1j * response_frequencies)
+    response_fft_derivative2 = filter_response_fft * -(response_frequencies**2)
 
-    dx_h = fftshift(dx_h, axes=0)
-    dx_h_flat = dx_h.reshape((dx_h.shape[0], -1))
+    # Shift first derivative to center
+    response_fft_derivative1 = fftshift(response_fft_derivative1, axes=0)
+    response_fft_deriv1_flat = response_fft_derivative1.reshape((response_fft_derivative1.shape[0], -1))
 
-    coeffs_batch = [dx_h_flat[:, i] for i in range(dx_h_flat.shape[1])]
+    # Compute coefficients for polynomial roots
+    coefficients = [response_fft_deriv1_flat[:, i] for i in range(response_fft_deriv1_flat.shape[1])]
     roots_out = Parallel(n_jobs=n_jobs)(
-        delayed(np.roots)(coeff[::-1]) for coeff in coeffs_batch
+        delayed(np.roots)(coefficient[::-1]) for coefficient in coefficients
     )
 
-    max_roots = max(len(r) for r in roots_out)
-    r = np.full((max_roots, len(roots_out)), np.nan, dtype=complex)
+    # Find maximum number of roots, allocate space for output
+    max_root_count = max(len(r) for r in roots_out)
+    roots_array = np.full((max_root_count, len(roots_out)), np.nan, dtype=complex)
 
+    # Fill roots array with roots
     for i, ri in enumerate(roots_out):
-        r[: len(ri), i] = ri
+        roots_array[: len(ri), i] = ri
 
-    r = r.reshape((max_roots,) + x.shape[1:])
+    # Reshape roots array to match filter response shape
+    roots_array = roots_array.reshape((max_root_count,) + filter_response.shape[1:])
 
-    magnitude = np.abs(np.log(np.abs(r)))
+    # Compute magnitude and real map
+    magnitude = np.abs(np.log(np.abs(roots_array)))
     real_map = magnitude <= abs(TOL)
 
     if TOL < 0:
@@ -71,37 +86,43 @@ def interpft_extrema_fast(
             min_mag = np.min(magnitude[:, idx[0]])
             real_map[:, idx[0]] = magnitude[:, idx[0]] <= min_mag * 10
 
-    r_ang = -np.angle(r)
-    r_ang[r_ang < 0] += 2 * np.pi
-    extrema = np.full_like(r_ang, np.nan)
-    extrema[real_map] = r_ang[real_map]
+    # Assign real angles to output
+    response_angles = -np.angle(roots_array)
+    response_angles[response_angles < 0] += 2 * np.pi
+    real_response_angles = np.full_like(response_angles, np.nan)
+    real_response_angles[real_map] = response_angles[real_map]
 
-    dx2_vals = interpft1([0, 2 * np.pi], dx2_h, extrema)
+    # Interpolate to find extrema
+    response_deriv2_interpolated = interpft1([0, 2 * np.pi], response_fft_derivative2, real_response_angles)
 
-    maxima = np.full_like(extrema, np.nan)
-    minima = np.full_like(extrema, np.nan)
+    angles_maxima = np.full_like(real_response_angles, np.nan)
+    angles_minima = np.full_like(real_response_angles, np.nan)
 
-    maxima_map = dx2_vals < 0
-    minima_map = dx2_vals > 0
+    maxima_map = response_deriv2_interpolated < 0
+    minima_map = response_deriv2_interpolated > 0
 
-    maxima[maxima_map] = extrema[maxima_map]
-    minima[minima_map] = extrema[minima_map]
+    # Find maxima and minima
+    angles_maxima[maxima_map] = real_response_angles[maxima_map]
+    angles_minima[minima_map] = real_response_angles[minima_map]
 
-    other = np.full_like(extrema, np.nan)
-    other[(~maxima_map & ~minima_map) & real_map] = extrema[
+    # Handle other extrema
+    angles_other = np.full_like(real_response_angles, np.nan)
+    angles_other[(~maxima_map & ~minima_map) & real_map] = real_response_angles[
         (~maxima_map & ~minima_map) & real_map
     ]
 
-    maxima_value = interpft1([0, 2 * np.pi], x_h, maxima)
-    minima_value = interpft1([0, 2 * np.pi], x_h, minima)
-    other_value = interpft1([0, 2 * np.pi], x_h, other)
+    # Interpolate values at extrema
+    maxima_value = interpft1([0, 2 * np.pi], filter_response_fft, angles_maxima)
+    minima_value = interpft1([0, 2 * np.pi], filter_response_fft, angles_minima)
+    other_value = interpft1([0, 2 * np.pi], filter_response_fft, angles_other)
 
+    # Reshape output arrays
     if dim != 0:
-        maxima = np.moveaxis(maxima, 0, dim)
-        minima = np.moveaxis(minima, 0, dim)
+        angles_maxima = np.moveaxis(angles_maxima, 0, dim)
+        angles_minima = np.moveaxis(angles_minima, 0, dim)
         maxima_value = np.moveaxis(maxima_value, 0, dim)
         minima_value = np.moveaxis(minima_value, 0, dim)
-        other = np.moveaxis(other, 0, dim)
+        angles_other = np.moveaxis(angles_other, 0, dim)
         other_value = np.moveaxis(other_value, 0, dim)
 
-    return maxima, minima, maxima_value, minima_value, other, other_value
+    return angles_maxima, angles_minima, maxima_value, minima_value, angles_other, other_value
