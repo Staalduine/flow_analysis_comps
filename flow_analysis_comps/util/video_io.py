@@ -72,9 +72,9 @@ def read_video_metadata(address: Path) -> videoInfo:
 
 def read_video_info_json(address: Path) -> videoInfo:
     with open(str(address), encoding="utf-8-sig") as json_data:
-        print(json_data)
+        # print(json_data)
         json_data.seek(0)
-        video_json = json.load(json_data)
+        video_json = json.load(json_data)["metadata"]
 
     if video_json["camera"]["intensity"][0] == 0:
         image_mode = "fluorescence"

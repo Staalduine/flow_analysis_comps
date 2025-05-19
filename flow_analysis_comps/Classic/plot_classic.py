@@ -60,7 +60,7 @@ def max_speed(speed_images):
     # fig.tight_layout()
 
 
-def plot_summary(fourier_images, speed_images, video_deltas: videoDeltas):
+def plot_summary(fourier_images, speed_images, video_deltas: videoDeltas, name:str):
     speedmax = max_speed(speed_images)
     kymo_extent = [
         0,
@@ -81,6 +81,9 @@ def plot_summary(fourier_images, speed_images, video_deltas: videoDeltas):
     )
     speed_histo = (speed_histo_left + speed_histo_right) / (2 * len(speed_images[0][0]))
 
+    speed_mean_over_time = [np.nanmean(speed_images[0], axis=1), np.nanmean(speed_images[1], axis=1)]
+    speed_mean_max = np.nanmax([abs(speed_mean_over_time[0]), abs(speed_mean_over_time[1])]) * 1.1
+
     fig, ax = plt.subplot_mosaic(
         [["kymograph", "temporal histogram"], ["speed plot", "temporal histogram"]],
         layout="constrained",
@@ -93,17 +96,18 @@ def plot_summary(fourier_images, speed_images, video_deltas: videoDeltas):
     ax["kymograph"].set_ylabel("time (s)")
 
     ax["speed plot"].plot(
-        time_axis_points, np.nanmean(speed_images[0], axis=1), c="tab:orange", label="speed left"
+        time_axis_points, speed_mean_over_time[0], c="tab:orange", label="speed left"
     )
     # ax["speed plot"].fill_between()
 
     ax["speed plot"].plot(
-        time_axis_points, np.nanmean(speed_images[1], axis=1), c="tab:blue", label="speed right"
+        time_axis_points, speed_mean_over_time[1], c="tab:blue", label="speed right"
     )
     ax["speed plot"].axhline(0, linestyle="--", c="black")
     ax["speed plot"].legend()
     ax["speed plot"].set_xlabel("time (s)")
     ax["speed plot"].set_ylabel("Speed ($\mu m / s$)")
+    ax["speed plot"].set_ylim(-speed_mean_max, speed_mean_max)
 
     ax["temporal histogram"].imshow(
         speed_histo.T,
@@ -118,4 +122,8 @@ def plot_summary(fourier_images, speed_images, video_deltas: videoDeltas):
     for ax_title in ax:
         ax[ax_title].set_title(ax_title)
         ax[ax_title].set_aspect("auto")
+
+    fig.suptitle(f"{name} - Kymograph and Speed Analysis")
+    fig.tight_layout()
+    fig.subplots_adjust(top=0.9)  # Adjust the top margin to make space for the title
     return fig, ax
