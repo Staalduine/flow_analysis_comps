@@ -3,7 +3,7 @@ from numpy.fft import fft, fftshift
 from numpy.polynomial import Polynomial
 from joblib import Parallel, delayed
 from tqdm import tqdm
-from flow_analysis_comps.Fourier.utils.Interpolation import interpft1
+from flow_analysis_comps.Fourier.utils.Interpolation import interpolate_fourier_series
 
 
 def roots_batch(coeffs_batch):
@@ -94,7 +94,7 @@ def interpft_extrema_fast(
     real_response_angles[real_map] = response_angles[real_map]
 
     # Interpolate to find extrema
-    response_deriv2_interpolated = interpft1([0, 2 * np.pi], response_fft_derivative2, real_response_angles)
+    response_deriv2_interpolated = interpolate_fourier_series([0, 2 * np.pi], response_fft_derivative2, real_response_angles)
 
     angles_maxima = np.full_like(real_response_angles, np.nan)
     angles_minima = np.full_like(real_response_angles, np.nan)
@@ -113,9 +113,9 @@ def interpft_extrema_fast(
     ]
 
     # Interpolate values at extrema
-    maxima_value = interpft1([0, 2 * np.pi], filter_response_fft, angles_maxima)
-    minima_value = interpft1([0, 2 * np.pi], filter_response_fft, angles_minima)
-    other_value = interpft1([0, 2 * np.pi], filter_response_fft, angles_other)
+    maxima_value = interpolate_fourier_series([0, 2 * np.pi], filter_response_fft, angles_maxima)
+    minima_value = interpolate_fourier_series([0, 2 * np.pi], filter_response_fft, angles_minima)
+    other_value = interpolate_fourier_series([0, 2 * np.pi], filter_response_fft, angles_other)
 
     # Reshape output arrays
     if dim != 0:
@@ -126,4 +126,13 @@ def interpft_extrema_fast(
         angles_other = np.moveaxis(angles_other, 0, dim)
         other_value = np.moveaxis(other_value, 0, dim)
 
-    return angles_maxima, angles_minima, maxima_value, minima_value, angles_other, other_value
+    # Return results in a dictionary
+    output_dict = {
+        "angles_maxima": angles_maxima,
+        "angles_minima": angles_minima,
+        "maxima_value": maxima_value,
+        "minima_value": minima_value,
+        "angles_other": angles_other,
+        "other_value": other_value,
+    }
+    return output_dict

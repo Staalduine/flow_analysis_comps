@@ -174,7 +174,7 @@ class orientationSpaceManager:
         nlsm_mask = self.response.nlms_mask(thresh_method=thresh_method)
 
         nanTemplate = np.zeros_like(nlsm_mask, dtype=np.float32)
-        nanTemplate[:] = np.NaN
+        nanTemplate[:] = np.nan
         a_hat = np.rollaxis(self.response.a_hat, 2, 0)
         a_hat = a_hat[:, nlsm_mask]
 
@@ -189,6 +189,7 @@ class orientationSpaceManager:
         print(a_hat.shape)
         response = interpft_extrema_fast(a_hat, dim=0)
         print(response)
+        return response
 
     def nlms_simple_case(self, order=5, thresh_method=Optional[ThresholdMethods]):
         updated_response, filter = self.update_response_at_order_FT(order)

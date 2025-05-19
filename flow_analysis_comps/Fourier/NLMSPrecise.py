@@ -46,7 +46,7 @@ def nlms_precise(
     # Initiate angle offset
     if offset_angle is None:
         offset_angle = theta_max
-        offset_angle[offset_angle == np.NaN] = np.nanmean(theta_max)
+        offset_angle[offset_angle == np.nan] = np.nanmean(theta_max)
 
     # Set up size of nlms arrays
     rot_response_size = response.shape
@@ -64,7 +64,7 @@ def nlms_precise(
         response = np.moveaxis(response, 2, 0)
         rotationResponseTemp = resample(response[:, mask], period, axis=0)
         response = np.zeros((period, mask.shape[0], mask.shape[1]))
-        response[:, :, :] = np.NaN
+        response[:, :, :] = np.nan
         response[:, mask] = rotationResponseTemp
         response = np.moveaxis(response, 0, 2)
         rotationResponseTemp = 0  # clear rotationResponseTemp;
