@@ -4,6 +4,7 @@ import imageio
 from matplotlib import pyplot as plt
 from pydantic import BaseModel
 from flow_analysis_comps.data_structs.video_info import videoInfo
+from flow_analysis_comps.Classic.model_parameters import videoDeltas
 from flow_analysis_comps.util.coord_space_util import (
     extract_perp_lines,
     validate_interpolation_order,
@@ -21,6 +22,7 @@ import numpy as np
 from skimage.measure import profile_line
 from scipy import ndimage as ndi
 from scipy.signal import butter, sosfiltfilt
+import matplotlib.patheffects as path_effects
 
 
 def low_pass_filter(coords, cutoff_freq=0.01, order=2):
@@ -84,6 +86,7 @@ class edgeControl:
         # node_positions: tuple[int, int],
         pixel_list: list[tuple[int, int]],
         kymo_extract_settings=None,
+        deltas: videoDeltas = None,
     ):
         self.video_info = video_info
         self.edge_info = edge_graph
@@ -94,6 +97,11 @@ class edgeControl:
             self.kymo_extract_settings = kymoExtractProperties()
         else:
             self.kymo_extract_settings = kymo_extract_settings
+
+        if deltas is None:
+            self.deltas = videoDeltas()
+        else:
+            self.deltas = deltas
 
         self._pixel_indices = None
         self._segment_coords = None
@@ -161,6 +169,7 @@ class edgeControl:
         return np.array(edge_image)
 
     def plot_segments(self, adjust_val, ax):
+        weight = .05
         for point_1, point_2 in self.segment_coords:
             ax.plot(
                 [point_1[1] * adjust_val, point_2[1] * adjust_val],
@@ -168,14 +177,39 @@ class edgeControl:
                 color="white",
                 alpha=0.1,
             )
+            ax.text(
+                *np.flip(
+                    (1 - weight) * self.pixel_list[0]
+                    + weight * self.pixel_list[-1]
+                )
+                * self.deltas.delta_x,
+                str(self.edge_info[0]),
+                color="white",
+                path_effects=[
+                    path_effects.Stroke(linewidth=2, foreground='black'),
+                    path_effects.Normal()
+                ],
+            )
+            ax.text(
+                *np.flip(
+                    (1 - weight) * self.pixel_list[-1]
+                    + weight * self.pixel_list[0]
+                )
+                * self.deltas.delta_x,
+                str(self.edge_info[1]),
+                color="white",
+                path_effects=[
+                    path_effects.Stroke(linewidth=2, foreground='black'),
+                    path_effects.Normal()
+                ],            )
 
 
 class videoControl:
     ## Initiate object
     def __init__(
         self,
-        video_folder_adr,
-        video_info_adr,
+        video_folder_adr: Path,
+        video_info_adr: Path,
         edge_length_threshold=200,
         resolution=1,
         video_folder_add="Img",
@@ -185,6 +219,8 @@ class videoControl:
         self.array: np.ndarray = load_tif_series_to_dask(
             video_folder_adr / video_folder_add
         )  # Dims are t, y, x
+
+        #TODO: Make a difference between Morrison and Aretha pixel size. but I think they are the same
         self.time_pixel_size = 1 / self.video_info.camera_settings.frame_rate
         self.space_pixel_size = (
             1.725
@@ -193,6 +229,10 @@ class videoControl:
             * self.video_info.camera_settings.binning
             * resolution
         )  # um/pixel
+        self.deltas = videoDeltas(
+            delta_t=  self.time_pixel_size,
+            delta_x=self.space_pixel_size,
+        )
         self.edge_len_thresh = edge_length_threshold
         self.kymo_extract_settings = kymoExtractProperties(resolution=resolution)
 
@@ -272,6 +312,7 @@ class videoControl:
                 edge_graph,
                 edge_pixels,
                 self.kymo_extract_settings,
+                self.deltas
             )
 
             self._edges.append(edge_obj)
@@ -387,6 +428,7 @@ class videoControl:
 
         for edge in self.edges:
             edge.plot_segments(self.space_pixel_size, ax1)
+        return fig1
 
 
 class kymoExtractProperties(BaseModel):
