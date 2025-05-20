@@ -2,93 +2,98 @@ import numpy as np
 import scipy.fftpack as fftpack
 
 
-def interpft1(v, xq, x=None, method="horner", fine_grid_factor=None, legacy=False):
-    v: np.ndarray = np.asarray(v)
-    xq: np.ndarray = np.asarray(xq)
-    if v.ndim == 1 and v.shape[0] == 1:
-        v = v.T
-    if xq.ndim == 1 and xq.shape[0] == 1 and (v.ndim > 1 or legacy):
-        xq = xq.T
-    if x is None:
-        x = np.array([1, v.shape[0] + 1])
-    elif len(x) != 2:
+def interpolate_fourier_series(input_positions, input_values, output_positions=None, method="horner", fine_grid_factor=None, legacy=False):
+    # Ensure input values are numpy arrays
+    input_values: np.ndarray = np.asarray(input_values)
+    output_positions: np.ndarray = np.asarray(output_positions)
+
+    # Check if input values are 1D and reshape if necessary
+    if input_values.ndim == 1 and input_values.shape[0] == 1:
+        input_values = input_values.T
+    # Check if output positions are 1D and reshape if necessary
+    if output_positions.ndim == 1 and output_positions.shape[0] == 1 and (input_values.ndim > 1 or legacy):
+        output_positions = output_positions.T
+    # Create input positions if not provided
+    if input_positions is None:
+        input_positions = np.array([1, input_values.shape[0] + 1])
+    elif len(input_positions) != 2:
         raise ValueError(
             "interpft1:IncorrectX: x must either be empty or have 2 elements."
         )
 
-    period = x[1] - x[0]
-    xq = xq - x[0]
-    xq = np.mod(np.real(xq), period) + 1j * np.imag(xq)
-    xq = xq / period
+    period = input_positions[1] - input_positions[0]
+    output_positions = output_positions - input_positions[0]
+    output_positions = np.mod(np.real(output_positions), period) + 1j * np.imag(output_positions)
+    output_positions = output_positions / period
 
     match method:
         case "horner":
-            xq = xq * 2
-            vq = (
-                horner_vec_real(v, xq)
-                if np.isreal(xq).all()
-                else horner_vec_complex(v, xq)
+            output_positions = output_positions * 2
+            output_values = (
+                horner_vec_real(input_values, output_positions)
+                if np.isreal(output_positions).all()
+                else horner_vec_complex(input_values, output_positions)
             )
 
         case "horner_freq":
-            xq = xq * 2
-            if np.isreal(xq).all():
-                org_sz = xq.shape
-                v = v.reshape((-1, *v.shape[1:]))  # Ensure v is 2D
-                xq = xq.reshape((-1, *xq.shape[1:]))  # Ensure xq is 2D
-                vq = horner_vec_real_freq_simpler(v, xq).reshape(org_sz)
+            output_positions = output_positions * 2
+            if np.isreal(output_positions).all():
+                org_sz = output_positions.shape
+                input_values = input_values.reshape((-1, *input_values.shape[1:]))  # Ensure v is 2D
+                output_positions = output_positions.reshape((-1, *output_positions.shape[1:]))  # Ensure xq is 2D
+                output_values = horner_vec_real_freq_simpler(input_values, output_positions).reshape(org_sz)
             else:
-                vq = horner_vec_complex_freq(v, xq)
+                output_values = horner_vec_complex_freq(input_values, output_positions)
 
         case "horner_complex":
-            xq = xq * 2
-            vq = horner_vec_complex(v, xq)
+            output_positions = output_positions * 2
+            output_values = horner_vec_complex(input_values, output_positions)
 
         case "horner_complex":
-            xq = xq * 2
-            vq = horner_vec_complex(v, xq)
+            output_positions = output_positions * 2
+            output_values = horner_vec_complex(input_values, output_positions)
 
         case "horner_complex_freq":
-            xq = xq * 2
-            vq = horner_vec_complex_freq(v, xq)
+            output_positions = output_positions * 2
+            output_values = horner_vec_complex_freq(input_values, output_positions)
 
         case "mmt":
-            xq = xq * 2 * np.pi
-            vq = matrixMultiplicationTransform(v, xq)
+            output_positions = output_positions * 2 * np.pi
+            output_values = matrixMultiplicationTransform(input_values, output_positions)
 
         case "mmt_freq":
-            xq = xq * 2 * np.pi
-            vq = matrixMultiplicationTransformFreq(v, xq)
+            output_positions = output_positions * 2 * np.pi
+            output_values = matrixMultiplicationTransformFreq(input_values, output_positions)
         case _:
             # Use interp1 methods by expanding grid points using interpft
             fineGridFactor = parse_fine_grid_factor(fine_grid_factor, method)
-            vft3 = interpft(v, v.shape[0] * fineGridFactor)
+            vft3 = interpft(input_values, input_values.shape[0] * fineGridFactor)
             vft3 = np.vstack([vft3[-3:, :], vft3[:, :], vft3[:4, :]])
 
             # Map indices from [0,1) to [4, size(v,1) * fineGridFactor + 4)
-            xq = xq * (v.shape[0] * fineGridFactor)
-            xq = xq + 4
+            output_positions = output_positions * (input_values.shape[0] * fineGridFactor)
+            output_positions = output_positions + 4
 
-            if legacy or xq.ndim == 1:  # Legacy mode or xq is a column vector
-                vq = np.interp(
-                    xq, np.arange(len(vft3)), vft3, left=np.nan, right=np.nan
+            if legacy or output_positions.ndim == 1:  # Legacy mode or xq is a column vector
+                output_values = np.interp(
+                    output_positions, np.arange(len(vft3)), vft3, left=np.nan, right=np.nan
                 )
             else:
                 # Break xq into columns and apply interp1 to each column of v
-                vq = np.array(
+                output_values = np.array(
                     [
                         np.interp(
-                            xq[:, i],
+                            output_positions[:, i],
                             np.arange(len(vft3)),
                             vft3[:, i],
                             left=np.nan,
                             right=np.nan,
                         )
-                        for i in range(xq.shape[1])
+                        for i in range(output_positions.shape[1])
                     ]
                 ).T
-                vq = vq.reshape((xq.shape[0],) + v.shape[1:])
-    return vq
+                output_values = output_values.reshape((output_positions.shape[0],) + input_values.shape[1:])
+    return output_values
 
 
 def parse_fine_grid_factor(fine_grid_factor, method):
@@ -175,24 +180,24 @@ def matrixMultiplicationTransformFreq(v_h: np.ndarray, xq: np.ndarray):
     return vq
 
 
-def interpft(x, N):
+def interpft(input_values, output_array_length):
     """
     Interpolate the data 'x' to a new length 'N' using Fourier interpolation.
 
     """
-    M = len(x)
+    input_array_length = len(input_values)
 
     # Perform FFT
-    X = fftpack.fft(x)
+    input_vals_fft = fftpack.fft(input_values)
 
     # Zero pad the FFT to the new length N
-    X_new = np.zeros(N, dtype=complex)
-    X_new[:M] = X  # Keep the original FFT components
+    X_new = np.zeros(output_array_length, dtype=complex)
+    X_new[:input_array_length] = input_vals_fft  # Keep the original FFT components
 
     # Perform inverse FFT to get the interpolated data
-    y = np.real(fftpack.ifft(X_new))
+    output_values = np.real(fftpack.ifft(X_new))
 
-    return y
+    return output_values
 
 
 def horner_vec_real(v, xq):

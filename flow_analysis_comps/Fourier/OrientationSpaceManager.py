@@ -13,6 +13,7 @@ from flow_analysis_comps.Fourier.OrientationSpaceResponse import (
 import numpy.typing as npt
 
 from flow_analysis_comps.Fourier.NLMSPrecise import nlms_precise
+from flow_analysis_comps.Fourier.findAllMaxima import interpft_extrema_fast
 from flow_analysis_comps.util.coord_space_util import wraparoundN
 from copy import copy
 
@@ -173,7 +174,7 @@ class orientationSpaceManager:
         nlsm_mask = self.response.nlms_mask(thresh_method=thresh_method)
 
         nanTemplate = np.zeros_like(nlsm_mask, dtype=np.float32)
-        nanTemplate[:] = np.NaN
+        nanTemplate[:] = np.nan
         a_hat = np.rollaxis(self.response.a_hat, 2, 0)
         a_hat = a_hat[:, nlsm_mask]
 
@@ -182,6 +183,13 @@ class orientationSpaceManager:
             -np.angle(a_hat[1, :]) / 2, 0, np.pi
         )
         return maximum_single_angle
+    
+    def get_all_angles(self):
+        a_hat = np.rollaxis(self.response.a_hat, 2, 0)
+        print(a_hat.shape)
+        response = interpft_extrema_fast(a_hat, dim=0)
+        print(response)
+        return response
 
     def nlms_simple_case(self, order=5, thresh_method=Optional[ThresholdMethods]):
         updated_response, filter = self.update_response_at_order_FT(order)
