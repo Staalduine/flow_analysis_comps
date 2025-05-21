@@ -4,7 +4,7 @@ import imageio
 from matplotlib import pyplot as plt
 from pydantic import BaseModel
 from flow_analysis_comps.data_structs.video_info import videoInfo
-from flow_analysis_comps.processing.Classic.model_parameters import videoDeltas
+from flow_analysis_comps.processing.Classic.model_parameters import KymoDeltas
 from flow_analysis_comps.util.coord_space_util import (
     extract_perp_lines,
     validate_interpolation_order,
@@ -86,7 +86,7 @@ class edgeControl:
         # node_positions: tuple[int, int],
         pixel_list: list[tuple[int, int]],
         kymo_extract_settings=None,
-        deltas: videoDeltas = None,
+        deltas: KymoDeltas = None,
     ):
         self.video_info = video_info
         self.edge_info = edge_graph
@@ -99,7 +99,7 @@ class edgeControl:
             self.kymo_extract_settings = kymo_extract_settings
 
         if deltas is None:
-            self.deltas = videoDeltas()
+            self.deltas = KymoDeltas()
         else:
             self.deltas = deltas
 
@@ -228,7 +228,7 @@ class videoControl:
             * self.video_info.camera_settings.binning
             * resolution
         )  # um/pixel
-        self.deltas = videoDeltas(
+        self.deltas = KymoDeltas(
             delta_t=self.time_pixel_size,
             delta_x=self.space_pixel_size,
         )

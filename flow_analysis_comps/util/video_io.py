@@ -20,7 +20,7 @@ import numpy.typing as npt
 from imageio import imread
 
 
-def load_tif_series_to_dask(folder_path) -> npt.ArrayLike:
+def load_tif_series_to_dask(folder_path) -> da.Array:
     """
     Loads a series of .tif images from a folder into a Dask array.
 

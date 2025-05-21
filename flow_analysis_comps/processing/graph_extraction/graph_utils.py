@@ -1,7 +1,8 @@
-from typing import List
 import networkx as nx
 import numpy as np
 import pandas as pd
+from skimage.morphology import skeletonize
+import scipy.sparse
 
 
 def generate_set_node(graph_tab: pd.DataFrame) -> list:
@@ -188,7 +189,7 @@ def from_sparse_to_graph(doc_skel: dict) -> pd.DataFrame:
 
 
 def reconnect_degree_2(nx_graph: nx.Graph, pos: dict, has_width: bool = True) -> None:
-    degree_2_nodes = [node for node in nx_graph.nodes if nx_graph.degree(node) == 2]
+    degree_2_nodes = [node for node in nx_graph.nodes if nx_graph.degree[node] == 2]
     while len(degree_2_nodes) > 0:
         node = degree_2_nodes.pop()
         neighbours = list(nx_graph.neighbors(node))
@@ -219,8 +220,8 @@ def reconnect_degree_2(nx_graph: nx.Graph, pos: dict, has_width: bool = True) ->
                     nx_graph.remove_edge(right_n, left_n)
                 nx_graph.add_edges_from([(right_n, left_n, info)])
         nx_graph.remove_node(node)
-        degree_2_nodes = [node for node, degree in nx_graph.degree() if degree == 2]
-    degree_0_nodes = [node for node in nx_graph.nodes if nx_graph.degree(node) == 2]
+        degree_2_nodes = [node for node, degree in nx_graph.degree if degree == 2]
+    degree_0_nodes = [node for node in nx_graph.nodes if nx_graph.degree[node] == 0]
     for node in degree_0_nodes:
         nx_graph.remove_node(node)
 
@@ -234,7 +235,7 @@ def remove_spurs(
         found = False
         for edge in nx_g.edges:
             edge_data = nx_g.get_edge_data(*edge)
-            if (nx_g.degree(edge[0]) == 1 or nx_g.degree(edge[1]) == 1) and edge_data[
+            if (nx_g.degree[edge[0]] == 1 or nx_g.degree[edge[1]] == 1) and edge_data[
                 "weight"
             ] < threshold:
                 spurs.append(edge)
@@ -251,6 +252,7 @@ def orient(pixel_list, root_pos) -> list[tuple[int, int]]:
         return pixel_list
     else:
         return list(reversed(pixel_list))
+
 
 def generate_index_along_sequence(n: int, resolution=3, offset=0) -> list[int]:
     """
@@ -269,3 +271,22 @@ def generate_index_along_sequence(n: int, resolution=3, offset=0) -> list[int]:
     k_max = (x_max - x_min) // resolution
     line = [x_min + k * resolution for k in range(k_max + 1)]
     return line
+
+
+def skeletonize_segmented_im(segmented: np.ndarray) -> tuple[nx.Graph, dict]:
+    """
+    Take segmented image and skeletonize it
+
+    Args:
+        segmented (np.ndarray): Segmented image
+
+    Returns:
+        tuple[nx.Graph, dict]: networkx graph and positions
+    """
+    skeletonized = skeletonize(segmented > 0)
+
+    skeleton = scipy.sparse.dok_matrix(skeletonized)
+    nx_graph, pos = generate_nx_graph(from_sparse_to_graph(skeleton))
+    nx_graph_pruned, pos = remove_spurs(nx_graph, pos, threshold=200)
+
+    return nx_graph_pruned, pos

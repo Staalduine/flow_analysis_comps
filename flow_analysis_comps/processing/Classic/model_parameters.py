@@ -8,6 +8,6 @@ class GST_params(BaseModel):
     coherency_threshold_falloff: float = 0.05
 
 
-class videoDeltas(BaseModel):
+class KymoDeltas(BaseModel):
     delta_x: float
     delta_t: float
