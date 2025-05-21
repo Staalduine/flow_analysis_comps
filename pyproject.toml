@@ -29,6 +29,7 @@ version = "0.1.0"
 description = "Different flow velocity analysis methods"
 authors = ["Simon van Staalduine <s.vstaald@amolf.nl>"]
 readme = "README.md"
+packages = [{ include = "flow_analysis_comps" }]
 
 
 [build-system]
