@@ -4,7 +4,7 @@ from flow_analysis_comps.io.video import videoIO
 import dask.array as da
 
 
-class videoVisualizer:
+class VideoVisualizer:
     def __init__(self, video_path):
         self.video_info = videoIO(video_path)
         self.metadata = self.video_info.metadata
