@@ -91,5 +91,5 @@ def test_load_tif_series_to_dask(tmp_path: Path):
     with patch.object(videoIO, "_read_video_metadata", return_value=None):
         vio = videoIO(tmp_path)
         dask_arr = vio._load_tif_series_to_dask()
-        # assert dask_arr.shape[0] == 3
-        # assert dask_arr.shape[1:] == arr.shape
+        assert dask_arr.shape[0] == 3
+        assert dask_arr.shape[1:] == arr.shape

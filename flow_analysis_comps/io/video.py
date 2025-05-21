@@ -4,7 +4,6 @@ from pathlib import Path
 import dask.array as da
 from dask.delayed import delayed
 import tifffile
-import numpy.typing as npt
 import pandas as pd
 
 from flow_analysis_comps.data_structs.video_info import (
@@ -25,8 +24,8 @@ class videoIO:
     def __init__(self, root_folder):
         self.root_folder = Path(root_folder)
         self.metadata_file_path = self._find_metadata()
-        self.metadata = self._read_video_metadata()
-        self.video_array = self._load_tif_series_to_dask()
+        self.metadata: videoInfo = self._read_video_metadata()
+        self.video_array: da.Array = self._load_tif_series_to_dask()
 
     def _find_metadata(self):
         metadata_file_path = next(self.root_folder.glob("*.txt"), None)
@@ -89,6 +88,7 @@ class videoIO:
             camera_settings=camera_settings,
             storage_path=self.root_folder,
         )
+
         return info_obj
 
     def _read_video_info_txt(self) -> videoInfo:
