@@ -7,10 +7,12 @@ from datetime import datetime, date
 
 class rootTypes(StrEnum):
     CARROT = ("Carrot",)
+    TOBY = ("Toby",)
 
 
 class strainTypes(StrEnum):
     C2 = "C2"
+    A5 = "A5"
 
 
 class treatmentTypes(StrEnum):

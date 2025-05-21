@@ -40,5 +40,5 @@ kymo_analysis/
 └── tests/
     ├── test_filters.py
     ├── test_visualizer.py
-    ├── test_line_detection.py  # ✅
+    ├── test_line_detection.py  
     └── test_pipeline.py

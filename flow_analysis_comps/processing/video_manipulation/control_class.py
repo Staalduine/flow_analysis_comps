@@ -4,7 +4,7 @@ import imageio
 from matplotlib import pyplot as plt
 from pydantic import BaseModel
 from flow_analysis_comps.data_structs.video_info import videoInfo
-from flow_analysis_comps.Classic.model_parameters import videoDeltas
+from flow_analysis_comps.processing.Classic.model_parameters import videoDeltas
 from flow_analysis_comps.util.coord_space_util import (
     extract_perp_lines,
     validate_interpolation_order,
@@ -13,7 +13,7 @@ from flow_analysis_comps.util.video_io import (
     load_tif_series_to_dask,
     read_video_metadata,
 )
-from flow_analysis_comps.video_manipulation.segmentation_methods import (
+from flow_analysis_comps.processing.video_manipulation.segmentation_methods import (
     _segment_hyphae_w_mean_std,
     skeletonize_segmented_im,
 )
@@ -169,7 +169,7 @@ class edgeControl:
         return np.array(edge_image)
 
     def plot_segments(self, adjust_val, ax):
-        weight = .05
+        weight = 0.05
         for point_1, point_2 in self.segment_coords:
             ax.plot(
                 [point_1[1] * adjust_val, point_2[1] * adjust_val],
@@ -179,29 +179,28 @@ class edgeControl:
             )
             ax.text(
                 *np.flip(
-                    (1 - weight) * self.pixel_list[0]
-                    + weight * self.pixel_list[-1]
+                    (1 - weight) * self.pixel_list[0] + weight * self.pixel_list[-1]
                 )
                 * self.deltas.delta_x,
                 str(self.edge_info[0]),
                 color="white",
                 path_effects=[
-                    path_effects.Stroke(linewidth=2, foreground='black'),
-                    path_effects.Normal()
+                    path_effects.Stroke(linewidth=2, foreground="black"),
+                    path_effects.Normal(),
                 ],
             )
             ax.text(
                 *np.flip(
-                    (1 - weight) * self.pixel_list[-1]
-                    + weight * self.pixel_list[0]
+                    (1 - weight) * self.pixel_list[-1] + weight * self.pixel_list[0]
                 )
                 * self.deltas.delta_x,
                 str(self.edge_info[1]),
                 color="white",
                 path_effects=[
-                    path_effects.Stroke(linewidth=2, foreground='black'),
-                    path_effects.Normal()
-                ],            )
+                    path_effects.Stroke(linewidth=2, foreground="black"),
+                    path_effects.Normal(),
+                ],
+            )
 
 
 class videoControl:
@@ -220,7 +219,7 @@ class videoControl:
             video_folder_adr / video_folder_add
         )  # Dims are t, y, x
 
-        #TODO: Make a difference between Morrison and Aretha pixel size. but I think they are the same
+        # TODO: Make a difference between Morrison and Aretha pixel size. but I think they are the same
         self.time_pixel_size = 1 / self.video_info.camera_settings.frame_rate
         self.space_pixel_size = (
             1.725
@@ -230,7 +229,7 @@ class videoControl:
             * resolution
         )  # um/pixel
         self.deltas = videoDeltas(
-            delta_t=  self.time_pixel_size,
+            delta_t=self.time_pixel_size,
             delta_x=self.space_pixel_size,
         )
         self.edge_len_thresh = edge_length_threshold
@@ -312,14 +311,18 @@ class videoControl:
                 edge_graph,
                 edge_pixels,
                 self.kymo_extract_settings,
-                self.deltas
+                self.deltas,
             )
 
             self._edges.append(edge_obj)
-            
+
     def save_mp4_video(self):
         video_array = self.array.compute()
-        writer = imageio.get_writer(self.root_folder / "Video.mp4", fps=int(self.video_info.camera_settings.frame_rate), codec='libx264')
+        writer = imageio.get_writer(
+            self.root_folder / "Video.mp4",
+            fps=int(self.video_info.camera_settings.frame_rate),
+            codec="libx264",
+        )
         for frame in video_array:
             writer.append_data(frame)
         writer.close()

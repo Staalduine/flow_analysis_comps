@@ -134,10 +134,6 @@ def segment_hyphae_general(
     threshtype:     Type of threshold to apply to segmentation. Can be hist_edge, Renyi or Yen
 
     """
-    # if mode == videoMode.NO_THRESHOLD:
-    #     example_im = imageio.imread(image_addresses[0])
-    #     segmented = np.ones_like(example_im) * 255
-    #     return segmented
     
     mean_image, std_image = mean_std_from_img_paths(image_addresses)
     segmented = _segment_hyphae_w_mean_std(mean_image, std_image, seg_thresh, mode)

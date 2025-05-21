@@ -1,12 +1,8 @@
 from pathlib import Path
-import json
 
-import cv2
-import tifffile
-
-from flow_analysis_comps.video_manipulation.control_class import videoControl
-from flow_analysis_comps.Classic.extract_velocity import kymoAnalyser, videoDeltas
-from flow_analysis_comps.Fourier.OrientationSpaceManager import orientationSpaceManager
+from flow_analysis_comps.processing.video_manipulation.control_class import videoControl
+from flow_analysis_comps.processing.Classic.extract_velocity import kymoAnalyser, videoDeltas
+from flow_analysis_comps.processing.Fourier.OrientationSpaceManager import orientationSpaceManager
 
 
 def process(run_info_index, process_args):
