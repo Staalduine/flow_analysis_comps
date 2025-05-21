@@ -1,7 +1,8 @@
 import imageio
-from flow_analysis_comps.data_structs.video_info import videoInfo
 from flow_analysis_comps.io.video import videoIO
 import dask.array as da
+
+
 class videoVisualizer:
     def __init__(self, video_path):
         self.video_info = videoIO(video_path)
