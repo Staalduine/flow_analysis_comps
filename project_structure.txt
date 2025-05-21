@@ -1,0 +1,44 @@
+kymo_analysis/
+├── data/
+│   ├── video.py
+│   ├── graph.py
+│   ├── kymograph.py
+│   └── traces.py             
+│
+├── extract/
+│   ├── network.py
+│   └── kymograph.py
+│
+├── processing/
+│   ├── preprocessing.py
+│   ├── analysis.py
+│   ├── visualization.py
+│   ├── filters/
+│   │   ├── base_filter.py
+│   │   └── gaussian_multi.py
+│   └── tracing/
+│       ├── __init__.py
+│       ├── line_detection.py   
+│       └── velocity.py         
+│
+├── pipelines/
+│   └── full_pipeline.py      
+│
+├── utils/
+│   ├── io.py
+│   └── geometry.py
+│
+├── config/
+│   └── settings.py
+│
+├── scripts/
+│   └── run_pipeline.py
+│
+├── notebooks/
+│   └── exploration.ipynb
+│
+└── tests/
+    ├── test_filters.py
+    ├── test_visualizer.py
+    ├── test_line_detection.py  # ✅
+    └── test_pipeline.py
