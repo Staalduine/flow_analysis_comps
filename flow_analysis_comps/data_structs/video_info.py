@@ -31,7 +31,7 @@ class cameraPosition(BaseModel):
 
 class videoInfo(BaseModel):
     date_time: Optional[datetime] = None
-    storage_path: Optional[Path] = None
+    storage_path: Path
     plate_info: Optional[plateInfo] = None
     run_nr: Optional[int] = None
     duration: timedelta

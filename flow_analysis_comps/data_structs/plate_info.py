@@ -6,8 +6,8 @@ from datetime import datetime, date
 
 
 class rootTypes(StrEnum):
-    CARROT = ("Carrot",)
-    TOBY = ("Toby",)
+    CARROT = "Carrot"
+    TOBY = "Toby"
 
 
 class strainTypes(StrEnum):

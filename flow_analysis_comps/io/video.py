@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 import json
 from pathlib import Path
 import dask.array as da
-from dask import delayed
+from dask.delayed import delayed
 import tifffile
 import numpy.typing as npt
 import pandas as pd
@@ -11,8 +11,14 @@ from flow_analysis_comps.data_structs.video_info import (
     cameraPosition,
     cameraSettings,
     videoInfo,
+    videoMode,
 )
-from flow_analysis_comps.data_structs.plate_info import plateInfo
+from flow_analysis_comps.data_structs.plate_info import (
+    plateInfo,
+    rootTypes,
+    strainTypes,
+    treatmentTypes,
+)
 
 
 class videoIO:
@@ -38,6 +44,10 @@ class videoIO:
                 return self._read_video_info_txt()
             case ".json":
                 return self._read_video_info_json()
+            case _:
+                raise ValueError(
+                    f"Unsupported metadata file format: {self.metadata_file_path.suffix}. Expected .txt or .json."
+                )
 
     def _read_video_info_json(self) -> videoInfo:
         with open(str(self.metadata_file_path), encoding="utf-8-sig") as json_data:
@@ -73,7 +83,7 @@ class videoIO:
             frame_nr=int(
                 video_json["video"]["duration"] * video_json["camera"]["frame_rate"]
             ),
-            mode=image_mode,
+            mode=videoMode(image_mode),
             magnification=50.0,
             position=position,
             camera_settings=camera_settings,
@@ -102,9 +112,9 @@ class videoIO:
 
         plate_info_obj = plateInfo(
             plate_nr=raw_data["Plate"],
-            root=raw_data["Root"],
-            strain=raw_data["Strain"],
-            treatment=raw_data["Treatment"],
+            root=rootTypes(raw_data["Root"]),
+            strain=strainTypes(raw_data["Strain"]),
+            treatment=treatmentTypes(raw_data["Treatment"]),
             crossing_date=crossing_date,
         )
 
@@ -112,33 +122,36 @@ class videoIO:
             model=raw_data["Model"],
             exposure_us=float(raw_data["ExposureTime"].split(" ")[0]),
             frame_rate=float(raw_data["FrameRate"].split(" ")[0]),
-            frame_size=(raw_data["FrameSize"].split(" ")[0].split("x")),
-            binning=raw_data["Binning"].split("x")[0],
-            gain=raw_data["Gain"],
-            gamma=raw_data["Gamma"],
+            frame_size=(
+                int(raw_data["FrameSize"].split(" ")[0].split("x")[0]),
+                int(raw_data["FrameSize"].split(" ")[0].split("x")[1]),
+            ),
+            binning=int(raw_data["Binning"].split("x")[0]),
+            gain=float(raw_data["Gain"]),
+            gamma=float(raw_data["Gamma"]),
         )
 
         position = cameraPosition(
-            x=raw_data["X"].split(" ")[0],
-            y=raw_data["Y"].split(" ")[0],
-            z=raw_data["Z"].split(" ")[0],
+            x=float(raw_data["X"].split(" ")[0]),
+            y=float(raw_data["Y"].split(" ")[0]),
+            z=float(raw_data["Z"].split(" ")[0]),
         )
 
         info_obj = videoInfo(
             plate_info=plate_info_obj,
             date_time=time_obj,
             storage_path=self.root_folder,
-            run_nr=raw_data["Run"],
+            run_nr=int(raw_data["Run"]),
             duration=timedelta(seconds=int(raw_data["Time"].strip().split(" ")[0])),
             frame_nr=int(raw_data["Frames Recorded"].strip().split("/")[0]),
-            mode=raw_data["Operation"].strip().split(" ")[1].lower(),
+            mode=videoMode(raw_data["Operation"].strip().split(" ")[1].lower()),
             magnification=float(raw_data["Operation"].strip().split()[0][:-1]),
             camera_settings=camera_settings,
             position=position,
         )
         return info_obj
 
-    def _load_tif_series_to_dask(self) -> npt.ArrayLike:
+    def _load_tif_series_to_dask(self) -> da.Array:
         """
         Loads a series of .tif images from a folder into a Dask array.
 
@@ -148,7 +161,7 @@ class videoIO:
         Returns:
             dask.array.Array: A Dask array representing the .tif series.
         """
-        folder = Path(self.root_folder).parent
+        folder = Path(self.root_folder) / "Img"
         tif_files = sorted(
             [f for f in folder.iterdir() if f.suffix.lower() in [".tif", ".tiff"]]
         )
