@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 import json
 from pathlib import Path
 import dask.array as da
@@ -13,7 +13,7 @@ from flow_analysis_comps.data_structs.video_info import (
     cameraSettings,
     videoInfo,
 )
-from flow_analysis_comps.flow_analysis_comps.data_structs.plate_info import plateInfo
+from flow_analysis_comps.data_structs.plate_info import plateInfo
 
 
 class videoIO:
@@ -67,6 +67,7 @@ class videoIO:
             magnification=50.0,
             position=position,
             camera_settings=camera_settings,
+            storage_path=self.video_path
         )
         return info_obj
 
@@ -91,7 +92,7 @@ class videoIO:
             raw_data[col] = raw_data[col].strip()
         time_info = " ".join(raw_data["DateTime"].split(", ")[1:])
         time_obj = datetime.strptime(time_info, "%d %B %Y %X")
-        crossing_date = datetime.date.fromisoformat(raw_data["CrossDate"])
+        crossing_date = date.fromisoformat(raw_data["CrossDate"])
 
         plate_info_obj = plateInfo(
             plate_nr=raw_data["Plate"],

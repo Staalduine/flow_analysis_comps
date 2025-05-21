@@ -1,13 +1,14 @@
-import pytest
-from unittest.mock import patch, MagicMock
 from pathlib import Path
+import pytest
+from unittest.mock import patch
 
 import numpy as np
 
 from flow_analysis_comps.io.video import videoIO
 
 @pytest.fixture
-def mock_video_path(tmp_path):
+def mock_video_path(tmp_path: Path):
+    # Create a fake video file
     # Create a fake .json file
     json_path = tmp_path / "test.json"
     json_path.write_text('{"metadata": {"camera": {"intensity": [0, 1], "model": "cam", "exposure_time": 0.01, "frame_rate": 10, "frame_size": [512, 512], "binning": "1x1", "gain": 1, "gamma": 1}, "video": {"location": [0,0,0], "duration": 1}}}')
@@ -23,11 +24,12 @@ def test_read_video_info_json(mock_video_path):
         assert vio.metadata["mode"] == "fluorescence"
         assert vio.metadata["camera_settings"]["model"] == "cam"
 
-def test_read_video_info_txt(tmp_path):
+def test_read_video_info_txt(tmp_path: Path):
     txt_path = tmp_path / "test.txt"
     txt_content = (
-        "DateTime: 21 May 2024, 12:00:00\n"
-        "CrossDate: 2024-05-20\n"
+        "HEADER\n"
+        "DateTime: Wednesday, 22 January 2025, 15:38:33\n"
+        "CrossDate: 20250122\n"
         "Plate: 1\n"
         "Root: root1\n"
         "Strain: strainA\n"
