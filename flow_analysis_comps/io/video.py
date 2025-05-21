@@ -5,7 +5,6 @@ import dask.array as da
 from dask import delayed
 import tifffile
 import numpy.typing as npt
-
 import pandas as pd
 
 from flow_analysis_comps.data_structs.video_info import (
@@ -17,20 +16,31 @@ from flow_analysis_comps.data_structs.plate_info import plateInfo
 
 
 class videoIO:
-    def __init__(self, video_path):
-        self.video_path = Path(video_path)
+    def __init__(self, root_folder):
+        self.root_folder = Path(root_folder)
+        self.metadata_file_path = self._find_metadata()
         self.metadata = self._read_video_metadata()
         self.video_array = self._load_tif_series_to_dask()
 
+    def _find_metadata(self):
+        metadata_file_path = next(self.root_folder.glob("*.txt"), None)
+        if metadata_file_path is None:
+            metadata_file_path = next(self.root_folder.glob("*.json"), None)
+        if metadata_file_path is None:
+            raise ValueError(
+                f"No metadata file found in {self.root_folder}. Expected .txt or .json file."
+            )
+        return metadata_file_path
+
     def _read_video_metadata(self) -> videoInfo:
-        match self.video_path.suffix:
+        match self.metadata_file_path.suffix:
             case ".txt":
                 return self._read_video_info_txt()
             case ".json":
                 return self._read_video_info_json()
 
     def _read_video_info_json(self) -> videoInfo:
-        with open(str(self.video_path), encoding="utf-8-sig") as json_data:
+        with open(str(self.metadata_file_path), encoding="utf-8-sig") as json_data:
             # print(json_data)
             json_data.seek(0)
             video_json = json.load(json_data)["metadata"]
@@ -67,17 +77,13 @@ class videoIO:
             magnification=50.0,
             position=position,
             camera_settings=camera_settings,
-            storage_path=self.video_path
+            storage_path=self.root_folder,
         )
         return info_obj
 
     def _read_video_info_txt(self) -> videoInfo:
-        if not self.video_path.exists():
-            print(f"Could not find {self.video_path}, skipping for now")
-            return
-
         raw_data = pd.read_csv(
-            self.video_path,
+            self.metadata_file_path,
             sep=": ",
             engine="python",
             header=0,
@@ -121,7 +127,7 @@ class videoIO:
         info_obj = videoInfo(
             plate_info=plate_info_obj,
             date_time=time_obj,
-            storage_path=raw_data["StoragePath"],
+            storage_path=self.root_folder,
             run_nr=raw_data["Run"],
             duration=timedelta(seconds=int(raw_data["Time"].strip().split(" ")[0])),
             frame_nr=int(raw_data["Frames Recorded"].strip().split("/")[0]),
@@ -142,7 +148,7 @@ class videoIO:
         Returns:
             dask.array.Array: A Dask array representing the .tif series.
         """
-        folder = Path(self.video_path).parent
+        folder = Path(self.root_folder).parent
         tif_files = sorted(
             [f for f in folder.iterdir() if f.suffix.lower() in [".tif", ".tiff"]]
         )
