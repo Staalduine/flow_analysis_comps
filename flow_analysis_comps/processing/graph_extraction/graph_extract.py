@@ -6,7 +6,6 @@ from flow_analysis_comps.data_structs.kymographs import (
 )
 from flow_analysis_comps.io.video import videoIO
 from flow_analysis_comps.data_structs.video_info import videoInfo
-from flow_analysis_comps.processing.Classic.model_parameters import KymoDeltas
 from flow_analysis_comps.processing.graph_extraction.segmentation_utils import (
     segment_hyphae_w_mean_std,
 )
