@@ -21,5 +21,6 @@ class graphOutput(BaseModel):
 
 
 class edgeOutput(BaseModel):
+    name: str
     edge: tuple[int, int]
     pixel_list: list[tuple[int, int]]

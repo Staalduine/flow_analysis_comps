@@ -70,5 +70,7 @@ class VideoGraphExtractor:
             if len(edge_pixels) < self.extract_properties.edge_length_threshold:
                 continue
 
-            edges.append(edgeOutput(edge=edge_graph, pixel_list=edge_pixels))
+            name = f"edge_{edge_graph[0]}_{edge_graph[1]}"
+
+            edges.append(edgeOutput(name=name, edge=edge_graph, pixel_list=edge_pixels))
         return edges
