@@ -1,6 +1,7 @@
 from pathlib import Path
 from flow_analysis_comps.data_structs.kymographs import (
-    edgeOutput,
+    VideoGraphExtraction,
+    VideoGraphEdge,
     graphOutput,
     graphExtractConfig,
 )
@@ -9,8 +10,16 @@ from flow_analysis_comps.data_structs.video_info import videoInfo
 from flow_analysis_comps.processing.graph_extraction.segmentation_utils import (
     segment_hyphae_w_mean_std,
 )
-from flow_analysis_comps.processing.graph_extraction.graph_utils import orient, skeletonize_segmented_im
+from flow_analysis_comps.processing.graph_extraction.graph_utils import (
+    orient,
+    skeletonize_segmented_im,
+)
 import dask.array as da
+from flow_analysis_comps.processing.graph_extraction.edge_utils import (
+    low_pass_filter,
+    resample_trail,
+)
+import numpy as np
 
 
 class VideoGraphExtractor:
@@ -24,7 +33,7 @@ class VideoGraphExtractor:
         self.video_path = video_path
         self.extract_properties = extract_properties
         self.io = videoIO(self.video_path)
-        self.video_array: da.Array = self.io.video_array
+        self.video_array: da.Array = self.io.video_array[:20].compute()
         self.metadata: videoInfo = self.io.metadata
 
     @property
@@ -58,18 +67,23 @@ class VideoGraphExtractor:
         return list(self.graph.graph.edges)
 
     @property
-    def edge_data(self) -> list[edgeOutput]:
-        edges = []
+    def edge_data(self) -> VideoGraphExtraction:
+        output = VideoGraphExtraction(io=self.io, edges=[])
         for edge_graph in self.edge_graphs:
             edge_pixels = orient(
                 self.graph.graph.get_edge_data(*edge_graph)["pixel_list"],
                 self.graph.positions[edge_graph[0]],
             )
 
+            edge_pixels = np.array(edge_pixels)
+
+            # Filter edges on length
             if len(edge_pixels) < self.extract_properties.edge_length_threshold:
                 continue
 
             name = f"edge_{edge_graph[0]}_{edge_graph[1]}"
 
-            edges.append(edgeOutput(name=name, edge=edge_graph, pixel_list=edge_pixels))
-        return edges
+            output.edges.append(
+                VideoGraphEdge(name=name, edge=edge_graph, pixel_list=edge_pixels)
+            )
+        return output

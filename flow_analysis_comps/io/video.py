@@ -100,8 +100,6 @@ class videoIO:
             names=["Info"],
             index_col=0,
         )["Info"]
-        # Ensure all entries are strings
-        raw_data = raw_data.astype(str)
         # Drop all columns with no data
         raw_data = raw_data.dropna(how="all")
         for col in raw_data.index:

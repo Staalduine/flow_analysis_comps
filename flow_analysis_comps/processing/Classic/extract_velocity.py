@@ -1,26 +1,34 @@
 from typing import Optional
+from matplotlib.figure import Figure
+from matplotlib.axes import Axes
 import numpy as np
 import cv2
 import pandas as pd
 
-from flow_analysis_comps.Classic.classic_image_util import (
+from flow_analysis_comps.processing.Classic.classic_image_util import (
     filter_kymo_right,
     extract_orientations,
     speed_from_orientation_image,
 )
-from flow_analysis_comps.Classic.model_parameters import videoDeltas, GST_params
-from flow_analysis_comps.Classic.plot_classic import plot_fields, plot_summary
+from flow_analysis_comps.data_structs.kymographs import kymoDeltas
+from flow_analysis_comps.processing.Classic.model_parameters import (
+    GST_params,
+)
+from flow_analysis_comps.processing.Classic.plot_classic import (
+    plot_fields,
+    plot_summary,
+)
 
 
 class kymoAnalyser:
     def __init__(
         self,
         kymograph: np.ndarray,
-        video_deltas: videoDeltas,
+        video_deltas: kymoDeltas,
         preblur=0,
         speed_threshold=10.0,
         gst_params: Optional[GST_params] = None,
-        name: Optional[str] = None,
+        name: str = "Unnamed",
     ):
         self.kymograph = kymograph
         self.preblur = preblur
@@ -75,9 +83,12 @@ class kymoAnalyser:
             self.kymograph_decomposed_directions, self.speed_images, self.video_deltas
         )
 
-    def plot_summary(self):
+    def plot_summary(self) -> tuple[Figure, dict[str, Axes]]:
         return plot_summary(
-            self.kymograph_decomposed_directions, self.speed_images, self.video_deltas, self.name
+            self.kymograph_decomposed_directions,
+            self.speed_images,
+            self.video_deltas,
+            self.name,
         )
 
     def return_summary_frames(self):
@@ -116,6 +127,6 @@ class kymoAnalyser:
                 "speed_right": speed_mean_right,
                 "speed_mean": speed_mean,
             },
-            index=[0]
+            index=[0],
         )
         return time_series_df, mean_speeds_df

@@ -1,12 +1,22 @@
 from pathlib import Path
-from flow_analysis_comps.data_structs.kymographs import kymoExtractProperties
+from flow_analysis_comps.data_structs.kymographs import (
+    KymoCoordinates,
+    VideoGraphExtraction,
+    VideoGraphEdge,
+    kymoExtractConfig,
+)
 from flow_analysis_comps.io.video import videoIO
+from flow_analysis_comps.processing.graph_extraction.edge_utils import (
+    low_pass_filter,
+    resample_trail,
+)
 from flow_analysis_comps.processing.graph_extraction.graph_extract import (
     VideoGraphExtractor,
 )
 from flow_analysis_comps.data_structs.video_info import videoInfo
 from flow_analysis_comps.processing.Classic.model_parameters import KymoDeltas
 from flow_analysis_comps.util.coord_space_util import (
+    extract_perp_lines,
     validate_interpolation_order,
 )
 import numpy as np
@@ -14,17 +24,25 @@ from scipy import ndimage as ndi
 from flow_analysis_comps.util.logging import setup_logger
 
 
-class Kymographer:
+class Kymograph:
+    def __init__(self, kymodata) -> None:
+        pass
+
+
+class KymographCollection:
     """
     A class to extract kymographs from a video file.
     """
 
     video_path: Path
 
-    def __init__(self, video_path: Path, extract_properties: kymoExtractProperties):
-        self.video_path = video_path
+    def __init__(
+        self,
+        graph_extraction: VideoGraphExtraction,
+        extract_properties: kymoExtractConfig,
+    ):
         self.extract_properties = extract_properties
-        self.io = videoIO(self.video_path)
+        self.io = graph_extraction.io
         self.video_array = self.io.video_array
         self.metadata: videoInfo = self.io.metadata
         self.logger = setup_logger(name="flow_analysis_comps.kymographer")
@@ -38,26 +56,27 @@ class Kymographer:
             * self.extract_properties.resolution,
         )
 
-        self.logger.info(f"Extracting kymographs from {self.video_path}")
-        self.edges = self._extract_graph_edges()
-        self.edge_dict = {
-            edge.name: edge for edge in self.edges if edge.name is not None
-        }
-        self.logger.info(f"Extracted {len(self.edges)} edges from {self.video_path}")
+        self.edges = graph_extraction.edges
 
         self.edge_coords = self._prepare_coordinates()
         self.logger.info(f"Extracted edge coordinates from {self.video_path}")
 
+    def _preprocess_pixel_trails(self):
+        for edge in self.edges:
+            edge_pixels = edge.pixel_list
+            edge_pixels = resample_trail(low_pass_filter(edge_pixels))
+            edge.pixel_list = edge_pixels
+
     @property
     def hyphal_videos(self) -> dict[str, np.ndarray]:
-        hyphal_videos = {}
+        hyphal_videos = {edge.name: [] for edge in self.edges}
         video_array: np.ndarray = self.video_array.compute()
 
         order = validate_interpolation_order(video_array[0].dtype, None)
 
         for im in video_array:
-            for name, edge_coords in self.edge_coords.items():
-                edge_coords = np.array(edge_coords)
+            for edge in self.edge_coords:
+                edge_coords = np.array(edge.perp_lines)
                 perp_lines = np.moveaxis(edge_coords, 2, 0)
                 edge_im = ndi.map_coordinates(
                     im,
@@ -69,8 +88,12 @@ class Kymographer:
                 )
 
                 # Store the kymograph in the dictionary
-                hyphal_videos[name] = edge_im
-        return hyphal_videos
+                hyphal_videos[edge.edge_info.name].append(edge_im)
+        hyphal_videos_np = {
+            name: np.array(edge_im) for name, edge_im in hyphal_videos.items()
+        }
+
+        return hyphal_videos_np
 
     @property
     def kymographs(self):
@@ -86,10 +109,11 @@ class Kymographer:
 
         return graph_extractor.edge_data
 
-    def _prepare_coordinates(self) -> dict:
-        edge_coords = {}
-        for name, edge in self.edge_dict.items():
-            edge_coords[name] = []
+    def _prepare_coordinates(self) -> list[KymoCoordinates]:
+        edge_coords = []
+        for edge in self.edges:
+            # smooth the edge pixel list
+
             start, end, step_size = (
                 self.extract_properties.step,
                 len(edge.pixel_list) - self.extract_properties.step,
@@ -111,17 +135,30 @@ class Kymographer:
                 / 2
             )
 
-            edge_coords[name] = np.array(
+            segment_coords = np.array(
                 [
                     segment_pixel_list + perpendicular_norm,
                     segment_pixel_list - perpendicular_norm,
                 ]
             )
-            edge_coords[name] = np.moveaxis(edge_coords[name], 0, 1)
-            edge_coords[name] = np.array(
+            segment_coords = np.moveaxis(segment_coords, 0, 1)
+            segment_coords = np.array(
                 [
                     [pivot + perp, pivot - perp]
                     for pivot, perp in zip(segment_pixel_list, perpendicular_norm)
                 ]
             )
+            edge_perp_lines = [
+                extract_perp_lines(segment[0], segment[1])[
+                    : self.extract_properties.target_length
+                ]
+                for segment in segment_coords
+            ]
+            edge_perp_lines = np.array(edge_perp_lines)
+            kymo_coords = KymoCoordinates(
+                segment_coords=segment_coords,
+                perp_lines=edge_perp_lines,
+                edge_info=edge,
+            )
+            edge_coords.append(kymo_coords)
         return edge_coords
