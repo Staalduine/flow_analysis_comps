@@ -22,7 +22,7 @@ class GSTSpeedVizualizer:
 
         speed_abs = self.max_speed()
 
-        leftIm = ax["speedLeft"].imshow(
+        ax["speedLeft"].imshow(
             self.flow_analysis.speed_left,
             vmin=-speed_abs,
             vmax=speed_abs,
@@ -40,11 +40,11 @@ class GSTSpeedVizualizer:
         for ax_title in ax:
             ax[ax_title].set_title(ax_title)
             ax[ax_title].set_aspect("auto")
-            ax[ax_title].set_xlabel("Curvilinear distance ($\mu m$)")
+            ax[ax_title].set_xlabel(r"Curvilinear distance ($\mu m$)")
             ax[ax_title].set_ylabel("time (s)")
 
         # add speed label to colorbar
-        fig.colorbar(rightIm, ax=[ax["speedLeft"], ax["speedRight"]], aspect=40).set_label("Speed $(\mu m/s)$")
+        fig.colorbar(rightIm, ax=[ax["speedLeft"], ax["speedRight"]], aspect=40).set_label(r"Speed $(\mu m/s)$")
 
     def max_speed(self):
         speed_images = [self.flow_analysis.speed_left, self.flow_analysis.speed_right]

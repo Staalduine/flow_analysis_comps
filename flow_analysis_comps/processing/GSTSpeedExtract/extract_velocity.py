@@ -3,7 +3,7 @@ from matplotlib.axes import Axes
 import numpy as np
 import pandas as pd
 
-from flow_analysis_comps.processing.Classic.classic_image_util import (
+from flow_analysis_comps.processing.GSTSpeedExtract.classic_image_util import (
     extract_orientations,
     speed_from_orientation_image,
 )
@@ -14,8 +14,7 @@ from flow_analysis_comps.data_structs.kymographs import (
 from flow_analysis_comps.data_structs.kymographs import (
     GSTConfig,
 )
-from flow_analysis_comps.processing.Classic.plot_classic import (
-    plot_fields,
+from flow_analysis_comps.processing.GSTSpeedExtract.plot_classic import (
     plot_summary,
 )
 
