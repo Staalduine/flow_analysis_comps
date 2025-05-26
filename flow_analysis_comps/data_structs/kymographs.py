@@ -1,6 +1,7 @@
 from flow_analysis_comps.io.video import videoIO
 from networkx import Graph
 import numpy as np
+import pandas as pd
 from pydantic import BaseModel
 
 
@@ -66,3 +67,27 @@ class kymoOutputs(BaseModel):
 
     class Config:
         arbitrary_types_allowed = True
+
+
+class GSTSpeedOutputs(BaseModel):
+    deltas: kymoDeltas
+    name: str
+    speed_left: np.ndarray
+    speed_right: np.ndarray
+    speed_mean_time_series: pd.DataFrame
+    speed_mean_overall: pd.DataFrame
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+class GST_params(BaseModel):
+    window_start: int = 3
+    window_amount: int = 15
+    coherency_threshold: float = 0.95
+    coherency_threshold_falloff: float = 0.05
+
+
+class GSTConfig(BaseModel):
+    gst_params: GST_params = GST_params()
+    speed_limit: float = 10.0

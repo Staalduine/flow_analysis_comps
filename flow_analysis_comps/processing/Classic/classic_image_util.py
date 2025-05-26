@@ -2,7 +2,7 @@ from flow_analysis_comps.data_structs.kymographs import kymoDeltas
 import numpy as np
 import cv2
 
-from flow_analysis_comps.processing.Classic.model_parameters import GST_params
+from flow_analysis_comps.data_structs.kymographs import GST_params
 
 
 def calcGST(inputIMG: np.ndarray, window_size: int):
@@ -58,6 +58,15 @@ def fourier_filter_right_diagonal(tiled_image):
 
 
 def tile_pad_image(kymo: np.ndarray):
+    """
+    Create a tiled version of the kymograph image by duplicating and flipping it in all four quadrants.
+
+    Args:
+        kymo (np.ndarray): The input kymograph image.
+
+    Returns:
+        _type_: A larger image with the original kymograph and its flipped versions arranged in a 3x3 grid.
+    """
     height, width = kymo.shape
 
     # Duplicate and manipulate images
@@ -81,6 +90,7 @@ def tile_pad_image(kymo: np.ndarray):
 
 
 def filter_kymo_right(kymo: np.ndarray):
+    # Apply Fourier transform to the kymograph image and filter out the right diagonal
     height, width = kymo.shape
     paved_kymo = tile_pad_image(kymo)
     paved_kymo_filter = fourier_filter_right_diagonal(paved_kymo)
@@ -92,6 +102,17 @@ def filter_kymo_right(kymo: np.ndarray):
 
 
 def extract_orientations(image: np.ndarray, gst_params: GST_params):
+    """
+    Extracts the orientations from an image using the Generalized Structure Tensor (GST) method.
+    This function calculates the GST for a range of window sizes and determines the orientation
+
+    Args:
+        image (np.ndarray): The input image from which to extract orientations.
+        gst_params (GST_params): Parameters for the GST calculation, including window sizes and coherency thresholds.
+
+    Returns:
+        _type_: An array containing the maximum GST orientation for each pixel in the image.
+    """
     coherency_stack = np.array(
         [
             calcGST(image, w)
@@ -128,12 +149,37 @@ def extract_orientations(image: np.ndarray, gst_params: GST_params):
     return imgGSTMax
 
 
-def speed_from_orientation_image(image, deltas:kymoDeltas, speed_threshold:float, positive_speed:bool):
-    speed_unthr = (
-        np.tan((image - 90) / 180 * np.pi)
-        * deltas.delta_x
-        / deltas.delta_t
-    )
+def speed_from_orientation_image(
+    image, deltas: kymoDeltas, speed_threshold: float, positive_speed: bool
+):
+    """
+    Calculates the speed from an orientation image using the tangent of the angle.
+
+    Parameters
+    ----------
+    image : np.ndarray
+        The orientation image, where each pixel represents an angle in degrees.
+    deltas : kymoDeltas
+        An object containing the spatial (`delta_x`) and temporal (`delta_t`) resolution of the image.
+    speed_threshold : float
+        The threshold value for the speed; speeds with absolute value above this threshold are set to NaN.
+    positive_speed : bool
+        If True, only positive speeds are retained; if False, only negative speeds are retained.
+
+    Returns
+    -------
+    np.ndarray
+        An array of the same shape as `image`, containing the calculated speeds of interest. Values outside the threshold or not matching the desired sign are set to NaN.
+
+    Line-by-line description
+    -----------------------
+    1. Computes the unthresholded speed for each pixel using the tangent of the angle (converted from degrees to radians), scaled by the spatial and temporal resolution.
+    2. Sets speeds above the positive threshold to NaN.
+    3. Sets speeds below the negative threshold to NaN.
+    4. Retains only speeds of the desired sign (positive or negative), setting others to NaN.
+    5. Returns the resulting speed array.
+    """
+    speed_unthr = np.tan((image - 90) / 180 * np.pi) * deltas.delta_x / deltas.delta_t
     speed = np.where(speed_unthr < speed_threshold, speed_unthr, np.nan)
     speed = np.where(speed > -1 * speed_threshold, speed, np.nan)
     spd_interest = np.where([speed < 0, speed > 0][positive_speed], speed, np.nan)

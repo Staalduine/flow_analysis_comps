@@ -1,4 +1,3 @@
-from pathlib import Path
 from flow_analysis_comps.data_structs.kymographs import (
     KymoCoordinates,
     VideoGraphEdge,
@@ -20,6 +19,7 @@ from flow_analysis_comps.util.coord_space_util import (
 import numpy as np
 from scipy import ndimage as ndi
 from flow_analysis_comps.util.logging import setup_logger
+import dask.array as da
 
 
 class Kymograph:
@@ -39,7 +39,7 @@ class KymographExtractor:
     ):
         self.extract_properties = extract_properties
         self.io = graph_extraction.io
-        self.video_array = self.io.video_array
+        self.video_array: da.Array = self.io.video_array
         self.metadata: videoInfo = self.io.metadata
         self.logger = setup_logger(name="flow_analysis_comps.kymographer")
 
@@ -127,6 +127,7 @@ class KymographExtractor:
         return processed_kymographs
 
     def _prepare_coordinates(self) -> list[KymoCoordinates]:
+        # Prepares kymograph coordinates from the edges of the video graph.
         edge_coords = []
         for edge in self.edges:
             kymo_coords = self._extract_kymo_coordinates(edge)
@@ -135,6 +136,9 @@ class KymographExtractor:
         return edge_coords
 
     def _extract_kymo_coordinates(self, edge: VideoGraphEdge) -> KymoCoordinates | None:
+        """
+        Extracts kymograph coordinates from a VideoGraphEdge.
+        """
         start, end, step_size = (
             self.extract_properties.step,
             len(edge.pixel_list) - self.extract_properties.step,
@@ -143,7 +147,9 @@ class KymographExtractor:
         if end < start:
             return None
         segment_pixel_list = edge.pixel_list[start:end:step_size]
-        prev_segment_pixel_list = edge.pixel_list[0 : ((end - start) // step_size) * step_size : step_size]
+        prev_segment_pixel_list = edge.pixel_list[
+            0 : ((end - start) // step_size) * step_size : step_size
+        ]
         next_segment_pixel_list = (
             edge.pixel_list[start * 2 :: step_size]
             if start * 2 < len(edge.pixel_list)

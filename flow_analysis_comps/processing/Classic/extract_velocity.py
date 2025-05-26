@@ -1,18 +1,18 @@
-from typing import Optional
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 import numpy as np
-import cv2
 import pandas as pd
 
 from flow_analysis_comps.processing.Classic.classic_image_util import (
-    filter_kymo_right,
     extract_orientations,
     speed_from_orientation_image,
 )
-from flow_analysis_comps.data_structs.kymographs import kymoDeltas, kymoOutputs
-from flow_analysis_comps.processing.Classic.model_parameters import (
-    GST_params,
+from flow_analysis_comps.data_structs.kymographs import (
+    GSTSpeedOutputs,
+    kymoOutputs,
+)
+from flow_analysis_comps.data_structs.kymographs import (
+    GSTConfig,
 )
 from flow_analysis_comps.processing.Classic.plot_classic import (
     plot_fields,
@@ -24,32 +24,14 @@ class kymoAnalyser:
     def __init__(
         self,
         kymograph: kymoOutputs,
-        # video_deltas: kymoDeltas,
-        preblur=0,
-        speed_threshold=10.0,
-        gst_params: Optional[GST_params] = None,
+        gst_params: GSTConfig,
         name: str = "Unnamed",
     ):
         self.kymograph = kymograph
-        self.preblur = preblur
         self.name = name
         self.video_deltas = self.kymograph.deltas
-        self.speed_threshold = speed_threshold
-
-        if gst_params is not None:
-            self.GST_params = gst_params
-        else:
-            self.GST_params = GST_params()
-
-    # @property
-    # def kymograph_decomposed_directions(self) -> np.ndarray:
-    #     kymo_filtered_left = filter_kymo_right(self.kymograph)
-    #     kymo_filtered_right = np.flip(
-    #         filter_kymo_right(np.flip(self.kymograph, axis=1)), axis=1
-    #     )
-    #     out = np.array([kymo_filtered_left, kymo_filtered_right])
-
-    #     return out
+        self.config = gst_params
+        self.GST_params = gst_params.gst_params
 
     @property
     def orientation_images(self):
@@ -63,24 +45,28 @@ class kymoAnalyser:
     def speed_images(self):
         orientation_images = self.orientation_images
         speed_field_left = speed_from_orientation_image(
-            orientation_images[0], self.video_deltas, self.speed_threshold, True
+            orientation_images[0], self.video_deltas, self.config.speed_limit, True
         )
         speed_field_right = speed_from_orientation_image(
-            orientation_images[1], self.video_deltas, self.speed_threshold, False
+            orientation_images[1], self.video_deltas, self.config.speed_limit, False
         )
         return np.array([speed_field_left, speed_field_right])
 
     def _orientation_field(self, image):
-        if self.preblur > 0:
-            image = cv2.GaussianBlur(image, (self.preblur, self.preblur), 0)
-
         imgGSTMax = extract_orientations(image, self.GST_params)
 
         return imgGSTMax
 
-    def plot_kymo_fields(self):
-        plot_fields(
-            self.kymograph, self.speed_images
+    def output_speeds(self) -> GSTSpeedOutputs:
+        speed_images = self.speed_images
+        dataframes = self.return_summary_frames()
+        return GSTSpeedOutputs(
+            deltas=self.video_deltas,
+            name=self.name,
+            speed_left=speed_images[0],
+            speed_right=speed_images[1],
+            speed_mean_time_series=dataframes[0],
+            speed_mean_overall=dataframes[1],
         )
 
     def plot_summary(self) -> tuple[Figure, dict[str, Axes]]:
@@ -90,7 +76,8 @@ class kymoAnalyser:
             self.kymograph.name,
         )
 
-    def return_summary_frames(self):
+    def compute_speed_time_series(self) -> pd.DataFrame:
+        # Returns a DataFrame with time series of speed.
         speed_fields = self.speed_images
         speeds_mean_over_time = [
             np.nanmean(speed_fields[0], axis=1),
@@ -106,12 +93,6 @@ class kymoAnalyser:
             speeds_mean_over_time * speed_fields_coverage_ratio, axis=0
         )
 
-        speed_mean_left, speed_mean_right, speed_mean = (
-            np.nanmean(speeds_mean_over_time[0]),
-            np.nanmean(speeds_mean_over_time[1]),
-            np.nanmean(speeds_mean_nan_weighted),
-        )
-
         time_series_df = pd.DataFrame(
             {
                 "time": np.arange(speed_fields.shape[1]) * self.video_deltas.delta_t,
@@ -120,6 +101,15 @@ class kymoAnalyser:
                 "speed_mean": speeds_mean_nan_weighted,
             }
         )
+        return time_series_df
+
+    def compute_speed_means(self) -> pd.DataFrame:
+        # Returns a DataFrame with mean speeds.
+        time_series_df = self.compute_speed_time_series()
+        speed_mean_left = np.nanmean(time_series_df["speed_left"])
+        speed_mean_right = np.nanmean(time_series_df["speed_right"])
+        speed_mean = np.nanmean(time_series_df["speed_mean"])
+
         mean_speeds_df = pd.DataFrame(
             {
                 "speed_left": speed_mean_left,
@@ -128,4 +118,10 @@ class kymoAnalyser:
             },
             index=[0],
         )
+        return mean_speeds_df
+
+    def return_summary_frames(self) -> tuple[pd.DataFrame, pd.DataFrame]:
+        # Returns a DataFrame with time series of speed and a DataFrame with mean speeds.
+        time_series_df = self.compute_speed_time_series()
+        mean_speeds_df = self.compute_speed_means()
         return time_series_df, mean_speeds_df
