@@ -3,7 +3,7 @@ from pathlib import Path
 from flow_analysis_comps.data_structs.kymographs import kymoExtractConfig
 from flow_analysis_comps.processing.video_manipulation.control_class import videoControl
 from flow_analysis_comps.processing.Classic.extract_velocity import kymoAnalyser
-from flow_analysis_comps.processing.kymographing.kymographer import KymographCollection
+from flow_analysis_comps.processing.kymographing.kymographer import KymographExtractor
 
 
 def process(run_info_index, process_args):
@@ -14,9 +14,9 @@ def process(run_info_index, process_args):
     path = Path(row["total_path"])
     # video_folder = path / "Img"
 
-    kymographer = KymographCollection(path, kymoExtractConfig())
+    kymographer = KymographExtractor(path, kymoExtractConfig())
 
-    kymographs = kymographer.kymographs
+    kymographs = kymographer.simple_kymographs
     deltas = kymographer.deltas
 
     # metadata_folder = path / "metadata.json"

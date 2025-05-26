@@ -1,7 +1,8 @@
+from flow_analysis_comps.data_structs.kymographs import kymoDeltas
 import numpy as np
 import cv2
 
-from flow_analysis_comps.Classic.model_parameters import GST_params, videoDeltas
+from flow_analysis_comps.processing.Classic.model_parameters import GST_params
 
 
 def calcGST(inputIMG: np.ndarray, window_size: int):
@@ -127,7 +128,7 @@ def extract_orientations(image: np.ndarray, gst_params: GST_params):
     return imgGSTMax
 
 
-def speed_from_orientation_image(image, deltas:videoDeltas, speed_threshold:float, positive_speed:bool):
+def speed_from_orientation_image(image, deltas:kymoDeltas, speed_threshold:float, positive_speed:bool):
     speed_unthr = (
         np.tan((image - 90) / 180 * np.pi)
         * deltas.delta_x

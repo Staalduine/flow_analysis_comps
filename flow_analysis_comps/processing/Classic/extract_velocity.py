@@ -10,7 +10,7 @@ from flow_analysis_comps.processing.Classic.classic_image_util import (
     extract_orientations,
     speed_from_orientation_image,
 )
-from flow_analysis_comps.data_structs.kymographs import kymoDeltas
+from flow_analysis_comps.data_structs.kymographs import kymoDeltas, kymoOutputs
 from flow_analysis_comps.processing.Classic.model_parameters import (
     GST_params,
 )
@@ -23,8 +23,8 @@ from flow_analysis_comps.processing.Classic.plot_classic import (
 class kymoAnalyser:
     def __init__(
         self,
-        kymograph: np.ndarray,
-        video_deltas: kymoDeltas,
+        kymograph: kymoOutputs,
+        # video_deltas: kymoDeltas,
         preblur=0,
         speed_threshold=10.0,
         gst_params: Optional[GST_params] = None,
@@ -33,7 +33,7 @@ class kymoAnalyser:
         self.kymograph = kymograph
         self.preblur = preblur
         self.name = name
-        self.video_deltas = video_deltas
+        self.video_deltas = self.kymograph.deltas
         self.speed_threshold = speed_threshold
 
         if gst_params is not None:
@@ -41,22 +41,22 @@ class kymoAnalyser:
         else:
             self.GST_params = GST_params()
 
-    @property
-    def kymograph_decomposed_directions(self) -> np.ndarray:
-        kymo_filtered_left = filter_kymo_right(self.kymograph)
-        kymo_filtered_right = np.flip(
-            filter_kymo_right(np.flip(self.kymograph, axis=1)), axis=1
-        )
-        out = np.array([kymo_filtered_left, kymo_filtered_right])
+    # @property
+    # def kymograph_decomposed_directions(self) -> np.ndarray:
+    #     kymo_filtered_left = filter_kymo_right(self.kymograph)
+    #     kymo_filtered_right = np.flip(
+    #         filter_kymo_right(np.flip(self.kymograph, axis=1)), axis=1
+    #     )
+    #     out = np.array([kymo_filtered_left, kymo_filtered_right])
 
-        return out
+    #     return out
 
     @property
     def orientation_images(self):
-        fourier_imgs = self.kymograph_decomposed_directions
+        fourier_imgs = self.kymograph
 
-        orientation_field_left = self._orientation_field(fourier_imgs[0])
-        orientation_field_right = self._orientation_field(fourier_imgs[1])
+        orientation_field_left = self._orientation_field(fourier_imgs.kymo_left)
+        orientation_field_right = self._orientation_field(fourier_imgs.kymo_right)
         return np.array([orientation_field_left, orientation_field_right])
 
     @property
@@ -80,15 +80,14 @@ class kymoAnalyser:
 
     def plot_kymo_fields(self):
         plot_fields(
-            self.kymograph_decomposed_directions, self.speed_images, self.video_deltas
+            self.kymograph, self.speed_images
         )
 
     def plot_summary(self) -> tuple[Figure, dict[str, Axes]]:
         return plot_summary(
-            self.kymograph_decomposed_directions,
+            self.kymograph,
             self.speed_images,
-            self.video_deltas,
-            self.name,
+            self.kymograph.name,
         )
 
     def return_summary_frames(self):

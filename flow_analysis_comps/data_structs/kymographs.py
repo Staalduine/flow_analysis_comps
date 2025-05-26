@@ -1,4 +1,3 @@
-from typing import Optional
 from flow_analysis_comps.io.video import videoIO
 from networkx import Graph
 import numpy as np
@@ -44,6 +43,9 @@ class VideoGraphExtraction(BaseModel):
     io: videoIO
     edges: list[VideoGraphEdge]
 
+    class Config:
+        arbitrary_types_allowed = True
+
 
 class KymoCoordinates(BaseModel):
     segment_coords: np.ndarray
@@ -54,7 +56,6 @@ class KymoCoordinates(BaseModel):
         arbitrary_types_allowed = True
 
 
-
 class kymoOutputs(BaseModel):
     deltas: kymoDeltas
     name: str
@@ -62,3 +63,6 @@ class kymoOutputs(BaseModel):
     kymo_left: np.ndarray
     kymo_right: np.ndarray
     kymo_no_static: np.ndarray
+
+    class Config:
+        arbitrary_types_allowed = True
