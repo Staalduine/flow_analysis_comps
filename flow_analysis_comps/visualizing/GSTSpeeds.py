@@ -44,13 +44,14 @@ class GSTSpeedVizualizer:
             ax[ax_title].set_ylabel("time (s)")
 
         # add speed label to colorbar
-        fig.colorbar(rightIm, ax=[ax["speedLeft"], ax["speedRight"]], aspect=40).set_label(r"Speed $(\mu m/s)$")
+        fig.colorbar(
+            rightIm, ax=[ax["speedLeft"], ax["speedRight"]], aspect=40
+        ).set_label(r"Speed $(\mu m/s)$")
 
     def max_speed(self):
         speed_images = [self.flow_analysis.speed_left, self.flow_analysis.speed_right]
         speed_min = np.nanmin(speed_images)
         speed_max = np.nanmax(speed_images)
 
-        print(speed_max, speed_min)
         speed_abs = np.max([abs(speed_min), speed_max])
         return speed_abs

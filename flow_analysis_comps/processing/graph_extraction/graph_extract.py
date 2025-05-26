@@ -1,5 +1,6 @@
 from pathlib import Path
 from flow_analysis_comps.data_structs.kymographs import (
+    KymoCoordinates,
     VideoGraphExtraction,
     VideoGraphEdge,
     graphOutput,
@@ -15,10 +16,6 @@ from flow_analysis_comps.processing.graph_extraction.graph_utils import (
     skeletonize_segmented_im,
 )
 import dask.array as da
-from flow_analysis_comps.processing.graph_extraction.edge_utils import (
-    low_pass_filter,
-    resample_trail,
-)
 import numpy as np
 
 
@@ -87,3 +84,4 @@ class VideoGraphExtractor:
                 VideoGraphEdge(name=name, edge=edge_graph, pixel_list=edge_pixels)
             )
         return output
+    

@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import dask.array as da
 from dask.delayed import delayed
+from flow_analysis_comps.data_structs.kymographs import kymoDeltas
 import tifffile
 import pandas as pd
 
@@ -183,3 +184,16 @@ class videoIO:
         )
 
         return dask_array
+
+    def get_deltas(self) -> kymoDeltas:
+        """
+        Returns the time and spatial deltas for the video.
+        """
+        delta_t = 1 / self.metadata.camera_settings.frame_rate
+        delta_x = (
+            1.725
+            * 2
+            / self.metadata.magnification
+            * self.metadata.camera_settings.binning
+        )
+        return kymoDeltas(delta_t=delta_t, delta_x=delta_x)
