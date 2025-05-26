@@ -1,6 +1,7 @@
 from flow_analysis_comps.data_structs.kymographs import (
     KymoCoordinates,
     VideoGraphExtraction,
+    kymoDeltas,
 )
 from flow_analysis_comps.processing.kymographing.kymo_utils import (
     extract_kymo_coordinates,
@@ -15,7 +16,11 @@ class GraphVisualizer:
         self.graph = graph
         self.image: np.ndarray = graph.io.video_array[0].compute()
         self.metadata = graph.io.metadata
-        self.deltas = graph.io.get_deltas()
+        deltas = graph.io.get_deltas()
+        self.deltas = kymoDeltas(
+            delta_x=deltas[0],
+            delta_t=deltas[1],
+        )
         self.segment_coords = [
             extract_kymo_coordinates(edge, 1, 1, 70) for edge in graph.edges
         ]
@@ -37,11 +42,12 @@ class GraphVisualizer:
 
         for edge in self.segment_coords:
             if edge is not None:
-                self.plot_segments(edge, self.deltas.delta_x, ax1)
+                self._plot_segments(edge, self.deltas.delta_x, ax1)
         fig1.tight_layout()
+        return fig1
         
 
-    def plot_segments(self, edge: KymoCoordinates, adjust_val, ax):
+    def _plot_segments(self, edge: KymoCoordinates, adjust_val, ax):
         weight = 0.05
         for point_1, point_2 in edge.segment_coords:
             ax.plot(

@@ -1,6 +1,5 @@
 from flow_analysis_comps.data_structs.kymographs import (
     KymoCoordinates,
-    VideoGraphEdge,
     VideoGraphExtraction,
     kymoDeltas,
     kymoExtractConfig,
@@ -47,7 +46,11 @@ class KymographExtractor:
         self.metadata: videoInfo = self.io.metadata
         self.logger = setup_logger(name="flow_analysis_comps.kymographer")
 
-        self.deltas = self.io.get_deltas()
+        deltas = self.io.get_deltas()
+        self.deltas = kymoDeltas(
+            delta_x=deltas[0],
+            delta_t=deltas[1],
+        )
         self.deltas.delta_x *= self.extract_properties.resolution
 
         self.edges = graph_extraction.edges

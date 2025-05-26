@@ -1,5 +1,3 @@
-from matplotlib.figure import Figure
-from matplotlib.axes import Axes
 import numpy as np
 import pandas as pd
 
@@ -14,9 +12,6 @@ from flow_analysis_comps.data_structs.kymographs import (
 from flow_analysis_comps.data_structs.kymographs import (
     GSTConfig,
 )
-from flow_analysis_comps.processing.GSTSpeedExtract.plot_classic import (
-    plot_summary,
-)
 
 
 class kymoAnalyser:
@@ -27,7 +22,7 @@ class kymoAnalyser:
         name: str = "Unnamed",
     ):
         self.kymograph = kymograph
-        self.name = name
+        self.name = kymograph.name
         self.video_deltas = self.kymograph.deltas
         self.config = gst_params
         self.GST_params = gst_params.gst_params
@@ -66,13 +61,6 @@ class kymoAnalyser:
             speed_right=speed_images[1],
             speed_mean_time_series=dataframes[0],
             speed_mean_overall=dataframes[1],
-        )
-
-    def plot_summary(self) -> tuple[Figure, dict[str, Axes]]:
-        return plot_summary(
-            self.kymograph,
-            self.speed_images,
-            self.kymograph.name,
         )
 
     def compute_speed_time_series(self) -> pd.DataFrame:

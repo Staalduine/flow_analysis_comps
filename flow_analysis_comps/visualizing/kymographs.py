@@ -27,13 +27,15 @@ class kymoVisualizer:
         )
 
         fig, ax = plt.subplots(2, 2, figsize=(5, 5))
-        ax[0, 0].imshow(self.data.kymograph, cmap="cet_CET_L20", extent=extent)
+        ax[0, 0].imshow(self.data.kymograph, cmap=colorcet.m_CET_L20, extent=extent)
         ax[0, 0].set_title("Original Kymograph")
-        ax[0, 1].imshow(self.data.kymo_left, cmap="cet_CET_L20", extent=extent)
+        ax[0, 1].imshow(self.data.kymo_left, cmap=colorcet.m_CET_L20, extent=extent)
         ax[0, 1].set_title("Decomposed Left Kymograph")
-        ax[1, 1].imshow(self.data.kymo_right, cmap="cet_CET_L20", extent=extent)
+        ax[1, 1].imshow(self.data.kymo_right, cmap=colorcet.m_CET_L20, extent=extent)
         ax[1, 1].set_title("Decomposed Right Kymograph")
-        ax[1, 0].imshow(self.data.kymo_no_static, cmap="cet_CET_L20", extent=extent)
+        ax[1, 0].imshow(
+            self.data.kymo_no_static, cmap=colorcet.m_CET_L20, extent=extent
+        )
         ax[1, 0].set_title("Non-static Kymograph")
         for a in ax.flat:
             a.set_xlabel(r"Curvilinear distance ($\mu m$)")
