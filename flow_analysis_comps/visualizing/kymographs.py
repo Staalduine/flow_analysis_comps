@@ -41,5 +41,5 @@ class kymoVisualizer:
             a.set_xlabel(r"Curvilinear distance ($\mu m$)")
             a.set_ylabel("Time (s)")
             a.set_aspect("auto")
-        plt.tight_layout()
-        plt.show()
+        fig.tight_layout()
+        return fig
