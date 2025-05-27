@@ -1,6 +1,5 @@
 from pathlib import Path
 from flow_analysis_comps.data_structs.kymographs import (
-    KymoCoordinates,
     VideoGraphExtraction,
     VideoGraphEdge,
     graphOutput,
@@ -8,6 +7,10 @@ from flow_analysis_comps.data_structs.kymographs import (
 )
 from flow_analysis_comps.io.video import videoIO
 from flow_analysis_comps.data_structs.video_info import videoInfo
+from flow_analysis_comps.processing.graph_extraction.edge_utils import (
+    low_pass_filter,
+    resample_trail,
+)
 from flow_analysis_comps.processing.graph_extraction.segmentation_utils import (
     segment_hyphae_w_mean_std,
 )
@@ -79,9 +82,18 @@ class VideoGraphExtractor:
                 continue
 
             name = f"edge_{edge_graph[0]}_{edge_graph[1]}"
-
-            output.edges.append(
-                VideoGraphEdge(name=name, edge=edge_graph, pixel_list=edge_pixels)
+            output_edge = VideoGraphEdge(
+                name=name,
+                edge=edge_graph,
+                pixel_list=edge_pixels,
             )
+            self._smooth_pixel_trail(output_edge)
+
+            output.edges.append(output_edge)
         return output
-    
+
+    @staticmethod
+    def _smooth_pixel_trail(edge: VideoGraphEdge):
+        edge_pixels = edge.pixel_list
+        edge_pixels = resample_trail(low_pass_filter(edge_pixels))
+        edge.pixel_list = edge_pixels

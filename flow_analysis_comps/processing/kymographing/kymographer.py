@@ -54,16 +54,9 @@ class KymographExtractor:
         self.deltas.delta_x *= self.extract_properties.resolution
 
         self.edges = graph_extraction.edges
-        self._preprocess_pixel_trails()
 
         self.edge_coords = self._prepare_coordinates()
         self.logger.info(f"Extracted edge coordinates from {self.io.root_folder}")
-
-    def _preprocess_pixel_trails(self):
-        for edge in self.edges:
-            edge_pixels = edge.pixel_list
-            edge_pixels = resample_trail(low_pass_filter(edge_pixels))
-            edge.pixel_list = edge_pixels
 
     @property
     def hyphal_videos(self) -> dict[str, np.ndarray]:
