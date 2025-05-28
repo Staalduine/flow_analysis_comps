@@ -52,7 +52,9 @@ class videoIO:
         with open(str(self.metadata_file_path), encoding="utf-8-sig") as json_data:
             # print(json_data)
             json_data.seek(0)
-            video_json = json.load(json_data)["metadata"]
+            video_json = json.load(json_data)
+            if "metadata" in video_json:
+                video_json = video_json["metadata"]
 
         if video_json["camera"]["intensity"][0] == 0:
             image_mode = "fluorescence"
@@ -195,4 +197,4 @@ class videoIO:
             / self.metadata.magnification
             * self.metadata.camera_settings.binning
         )
-        return delta_t, delta_x
+        return delta_x, delta_t
