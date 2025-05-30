@@ -1,66 +1,57 @@
 from typing import Optional
 import numpy as np
-from pydantic import BaseModel
 from flow_analysis_comps.util.coord_space_util import freqSpaceCoords
-
-
-class OSFilterParams(BaseModel):
-    freq_central: float
-    freq_width: Optional[float] = None
-    K: float = 5
-    sample_factor: int = 1
-    n: Optional[int] = None
-    x_spacing:Optional[float] = 1.0
-    y_spacing:Optional[float] = 1.0
-    z_spacing:Optional[float] = 1.0
+from flow_analysis_comps.data_structs.AOS_structs import OSFilterParams
 
 
 class OrientationSpaceFilter:
+    """
+    Class that returns a filter stack for a given image shape. This filter stack will then be used in AOS filter functions.
+
+    """
+
     def __init__(self, params: OSFilterParams):
         self.params = params
 
-        if self.params.freq_width is None:
-            self.params.freq_width = 1 / np.sqrt(2) * self.params.freq_central
-
-        if self.params.n is None:
-            self.params.n = 2 * self.params.sample_factor * np.ceil(self.params.K) + 1
-
     @property
     def angles(self):
-        return np.arange(self.params.n) / self.params.n * np.pi
-
-    def get_angular_kernel(self, coords=None):
-        angular_filter = angular_kernel(self.params.K, self.angles, coords)
-        return angular_filter
-
-    def get_radial_filter(self, coords=None):
-        radial_filter = radial_kernel(
-            self.params.freq_central, self.params.freq_width, coords
+        return (
+            np.arange(0, self.params.nr_of_samples) / self.params.nr_of_samples * np.pi
         )
-        return radial_filter
 
-    def setup_filter(self, imshape):
-        coords = freqSpaceCoords(imshape, x_spacing=self.params.x_spacing, y_spacing=self.params.y_spacing)
+    def calculate_numerical_filter(
+        self, imshape: tuple[int, int] | tuple[int, int, int]
+    ):
+        # Assembles the big filter stack, can be a lot of memory for large images.
+        coords = freqSpaceCoords(
+            imshape, x_spacing=self.params.x_spacing, y_spacing=self.params.y_spacing
+        )
 
-        A = self.get_angular_kernel(coords)
-        R = self.get_radial_filter(coords)
-        return A * R[:, :, None]
+        angular_filter = calculate_angular_filter(
+            self.params.orientation_accuracy, self.angles, coords
+        )
+        radial_filter = calculate_radial_filter(
+            self.params.space_frequency_center,
+            self.params.space_frequency_width,
+            coords,
+        )
+        return angular_filter * radial_filter[:, :, None]
 
 
-def angular_kernel(
-    K=5,
-    angles: Optional[np.ndarray[1]] = None,
-    coord_system: Optional[freqSpaceCoords] = None,
+def calculate_angular_filter(
+    orientation_accuracy: float = 5,
+    angles: np.ndarray | None = None,
+    coord_system: freqSpaceCoords | None = None,
     N: int = 1024,
 ):
     if angles is None:
-        n = 2 * K + 1  # optimized number of angles to sample at K
+        n = 2 * orientation_accuracy + 1  # optimized number of angles to sample at K
         angles = np.arange(n) * np.pi / (n)
     else:
         n = len(angles)
 
     if coord_system is None:
-        coord_system = freqSpaceCoords(np.array([N, N]))
+        coord_system = freqSpaceCoords((N, N))
 
     match coord_system.dims:
         case 2:
@@ -84,16 +75,16 @@ def angular_kernel(
             raise ValueError
 
 
-def radial_kernel(
+def calculate_radial_filter(
     freq_central,
     freq_width=None,
     coord_system: Optional[freqSpaceCoords] = None,
-    N=1024,
+    N: int = 1024,
 ):
     if freq_width is None:
         freq_width = freq_central / np.sqrt(2)
     if coord_system is None:
-        coord_system = freqSpaceCoords(np.array([N, N]))
+        coord_system = freqSpaceCoords((N, N))
 
     K_f = (freq_central / freq_width) ** 2
     freq_space = coord_system.rho / freq_central

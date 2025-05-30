@@ -5,15 +5,15 @@ from scipy import fftpack
 class freqSpaceCoords:
     def __init__(
         self,
-        dim_shape: np.ndarray,
-        deltas: tuple[float, float, float] = (1, 1, 1),
-        x_spacing=1,
-        y_spacing=1,
+        dim_shape: tuple[int, int] | tuple[int, int, int],
+        deltas: tuple[float, float, float] = (1.0, 1.0, 1.0),
+        x_spacing=1.0,
+        y_spacing=1.0,
     ):
         # dim_shape is supposed to be an image size (for 2d or 3d)
         self.x_rate, self.y_rate = x_spacing, y_spacing
-        self.x, self.y, self.z = None, None, None
-        self.rho, self.theta, self.phi = None, None, None
+        # self.x, self.y, self.z = None, None, None
+        # self.rho, self.theta, self.phi = None, None, None
         self.dims = 0
         self.deltas = deltas
 
