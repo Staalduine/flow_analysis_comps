@@ -18,7 +18,12 @@ from flow_analysis_comps.util.coord_space_util import wraparoundN
 
 
 class orientationSpaceManager:
-    def __init__(self, params: OSFilterParams, image: np.ndarray, thresh_method = ThresholdMethods.OTSU):
+    def __init__(
+        self,
+        params: OSFilterParams,
+        image: np.ndarray,
+        thresh_method=ThresholdMethods.OTSU,
+    ):
         """
         Creates instance of OSManager, input with image to filter image. From there different functions can be called to retrieve
 
@@ -164,8 +169,8 @@ class orientationSpaceManager:
 
     def get_all_angles(self):
         a_hat = np.rollaxis(self.response.response_stack_fft, 2, 0)
-        response = interpft_extrema_fast(a_hat, dim=0)
-        return response
+        interpolated_extrema_dict = interpft_extrema_fast(a_hat, dim=0)
+        return interpolated_extrema_dict
 
     def nlms_simple_case(self, order=5):
         updated_response, filter = self.update_response_at_order_FT(order)
