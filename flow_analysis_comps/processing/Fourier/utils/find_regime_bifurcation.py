@@ -14,7 +14,7 @@ def find_regime_bifurcation(
     tolerance=None,
     freq=False,
     debug=False,
-) -> tuple[float, float, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     if np.isscalar(K_response):
         K_response = np.full((response_fft.shape[1],), K_response)
 
@@ -108,7 +108,7 @@ def find_regime_bifurcation(
     maxima_low, minima_low = interpft_extrema_fast(response_low_hat, 1, False)
     extrema_low = np.sort(np.concatenate([maxima_low, minima_low], axis=0), axis=0)
 
-    return K_high, K_low, extrema_high, extrema_low
+    return K_high, K_low
 
 
 def find_regime_bifurcation_hat(

@@ -35,6 +35,7 @@ def interpft_extrema_fast(
     # Check if response depth is valid
     if response_depth == 1:
         empty = np.zeros_like(filter_response)
+        raise ValueError
         return tuple(np.moveaxis(arr, 0, dim) for arr in (empty, empty, empty, filter_response, filter_response, filter_response))
 
     # Ensure response is in frequency domain

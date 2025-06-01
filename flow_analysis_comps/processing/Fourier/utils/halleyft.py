@@ -77,7 +77,7 @@ def halleyft(
             ]
         refined_zeros = refined_zeros.reshape(guess_shape)
         refined_derivatives = refined_derivatives.reshape(guess_shape + (3,))
-        return refined_zeros, refined_derivatives, None, None
+        return refined_zeros, refined_derivatives
 
     num_coeffs = int(np.floor(fourier_coeffs.shape[0] / 2))
     freq_multipliers = np.fft.ifftshift(np.arange(-num_coeffs, num_coeffs + 1)) * 1j

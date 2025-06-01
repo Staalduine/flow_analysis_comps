@@ -3,6 +3,7 @@ from scipy import fftpack
 from flow_analysis_comps.data_structs.AOS_structs import (
     OSFilterParams,
 )
+from flow_analysis_comps.processing.Fourier.utils.find_regime_bifurcation import find_regime_bifurcation
 from flow_analysis_comps.processing.AOSFilter.OrientationSpaceFilter import (
     OrientationSpaceFilter,
 )
@@ -192,9 +193,8 @@ class orientationSpaceManager:
             K_low,
             maxima_highest_temporary,
             minima_highest_temporary,
-            None,
-            0.1,
-            True,
+            tolerance= 0.1,
+            freq =True,
         )
 
     def nlms_simple_case(self, order=5):
