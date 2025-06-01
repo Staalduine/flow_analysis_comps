@@ -3,7 +3,8 @@ from scipy import fftpack
 from flow_analysis_comps.data_structs.AOS_structs import (
     OSFilterParams,
 )
-from flow_analysis_comps.processing.Fourier.utils.find_regime_bifurcation import find_regime_bifurcation
+from flow_analysis_comps.processing.Fourier.utils.orientation_maxima_first_derivatives import orientation_maxima_first_derivative
+from flow_analysis_comps.processing.Fourier.utils.find_regime_bifurcation import find_regime_bifurcation, get_response_at_order_vec_hat
 from flow_analysis_comps.processing.AOSFilter.OrientationSpaceFilter import (
     OrientationSpaceFilter,
 )
@@ -196,6 +197,47 @@ class orientationSpaceManager:
             tolerance= 0.1,
             freq =True,
         )
+                # Compute initial best derivatives and related arrays
+        best_derivs, _, maxima_highest_temp_refined = orientation_maxima_first_derivative(
+            self.response.response_stack_fft, self.filter_params.orientation_accuracy, maxima_highest_temporary
+        )
+        best_abs_derivs = np.abs(best_derivs)
+        best_K = np.full(best_derivs.shape, self.filter_params.orientation_accuracy)
+        best_maxima = np.copy(maxima_highest_temporary)
+        maxima_working = np.copy(maxima_highest_temporary)
+
+        # Loop over K values, decreasing from K_high to 1 with step K_sampling_delta
+        K_sampling_delta = getattr(self.filter_params, "K_sampling_delta", 1)
+        for K in np.arange(self.filter_params.orientation_accuracy, 0, -K_sampling_delta):
+            s = K > K_high
+            if not np.any(s):
+                continue
+            lower_a_hat = get_response_at_order_vec_hat(self.response.response_stack_fft[:, s], self.filter_params.orientation_accuracy, K)
+            new_derivs, _, maxima_working_slice = orientation_maxima_first_derivative(
+                lower_a_hat, K, maxima_working[:, s], period=None, refine=True
+            )
+            new_abs_derivs = np.abs(new_derivs)
+            better = new_abs_derivs < best_abs_derivs[:, s]
+
+            # Update bests where new is better
+            best_abs_derivs[:, s][better] = new_abs_derivs[better]
+            best_derivs[:, s][better] = new_derivs[better]
+            best_K[:, s][better] = K
+            best_maxima[:, s][better] = maxima_working_slice[better]
+            maxima_working[:, s] = maxima_working_slice
+                # Reconstruct maxima_highest array as in MATLAB code
+        maxima_highest_temporary = best_maxima / 2
+        
+        nanTemplate = np.zeros_like(maxima_highest_temporary, dtype=np.float32)
+        nanTemplate[:] = np.nan
+        maxima_highest = np.full(
+            (maxima_highest_temporary.shape[0],) + nanTemplate.shape, np.nan, dtype=np.float32
+        )
+        for i in range(maxima_highest_temporary.shape[0]):
+            maxima_highest[i][self.mask] = maxima_highest_temporary[i, :]
+        # If you want to match the MATLAB shiftdim(maxima_highest,1) at the end:
+        maxima_highest = np.moveaxis(maxima_highest, 0, -1)
+        
 
     def nlms_simple_case(self, order=5):
         updated_response, filter = self.update_response_at_order_FT(order)

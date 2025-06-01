@@ -204,7 +204,7 @@ def find_regime_bifurcation_hat(
     return K_high, K_low, extrema_high
 
 
-def get_response_at_order_vec_hat(response_fft: np.ndarray, K_original: np.ndarray, K_target: np.ndarray):
+def get_response_at_order_vec_hat(response_fft: np.ndarray, K_original: np.ndarray | float, K_target: np.ndarray):
     """
     Python translation of getResponseAtOrderVecHat from MATLAB.
     response_fft: (N, M) array (N: frequency, M: columns)
