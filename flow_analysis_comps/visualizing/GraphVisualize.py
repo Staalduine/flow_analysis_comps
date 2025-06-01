@@ -9,6 +9,7 @@ from flow_analysis_comps.processing.kymographing.kymo_utils import (
 from matplotlib import pyplot as plt
 import matplotlib.patheffects as path_effects
 import numpy as np
+import colorcet
 
 
 class GraphVisualizer:
@@ -43,6 +44,31 @@ class GraphVisualizer:
         for edge in self.segment_coords:
             if edge is not None:
                 self._plot_segments(edge, self.deltas.delta_x, ax1)
+        # Add 10 um scalebar
+        scalebar_length_um = 10 # Uses extent imshow
+        x_start = self.deltas.delta_x * self.image.shape[1] * 0.05
+        y_start = self.deltas.delta_x * self.image.shape[0] * 0.95
+        ax1.plot(
+            [x_start, x_start + scalebar_length_um],
+            [y_start, y_start],
+            color="white",
+            linewidth=3,
+            solid_capstyle="butt",
+        )
+        ax1.text(
+            x_start + scalebar_length_um / 2,
+            y_start - self.deltas.delta_x * self.image.shape[0] * 0.02,
+            r"$10 \mu m$",
+            color="white",
+            ha="center",
+            va="bottom",
+            fontsize=10,
+            path_effects=[
+                path_effects.Stroke(linewidth=2, foreground="black"),
+                path_effects.Normal(),
+            ],
+        )
+        ax1.set_axis_off()
         fig1.tight_layout()
         return fig1
         
@@ -54,7 +80,7 @@ class GraphVisualizer:
                 [point_1[1] * adjust_val, point_2[1] * adjust_val],
                 [point_1[0] * adjust_val, point_2[0] * adjust_val],
                 color="white",
-                alpha=0.1,
+                alpha=0.2,
             )
             ax.text(
                 *np.flip(

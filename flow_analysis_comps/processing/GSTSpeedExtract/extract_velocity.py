@@ -19,7 +19,6 @@ class kymoAnalyser:
         self,
         kymograph: kymoOutputs,
         gst_params: GSTConfig,
-        name: str = "Unnamed",
     ):
         self.kymograph = kymograph
         self.name = kymograph.name

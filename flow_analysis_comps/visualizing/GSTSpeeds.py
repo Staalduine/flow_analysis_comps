@@ -61,7 +61,7 @@ class GSTSpeedVizualizer:
 
         fig, ax = plt.subplot_mosaic(
             [["kymograph", "temporal histogram"], ["speed plot", "temporal histogram"]],
-            layout="constrained",
+            layout="constrained", dpi=300, figsize=(12, 8)
         )
 
         self._plot_kymograph(ax["kymograph"], fourier_images, kymo_extent)
