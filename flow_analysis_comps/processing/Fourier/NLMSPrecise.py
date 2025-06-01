@@ -12,7 +12,7 @@ def nlms_precise(
     mask=None,
     offset_angle=None,
     angle_multiplier=3,
-):
+)-> np.ndarray:
     """Perform nonlocal maximum suppression. Sample for each point along its strongest angle, then remove all points that are not a maximum.
 
     Args:
@@ -59,7 +59,9 @@ def nlms_precise(
     # Pad data with more periods
     if mask is None:
         if angle_multiplier != 1:
-            response = resample(response, period, axis=2)
+            new_response = resample(response, period, t=None, axis=2)
+            assert isinstance(new_response, np.ndarray)
+            response = new_response
     else:
         response = np.moveaxis(response, 2, 0)
         rotationResponseTemp = resample(response[:, mask], period, axis=0)
@@ -109,15 +111,15 @@ def nlms_precise(
     z_ = np.arange(response.shape[2])
 
     # Sample with X-, X and X+ coordinates.
-    if angle_multiplier != 1:
-        interpolator = RegularGridInterpolator(
-            (x_, y_, z_),
-            response,
-            method=interp_method,
-            fill_value=0,
-            bounds_error=False,
-        )
-        A = interpolator((x, y, angleIdx))
+    # if angle_multiplier != 1:
+    interpolator = RegularGridInterpolator(
+        (x_, y_, z_),
+        response,
+        method=interp_method,
+        fill_value=0,
+        bounds_error=False,
+    )
+    A = interpolator((x, y, angleIdx))
 
     # If response value is highest in the middle, then there is a local maximum
     nlms = A[:, :, 1]

@@ -1,35 +1,26 @@
-from typing import Optional
-from matplotlib import pyplot as plt
 import numpy as np
 from scipy import fftpack
-from flow_analysis_comps.Fourier.OrientationSpaceFilter import (
+from flow_analysis_comps.data_structs.AOS_structs import (
     OSFilterParams,
+)
+from flow_analysis_comps.processing.AOSFilter.OrientationSpaceFilter import (
     OrientationSpaceFilter,
 )
-from flow_analysis_comps.Fourier.OrientationSpaceResponse import (
+from flow_analysis_comps.processing.Fourier.OrientationSpaceResponse import (
     OrientationSpaceResponse,
     ThresholdMethods,
 )
 import numpy.typing as npt
 
-from flow_analysis_comps.Fourier.NLMSPrecise import nlms_precise
-from flow_analysis_comps.Fourier.findAllMaxima import interpft_extrema_fast
+from flow_analysis_comps.processing.Fourier.NLMSPrecise import nlms_precise
+from flow_analysis_comps.processing.Fourier.findAllMaxima import interpft_extrema_fast
 from flow_analysis_comps.util.coord_space_util import wraparoundN
-from copy import copy
 
 
 class orientationSpaceManager:
-    def __init__(
-        self,
-        freq_central: float,
-        freq_width: Optional[float] = None,
-        K: float = 5,
-        radialOrder=False,
-        x_spacing: Optional[float] = None,
-        y_spacing: Optional[float] = None,
-    ):
+    def __init__(self, params: OSFilterParams, image: np.ndarray, thresh_method = ThresholdMethods.OTSU):
         """
-        Creates instance of OSManager, which sets up filters, runs them, then plots the results.
+        Creates instance of OSManager, input with image to filter image. From there different functions can be called to retrieve
 
         Args:
             freq_central (float): Radial frequency corresponding to object size to search for.
@@ -40,20 +31,13 @@ class orientationSpaceManager:
         Returns:
             instance of object
         """
-        if radialOrder and freq_width is None:
-            freq_width = freq_central / np.sqrt(K)
-
-        params = OSFilterParams(
-            freq_central=freq_central,
-            freq_width=freq_width,
-            K=K,
-            x_spacing=x_spacing,
-            y_spacing=y_spacing,
-        )
-        self.filter: OrientationSpaceFilter = OrientationSpaceFilter(params)
-        self.filter_arrays: Optional[npt.NDArray[np.complex128]] = None
-        self.setup_imdims = None
-        self.response: Optional[OrientationSpaceResponse] = None
+        self.filter_params = params
+        self.image = image
+        self.os_filter: OrientationSpaceFilter = OrientationSpaceFilter(params)
+        self.filter_arrays, self.setup_imdims = self.init_filter_on_img(image)
+        self.response = self.get_response(image)
+        self.thresh_method = thresh_method
+        self.mask = self.response.nlms_mask(thresh_method=thresh_method)
 
     def init_filter_on_img(self, img: np.ndarray):
         """Create filters for the specific image size
@@ -62,8 +46,9 @@ class orientationSpaceManager:
             img (np.ndarray): Input image, only its shape is used
         """
         img_shape = img.shape
-        self.filter_arrays = self.filter.setup_filter(img_shape)
-        self.setup_imdims = img_shape
+        filter_arrays = self.os_filter.calculate_numerical_filter(img_shape)
+        filter_shape = img_shape
+        return filter_arrays, filter_shape
 
     def get_response(self, img: np.ndarray):
         """Applies filter onto input image, first uses image shape to create filter arrays
@@ -74,23 +59,16 @@ class orientationSpaceManager:
         Returns:
             self: returns itself, but also creates a response object containing result
         """
-
-        # Initiate filters based on image size. Scaling is just done on pixel level.
-        if self.setup_imdims != img.shape:
-            print(f"Initiating filters on new image with dims {img.shape}")
-            self.init_filter_on_img(img)
-
         # Fourier transform image
-        If = fftpack.fftn(img)
+        image_fft = fftpack.fftn(img)
 
         # Apply filters
-        ridge_resp = self.apply_ridge_filter(If)
-        edge_resp = self.apply_edge_filter(If)
+        ridge_resp = self.apply_ridge_filter(image_fft)
+        edge_resp = self.apply_edge_filter(image_fft)
         ang_resp = ridge_resp + edge_resp
 
         # Create response object capable of further processing results
-        self.response = OrientationSpaceResponse(ang_resp)
-        return self
+        return OrientationSpaceResponse(ang_resp)
 
     def apply_ridge_filter(self, If: npt.NDArray[np.complex128]):
         ridge_response = fftpack.ifftn(
@@ -122,46 +100,46 @@ class orientationSpaceManager:
             tuple[OrientationSpaceResponse, OrientationSpaceFilter]: Updated response object instance, as well as a different filter for debug purposes.
         """
         # If same, just return
-        if K_new == self.filter.params.K:
-            return self.response, self.filter
+        if K_new == self.os_filter.params.orientation_accuracy:
+            return self.response, self.os_filter
         else:
             n_new = 1 + 2 * K_new
-            n_old = 1 + 2 * self.filter.params.K
+            n_old = 1 + 2 * self.os_filter.params.orientation_accuracy
             s_inv = np.sqrt(n_old**2 * n_new**2 / (n_old**2 - n_new**2))
             s_hat = s_inv / (2 * np.pi)
 
             if normalize == 2:
-                x = np.arange(1, self.response.n + 1) - np.floor(
-                    self.response.n / 2 + 1
+                x = np.arange(1, self.response.number_of_angles + 1) - np.floor(
+                    self.response.number_of_angles / 2 + 1
                 )
             else:
-                lower = -self.filter.params.sample_factor * np.ceil(K_new)
-                upper = np.ceil(K_new) * self.filter.params.sample_factor
+                lower = -self.os_filter.params.sampling_factor * np.ceil(K_new)
+                upper = np.ceil(K_new) * self.os_filter.params.sampling_factor
                 x = np.arange(lower, upper + 1)
 
             if s_hat != 0:
                 f_hat = np.exp(-0.5 * (x / s_hat) ** 2)
                 f_hat = fftpack.ifftshift(f_hat)
             else:
-                f_hat = 1
+                f_hat = np.array([1])
 
             f_hat = np.broadcast_to(f_hat, (1, 1, f_hat.shape[0]))
-            a_hat: np.ndarray = fftpack.fft(self.response.response_array.real, axis=2)
+            # a_hat: np.ndarray = fftpack.fft(self.response.response_stack.real, axis=2)
 
-            a_hat = a_hat * f_hat
+            a_hat = self.response.response_stack_fft * f_hat
 
             filter_new = OrientationSpaceFilter(
                 OSFilterParams(
-                    freq_central=self.filter.params.freq_central,
-                    freq_width=self.filter.params.freq_width,
-                    K=K_new,
+                    space_frequency_center=self.os_filter.params.space_frequency_center,
+                    space_frequency_width=self.os_filter.params.space_frequency_width,
+                    orientation_accuracy=K_new,
                 )
             )
 
             if normalize == 1:
                 Response = OrientationSpaceResponse(
                     fftpack.ifft(
-                        a_hat * a_hat.shape[2] / self.response.response_array.shape[2],
+                        a_hat * a_hat.shape[2] / self.response.response_stack.shape[2],
                         axis=2,
                     ),
                 )
@@ -169,13 +147,13 @@ class orientationSpaceManager:
                 Response = OrientationSpaceResponse(fftpack.ifft(a_hat, axis=2))
             return Response, filter_new
 
-    def get_max_angles(self, thresh_method: Optional[ThresholdMethods] = None):
+    def get_max_angles(self):
         # mask out the non-nlms elements
-        nlsm_mask = self.response.nlms_mask(thresh_method=thresh_method)
+        nlsm_mask = self.mask
 
         nanTemplate = np.zeros_like(nlsm_mask, dtype=np.float32)
         nanTemplate[:] = np.nan
-        a_hat = np.rollaxis(self.response.a_hat, 2, 0)
+        a_hat = np.rollaxis(self.response.response_stack_fft, 2, 0)
         a_hat = a_hat[:, nlsm_mask]
 
         maximum_single_angle = nanTemplate
@@ -183,110 +161,18 @@ class orientationSpaceManager:
             -np.angle(a_hat[1, :]) / 2, 0, np.pi
         )
         return maximum_single_angle
-    
+
     def get_all_angles(self):
-        a_hat = np.rollaxis(self.response.a_hat, 2, 0)
-        print(a_hat.shape)
+        a_hat = np.rollaxis(self.response.response_stack_fft, 2, 0)
         response = interpft_extrema_fast(a_hat, dim=0)
-        print(response)
         return response
 
-    def nlms_simple_case(self, order=5, thresh_method=Optional[ThresholdMethods]):
+    def nlms_simple_case(self, order=5):
         updated_response, filter = self.update_response_at_order_FT(order)
-        maximum_single_angle = self.get_max_angles(thresh_method=thresh_method)
+        maximum_single_angle = self.get_max_angles()
         nlms_single = nlms_precise(
-            updated_response.response_array.real,
+            updated_response.response_stack.real,
             maximum_single_angle,
-            mask=self.response.nlms_mask(thresh_method=thresh_method),
+            mask=self.mask,
         )
         return nlms_single
-
-    ## Plotting functions
-    def demo_image(
-        self,
-        img,
-        pixel_size_space,
-        pixel_size_time,
-        order=5,
-        thresh_method: Optional[ThresholdMethods] = None,
-        invert=False,
-        histo_thresh=0.5,
-        speed_extent=10,
-        inner_pad=5,
-    ):
-        fig, ax = plt.subplot_mosaic(
-            [
-                # ["img", "img"],
-                ["nlms", "nlms"],
-                # ["overlay", "overlay"],
-                ["total_histo", "temporal_histo"],
-            ],
-            # width_ratios=[8, 2],
-            figsize=(8, 6),
-            dpi=200,
-            layout="constrained",
-        )
-        kymo_extent = (
-            pixel_size_space,
-            pixel_size_space * img.shape[1],
-            pixel_size_time * (img.shape[0] - inner_pad),
-            inner_pad * pixel_size_time,
-        )
-
-        if invert:
-            img = img.max() - img
-
-        self.get_response(img)
-        simple_angles = self.get_max_angles(thresh_method=thresh_method)
-        simple_speeds = (
-            np.tan(simple_angles) / pixel_size_time * pixel_size_space
-        )  # um.s-1
-        nlms_candidates = self.nlms_simple_case(order, thresh_method=thresh_method)
-        nlms_candidates = np.where(np.isnan(nlms_candidates), 0, nlms_candidates)
-
-        if inner_pad > 0:
-            nlms_candidates = nlms_candidates[inner_pad:-inner_pad]
-            simple_speeds = simple_speeds[inner_pad:-inner_pad]
-
-        palette = copy(plt.get_cmap("cet_CET_L16"))
-        palette.set_under("white", 1.0)
-
-        ax["nlms"].imshow(
-            nlms_candidates,
-            cmap=palette,
-            vmin=histo_thresh,
-            vmax=nlms_candidates.max(),
-            extent=kymo_extent,
-        )
-
-        ax["nlms"].set_ylabel("time (s)")
-        ax["nlms"].set_xlabel(r"Curvilinear position ($\mu m$)")
-
-        time_histo = []
-        for speed_row, mask_row in zip(simple_speeds, nlms_candidates):
-            speed_row = np.where(mask_row > histo_thresh, speed_row, np.nan)
-            histo_moment = np.histogram(speed_row, 500, (-speed_extent, speed_extent))[
-                0
-            ]
-            time_histo.append(histo_moment)
-        time_histo = np.array(time_histo)
-
-        ax["total_histo"].hist(
-            simple_speeds[nlms_candidates > histo_thresh],
-            bins=150,
-            range=(-speed_extent, speed_extent),
-        )
-        ax["total_histo"].set_ylabel("frequency")
-        ax["total_histo"].set_xlabel(r"velocity ($\mu m / s$)")
-        ax["total_histo"].axvline(0, c="black", alpha=0.4)
-        ax["temporal_histo"].imshow(
-            time_histo.T,
-            cmap="cet_CET_L8",
-            extent=(0, len(time_histo) * pixel_size_time, -speed_extent, speed_extent),
-        )
-        ax["temporal_histo"].set_ylabel(r"velocity ($\mu m / s$)")
-        ax["temporal_histo"].set_xlabel("time (s)")
-        for ax_title in ax:
-            ax[ax_title].set_aspect("auto")
-
-        return fig, ax, time_histo

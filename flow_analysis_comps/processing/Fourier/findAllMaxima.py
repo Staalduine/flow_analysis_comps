@@ -3,7 +3,7 @@ from numpy.fft import fft, fftshift
 from numpy.polynomial import Polynomial
 from joblib import Parallel, delayed
 from tqdm import tqdm
-from flow_analysis_comps.Fourier.utils.Interpolation import interpolate_fourier_series
+from flow_analysis_comps.processing.Fourier.utils.Interpolation import interpolate_fourier_series
 
 
 def roots_batch(coeffs_batch):
@@ -11,7 +11,8 @@ def roots_batch(coeffs_batch):
     for coeffs in coeffs_batch:
         try:
             roots = np.roots(coeffs[::-1])  # MATLAB-style coeff order
-        except:
+        except Exception as e:
+            print(e)
             roots = np.array([np.nan])
         roots_out.append(roots)
     return roots_out
@@ -44,6 +45,7 @@ def interpft_extrema_fast(
 
     # Adjust filter response for even/odd response depth
     if response_depth % 2 == 0:
+        filter_response_fft = filter_response_fft.copy()  # Create a copy to avoid modifying the input array
         filter_response_fft[nyquist - 1] /= 2
         filter_response_fft = np.insert(filter_response_fft, nyquist, filter_response_fft[nyquist - 1], axis=0)
 
@@ -61,25 +63,29 @@ def interpft_extrema_fast(
 
     # Compute coefficients for polynomial roots
     coefficients = [response_fft_deriv1_flat[:, i] for i in range(response_fft_deriv1_flat.shape[1])]
-    roots_out = Parallel(n_jobs=n_jobs)(
+    roots_out = list(Parallel(n_jobs=n_jobs)(
         delayed(np.roots)(coefficient[::-1]) for coefficient in tqdm(coefficients, desc="Finding roots", total=len(coefficients))
-    )
+    ))
 
     # Find maximum number of roots, allocate space for output
-    max_root_count = max(len(r) for r in roots_out)
-    roots_array = np.full((max_root_count, len(roots_out)), np.nan, dtype=complex)
+    safe_roots_out = [r if r is not None else [] for r in roots_out]
+    max_root_count = max(len(r) for r in safe_roots_out)
+    roots_array = np.full((max_root_count, len(safe_roots_out)), np.nan, dtype=complex)
 
     # Fill roots array with roots
     for i, ri in enumerate(roots_out):
+        if ri is None:
+            ri = []
         roots_array[: len(ri), i] = ri
 
     # Reshape roots array to match filter response shape
     roots_array = roots_array.reshape((max_root_count,) + filter_response.shape[1:])
 
     # Compute magnitude and real map
-    magnitude = np.abs(np.log(np.abs(roots_array)))
+    epsilon = 1e-12  # Small value to avoid log(0)
+    magnitude = np.abs(np.log(np.abs(roots_array) + epsilon))
     real_map = magnitude <= abs(TOL)
-
+    # If TOL is negative, ensure that at least one root is considered real by relaxing the tolerance.
     if TOL < 0:
         no_real = ~np.any(real_map, axis=0)
         for i in np.where(no_real.flatten())[0]:

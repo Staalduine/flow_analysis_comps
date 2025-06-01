@@ -5,7 +5,7 @@ from scipy import fftpack
 class freqSpaceCoords:
     def __init__(
         self,
-        dim_shape: tuple[int, int] | tuple[int, int, int],
+        dim_shape: tuple[int, ...],
         deltas: tuple[float, float, float] = (1.0, 1.0, 1.0),
         x_spacing=1.0,
         y_spacing=1.0,

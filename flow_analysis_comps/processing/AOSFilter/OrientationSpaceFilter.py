@@ -20,7 +20,7 @@ class OrientationSpaceFilter:
         )
 
     def calculate_numerical_filter(
-        self, imshape: tuple[int, int] | tuple[int, int, int]
+        self, imshape: tuple[int, ...]
     ):
         # Assembles the big filter stack, can be a lot of memory for large images.
         coords = freqSpaceCoords(
