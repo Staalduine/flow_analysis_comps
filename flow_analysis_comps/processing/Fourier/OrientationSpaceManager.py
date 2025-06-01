@@ -237,6 +237,7 @@ class orientationSpaceManager:
             maxima_highest[i][self.mask] = maxima_highest_temporary[i, :]
         # If you want to match the MATLAB shiftdim(maxima_highest,1) at the end:
         maxima_highest = np.moveaxis(maxima_highest, 0, -1)
+        return maxima_highest
         
 
     def nlms_simple_case(self, order=5):

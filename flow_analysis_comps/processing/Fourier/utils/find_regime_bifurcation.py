@@ -100,13 +100,12 @@ def find_regime_bifurcation(
             break
         elif debug:
             print("length(K_high_working):", len(K_high_working))
-
-    # Optionally return additional outputs if needed
-    # if nargout > 3 in MATLAB, in Python just always compute and return
-    # You must implement get_response_at_order_vec_hat and interpft_extrema
-    response_low_hat = get_response_at_order_vec_hat(response_fft, K_response, K_low)
-    maxima_low, minima_low = interpft_extrema_fast(response_low_hat, 1, False)
-    extrema_low = np.sort(np.concatenate([maxima_low, minima_low], axis=0), axis=0)
+    
+    # Reactivate these lines to get the extrema_low again
+    
+    # response_low_hat = get_response_at_order_vec_hat(response_fft, K_response, K_low)
+    # maxima_low, minima_low = interpft_extrema_fast(response_low_hat, 1, False)
+    # extrema_low = np.sort(np.concatenate([maxima_low, minima_low], axis=0), axis=0)
 
     return K_high, K_low
 
