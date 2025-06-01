@@ -167,10 +167,35 @@ class orientationSpaceManager:
         )
         return maximum_single_angle
 
-    def get_all_angles(self):
+    def get_all_angles(self) -> dict:
         a_hat = np.rollaxis(self.response.response_stack_fft, 2, 0)
         interpolated_extrema_dict = interpft_extrema_fast(a_hat, dim=0)
         return interpolated_extrema_dict
+
+    def refine_all_angles(self, lowest_response_order: float):
+        all_angles_dict = self.get_all_angles()
+        maxima_highest_temporary, minima_highest_temporary = (
+            all_angles_dict["angles_maxima"],
+            all_angles_dict["angles_minima"],
+        )
+        n_maxima_highest_temp = maxima_highest_temporary.shape[0] - np.sum(
+            np.isnan(maxima_highest_temporary)
+        )
+        K_high = self.filter_params.orientation_accuracy
+        K_low = max(
+            n_maxima_highest_temp - 1, lowest_response_order
+        )  # responseOrder should be defined or passed in
+        K_high, K_low = find_regime_bifurcation(
+            self.response.response_stack_fft,
+            self.filter_params.orientation_accuracy,
+            K_high,
+            K_low,
+            maxima_highest_temporary,
+            minima_highest_temporary,
+            None,
+            0.1,
+            True,
+        )
 
     def nlms_simple_case(self, order=5):
         updated_response, filter = self.update_response_at_order_FT(order)

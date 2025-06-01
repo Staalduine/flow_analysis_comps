@@ -20,7 +20,7 @@ def roots_batch(coeffs_batch):
 
 def interpft_extrema_fast(
     filter_response, dim=1, sorted_output=False, TOL=1e-10, do_fft=False, n_jobs=-1
-):
+) -> dict:
     # Ensure filter_response is a numpy array
     filter_response = np.asarray(filter_response)
 
