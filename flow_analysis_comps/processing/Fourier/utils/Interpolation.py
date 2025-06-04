@@ -4,8 +4,8 @@ import scipy.fftpack as fftpack
 
 def interpolate_fourier_series(input_positions, input_values, output_positions=None, method="horner", fine_grid_factor=None, legacy=False):
     # Ensure input values are numpy arrays
-    input_values: np.ndarray = np.asarray(input_values)
-    output_positions: np.ndarray = np.asarray(output_positions)
+    input_values = np.asarray(input_values)
+    output_positions = np.asarray(output_positions)
 
     # Check if input values are 1D and reshape if necessary
     if input_values.ndim == 1 and input_values.shape[0] == 1:

@@ -20,7 +20,7 @@ def roots_batch(coeffs_batch):
 
 def interpft_extrema_fast(
     filter_response, dim=1, sorted_output=False, TOL=1e-10, do_fft=False, n_jobs=-1
-):
+) -> dict:
     # Ensure filter_response is a numpy array
     filter_response = np.asarray(filter_response)
 
@@ -35,6 +35,7 @@ def interpft_extrema_fast(
     # Check if response depth is valid
     if response_depth == 1:
         empty = np.zeros_like(filter_response)
+        raise ValueError
         return tuple(np.moveaxis(arr, 0, dim) for arr in (empty, empty, empty, filter_response, filter_response, filter_response))
 
     # Ensure response is in frequency domain
