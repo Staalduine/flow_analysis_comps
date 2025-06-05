@@ -3,8 +3,13 @@ from scipy import fftpack
 from flow_analysis_comps.data_structs.AOS_structs import (
     OSFilterParams,
 )
-from flow_analysis_comps.processing.Fourier.utils.orientation_maxima_first_derivatives import orientation_maxima_first_derivative
-from flow_analysis_comps.processing.Fourier.utils.find_regime_bifurcation import find_regime_bifurcation, get_response_at_order_vec_hat
+from flow_analysis_comps.processing.Fourier.utils.orientation_maxima_first_derivatives import (
+    orientation_maxima_first_derivative,
+)
+from flow_analysis_comps.processing.Fourier.utils.find_regime_bifurcation import (
+    find_regime_bifurcation,
+    get_response_at_order_vec_hat,
+)
 from flow_analysis_comps.processing.AOSFilter.OrientationSpaceFilter import (
     OrientationSpaceFilter,
 )
@@ -170,23 +175,29 @@ class orientationSpaceManager:
         return maximum_single_angle
 
     def get_all_angles(self) -> dict:
-        a_hat = np.rollaxis(self.response.response_stack_fft, 2, 0)
+        a_hat = self.response.response_stack_fft
         interpolated_extrema_dict = interpft_extrema_fast(a_hat, dim=0)
         return interpolated_extrema_dict
 
-    def refine_all_angles(self, lowest_response_order: float):
-        all_angles_dict = self.get_all_angles()
+    def refine_all_angles(self, lowest_response_order: float, all_angles_dict=None):
+        if all_angles_dict is None:
+            all_angles_dict = self.get_all_angles()
         maxima_highest_temporary, minima_highest_temporary = (
             all_angles_dict["angles_maxima"],
             all_angles_dict["angles_minima"],
         )
         n_maxima_highest_temp = maxima_highest_temporary.shape[0] - np.sum(
-            np.isnan(maxima_highest_temporary)
+            np.isnan(maxima_highest_temporary), axis=0
         )
         K_high = self.filter_params.orientation_accuracy
-        K_low = max(
-            n_maxima_highest_temp - 1, lowest_response_order
-        )  # responseOrder should be defined or passed in
+        # K_low = max(
+        #     n_maxima_highest_temp - 1, lowest_response_order
+        # )  # responseOrder should be defined or passed in
+        K_low = np.where(
+            n_maxima_highest_temp - 1 > lowest_response_order,
+            n_maxima_highest_temp - 1,
+            lowest_response_order,
+        )
         K_high, K_low = find_regime_bifurcation(
             self.response.response_stack_fft,
             self.filter_params.orientation_accuracy,
@@ -194,12 +205,16 @@ class orientationSpaceManager:
             K_low,
             maxima_highest_temporary,
             minima_highest_temporary,
-            tolerance= 0.1,
-            freq =True,
+            tolerance=0.1,
+            freq=True,
         )
-                # Compute initial best derivatives and related arrays
-        best_derivs, _, maxima_highest_temp_refined = orientation_maxima_first_derivative(
-            self.response.response_stack_fft, self.filter_params.orientation_accuracy, maxima_highest_temporary
+        # Compute initial best derivatives and related arrays
+        best_derivs, _, maxima_highest_temp_refined = (
+            orientation_maxima_first_derivative(
+                self.response.response_stack_fft,
+                self.filter_params.orientation_accuracy,
+                maxima_highest_temporary,
+            )
         )
         best_abs_derivs = np.abs(best_derivs)
         best_K = np.full(best_derivs.shape, self.filter_params.orientation_accuracy)
@@ -208,11 +223,17 @@ class orientationSpaceManager:
 
         # Loop over K values, decreasing from K_high to 1 with step K_sampling_delta
         K_sampling_delta = getattr(self.filter_params, "K_sampling_delta", 1)
-        for K in np.arange(self.filter_params.orientation_accuracy, 0, -K_sampling_delta):
+        for K in np.arange(
+            self.filter_params.orientation_accuracy, 0, -K_sampling_delta
+        ):
             s = K > K_high
             if not np.any(s):
                 continue
-            lower_a_hat = get_response_at_order_vec_hat(self.response.response_stack_fft[:, s], self.filter_params.orientation_accuracy, K)
+            lower_a_hat = get_response_at_order_vec_hat(
+                self.response.response_stack_fft[:, s],
+                self.filter_params.orientation_accuracy,
+                K,
+            )
             new_derivs, _, maxima_working_slice = orientation_maxima_first_derivative(
                 lower_a_hat, K, maxima_working[:, s], period=None, refine=True
             )
@@ -225,20 +246,21 @@ class orientationSpaceManager:
             best_K[:, s][better] = K
             best_maxima[:, s][better] = maxima_working_slice[better]
             maxima_working[:, s] = maxima_working_slice
-                # Reconstruct maxima_highest array as in MATLAB code
+            # Reconstruct maxima_highest array as in MATLAB code
         maxima_highest_temporary = best_maxima / 2
-        
+
         nanTemplate = np.zeros_like(maxima_highest_temporary, dtype=np.float32)
         nanTemplate[:] = np.nan
         maxima_highest = np.full(
-            (maxima_highest_temporary.shape[0],) + nanTemplate.shape, np.nan, dtype=np.float32
+            (maxima_highest_temporary.shape[0],) + nanTemplate.shape,
+            np.nan,
+            dtype=np.float32,
         )
         for i in range(maxima_highest_temporary.shape[0]):
             maxima_highest[i][self.mask] = maxima_highest_temporary[i, :]
         # If you want to match the MATLAB shiftdim(maxima_highest,1) at the end:
         maxima_highest = np.moveaxis(maxima_highest, 0, -1)
         return maxima_highest
-        
 
     def nlms_simple_case(self, order=5):
         updated_response, filter = self.update_response_at_order_FT(order)

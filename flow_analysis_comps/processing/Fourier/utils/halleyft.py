@@ -8,8 +8,8 @@ from flow_analysis_comps.processing.Fourier.utils.Interpolation import (
 
 
 def halleyft(
-    fourier_coeffs: np.ndarray,
-    initial_guesses: np.ndarray,
+    fourier_coeffs: np.ndarray, # [K, M]
+    initial_guesses: np.ndarray, # [N, M]
     is_frequency_domain: bool = False,
     derivative_order: int = 0,
     tolerance: float = 1e-12,

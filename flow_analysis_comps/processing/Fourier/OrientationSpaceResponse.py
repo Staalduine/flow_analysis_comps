@@ -31,6 +31,8 @@ class OrientationSpaceResponse:
         """
         self.response_stack = response_array
         self.response_stack_fft: np.ndarray = fftpack.fft(self.response_stack.real, axis=2)
+        # Bring the response stack fft in line with this stuff (last axis to first axis)
+        self.response_stack_fft = np.moveaxis(self.response_stack_fft, -1, 0)
         self.number_of_angles = self.response_stack.shape[-1]
         self.range_of_angles = np.arange(self.response_stack.shape[-1]) / self.response_stack.shape[-1] * np.pi
 

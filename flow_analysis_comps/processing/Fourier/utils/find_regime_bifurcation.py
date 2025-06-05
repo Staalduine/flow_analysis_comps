@@ -7,7 +7,7 @@ def find_regime_bifurcation(
     response_fft: np.ndarray,
     K_response,
     K_high,
-    K_low=None,
+    K_low,
     maxima=[],
     minima=[],
     maxIterations=10,
@@ -15,11 +15,19 @@ def find_regime_bifurcation(
     freq=False,
     debug=False,
 ) -> tuple[np.ndarray, np.ndarray]:
-    if np.isscalar(K_response):
-        K_response = np.full((response_fft.shape[1],), K_response)
+    def broadcast_K(K):
+        if np.isscalar(K):
+            K = np.full_like(response_fft[0], K, dtype=np.float32)
+        return K
 
-    if K_low is None or len(np.atleast_1d(K_low)) == 0:
-        K_low = np.ones(response_fft.shape[1])
+    K_response = broadcast_K(K_response)
+    K_low = broadcast_K(K_low)
+    K_high = broadcast_K(K_high)
+    # if np.isscalar(K_response):
+    #     K_response = np.full((response_fft.shape[1],), K_response)
+
+    # if K_low is None or len(np.atleast_1d(K_low)) == 0:
+    #     K_low = np.ones(response_fft.shape[1])
 
     useMinima = (
         False
@@ -27,14 +35,14 @@ def find_regime_bifurcation(
         else True
     )
 
-    if np.isscalar(K_high):
-        K_high = np.full((response_fft.shape[1],), K_high)
-    else:
-        K_high = np.atleast_1d(K_high)
+    # if np.isscalar(K_high):
+    #     K_high = np.full((response_fft.shape[1],), K_high)
+    # else:
+    #     K_high = np.atleast_1d(K_high)
     # Make K_low match 2nd dimension of response
-    K_low = np.atleast_1d(K_low)
-    if K_low.shape[0] == 1:
-        K_low = np.full((response_fft.shape[1],), K_low[0])
+    # K_low = np.atleast_1d(K_low)
+    # if K_low.shape[0] == 1:
+    #     K_low = np.full((response_fft.shape[1],), K_low[0])
 
     if useMinima:
         extrema_working = np.sort(np.concatenate([maxima, minima], axis=0), axis=0)
@@ -100,9 +108,9 @@ def find_regime_bifurcation(
             break
         elif debug:
             print("length(K_high_working):", len(K_high_working))
-    
+
     # Reactivate these lines to get the extrema_low again
-    
+
     # response_low_hat = get_response_at_order_vec_hat(response_fft, K_response, K_low)
     # maxima_low, minima_low = interpft_extrema_fast(response_low_hat, 1, False)
     # extrema_low = np.sort(np.concatenate([maxima_low, minima_low], axis=0), axis=0)
@@ -126,7 +134,14 @@ def find_regime_bifurcation_hat(
 
     # You must implement halleyft in Python
     extrema_midpoint, xdg = halleyft(
-        response_midpoint_hat, extrema, True, 1, 1e-12, 10, True, 1e-4
+        fourier_coeffs=response_midpoint_hat,
+        initial_guesses=extrema,
+        is_frequency_domain=True,
+        derivative_order=1,
+        tolerance=1e-12,
+        max_iterations=10,
+        avoid_nan=True,
+        unique_zeros=1e-4,
     )
     # [maxima_midpoint, xdg] = halleyft_parallel_by_guess(...) # not used here
 
@@ -203,7 +218,9 @@ def find_regime_bifurcation_hat(
     return K_high, K_low, extrema_high
 
 
-def get_response_at_order_vec_hat(response_fft: np.ndarray, K_original: np.ndarray | float, K_target: np.ndarray):
+def get_response_at_order_vec_hat(
+    response_fft: np.ndarray, K_original: np.ndarray | float, K_target: np.ndarray
+):
     """
     Python translation of getResponseAtOrderVecHat from MATLAB.
     response_fft: (N, M) array (N: frequency, M: columns)
@@ -211,13 +228,16 @@ def get_response_at_order_vec_hat(response_fft: np.ndarray, K_original: np.ndarr
     K_target: scalar or array of length M
     Returns: response_at_order (N, len(K_target)) array
     """
-    import numpy as np
 
-    if K_target is None or (isinstance(K_target, (list, np.ndarray)) and len(np.atleast_1d(K_target)) == 0):
+    if K_target is None or (
+        isinstance(K_target, (list, np.ndarray)) and len(np.atleast_1d(K_target)) == 0
+    ):
         return np.full((response_fft.shape[0], np.size(K_target)), np.nan)
 
     half_length = int(np.floor(response_fft.shape[0] / 2))
-    freq_indices = np.concatenate([np.arange(0, half_length + 1), np.arange(-half_length, 0)])
+    freq_indices = np.concatenate(
+        [np.arange(0, half_length + 1), np.arange(-half_length, 0)]
+    )
 
     K_original = np.atleast_1d(K_original)
     K_target = np.atleast_1d(K_target)
@@ -225,11 +245,15 @@ def get_response_at_order_vec_hat(response_fft: np.ndarray, K_original: np.ndarr
     n_target = 2 * K_target + 1
 
     # Calculate scaling factors for the Gaussian filter
-    scaling_factor_inv = np.sqrt(n_original ** 2 * n_target ** 2 / (n_original ** 2 - n_target ** 2))
+    scaling_factor_inv = np.sqrt(
+        n_original**2 * n_target**2 / (n_original**2 - n_target**2)
+    )
     scaling_factor_hat = scaling_factor_inv / (2 * np.pi)
 
     # Gaussian filter in frequency domain, shape: (len(freq_indices), len(K_target))
-    gaussian_filter = np.exp(-0.5 * (freq_indices[:, None] / scaling_factor_hat[None, :]) ** 2)
+    gaussian_filter = np.exp(
+        -0.5 * (freq_indices[:, None] / scaling_factor_hat[None, :]) ** 2
+    )
 
     # Ensure response_fft has the correct number of columns
     if response_fft.shape[1] != len(K_target):
