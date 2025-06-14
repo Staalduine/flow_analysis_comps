@@ -79,13 +79,26 @@ def halleyft(
         refined_derivatives = refined_derivatives.reshape(guess_shape + (3,))
         return refined_zeros, refined_derivatives
 
-    num_coeffs = int(np.floor(fourier_coeffs.shape[0] / 2))
-    freq_multipliers = np.fft.ifftshift(np.arange(-num_coeffs, num_coeffs + 1)) * 1j
+    K_range = int(np.floor(fourier_coeffs.shape[0] / 2))
+    freq_multipliers = np.fft.ifftshift(np.arange(-K_range, K_range + 1)) * 1j
+    
+    
     freq_multipliers_stack = np.stack(
         [freq_multipliers**d for d in derivative_indices], axis=-1
     )
+    # broadcast such that freq_multipliers_stack has shape (N, M, 3)
+    freq_multipliers_stack = np.broadcast_to(
+        freq_multipliers_stack[:, None, :],
+        (fourier_coeffs_freq.shape[0], fourier_coeffs_freq.shape[1], 3)
+    )
+    # broadcast fourier_coeffs_freq to (N, M, 3)
+    fourier_coeffs_freq = np.broadcast_to(
+        fourier_coeffs_freq[:, :, None],
+        (fourier_coeffs_freq.shape[0], fourier_coeffs_freq.shape[1], 3),
+    )
+
     fourier_coeffs_derivs = (
-        fourier_coeffs_freq[..., None] * freq_multipliers_stack
+        fourier_coeffs_freq * freq_multipliers_stack
     )  # shape: (N, M, 3)
 
     guess_shape = initial_guesses.shape
