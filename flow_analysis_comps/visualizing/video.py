@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 import imageio
 from flow_analysis_comps.io.video import videoIO
@@ -30,6 +31,11 @@ class VideoVisualizer:
             self.metadata.position.x, self.metadata.position.y, precision=3
         )
 
+        timestamp_str = self.metadata.date_time
+        timestamp_obj = datetime.fromisoformat(timestamp_str)
+        timeformat = "%Y%m%d_%H%M%S"
+        formatted_timestamp = timestamp_obj.strftime(timeformat)
+
         if separate_into_positions:
             output_path = Path(self.metadata.storage_path) / "video" / folder_name
             output_path.mkdir(parents=True, exist_ok=True)
@@ -37,7 +43,7 @@ class VideoVisualizer:
             output_path = Path(self.metadata.storage_path)
 
         writer = imageio.get_writer(
-            output_path / "Video.mp4",
+            output_path / f"{formatted_timestamp}_Video.mp4",
             fps=int(self.metadata.camera_settings.frame_rate),
             codec="libx264",
         )
