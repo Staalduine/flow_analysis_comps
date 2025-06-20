@@ -57,7 +57,7 @@ class videoIO:
             json_data.seek(0)
             video_json = json.load(json_data)
             if "metadata" in video_json:
-                date_time = datetime.fromisoformat(video_json["metadata"]["timestamp"])
+                date_time = datetime.fromisoformat(video_json["timestamp"])
                 video_json = video_json["metadata"]
             else:
                 date_time = None
