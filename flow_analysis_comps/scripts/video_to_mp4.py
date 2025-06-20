@@ -18,10 +18,10 @@ def process(run_info_index, process_args=None):
     if "total_path" not in row:
         raise KeyError("The key 'total_path' is missing in the provided run_info_index dictionary.")
     path = row["total_path"]
-    rename_json_to_video_metadata(path)
 
     vizi = VideoVisualizer(path)
     vizi.save_mp4_video(separate_into_positions)
+    rename_json_to_video_metadata(path)
     return
 
 
