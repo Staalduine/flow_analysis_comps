@@ -57,7 +57,10 @@ class videoIO:
             json_data.seek(0)
             video_json = json.load(json_data)
             if "metadata" in video_json:
+                date_time = datetime.fromisoformat(video_json["metadata"]["date_time"])
                 video_json = video_json["metadata"]
+            else:
+                date_time = None
 
         if video_json["camera"]["intensity"][0] == 0:
             image_mode = "fluorescence"
@@ -92,6 +95,7 @@ class videoIO:
             position=position,
             camera_settings=camera_settings,
             storage_path=self.root_folder,
+            date_time=date_time,
         )
 
         return info_obj
