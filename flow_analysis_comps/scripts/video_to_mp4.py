@@ -21,7 +21,7 @@ def process(run_info_index, process_args=None):
 
     vizi = VideoVisualizer(path)
     vizi.save_mp4_video(separate_into_positions)
-    rename_json_to_video_metadata(path)
+    # rename_json_to_video_metadata(path)
     return
 
 
