@@ -23,6 +23,9 @@ from flow_analysis_comps.data_structs.plate_info import (
 class videoIO:
     def __init__(self, root_folder):
         self.root_folder = Path(root_folder)
+        if not self.root_folder.exists():
+            raise FileNotFoundError(f"Folder {self.root_folder} does not exist")
+
         self.metadata_file_path = self._find_metadata()
         self.metadata: videoInfo = self._read_video_metadata()
         self.video_array: da.Array = self._load_tif_series_to_dask()

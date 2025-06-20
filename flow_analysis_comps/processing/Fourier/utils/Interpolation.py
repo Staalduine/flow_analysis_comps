@@ -4,8 +4,8 @@ import scipy.fftpack as fftpack
 
 def interpolate_fourier_series(input_positions, input_values, output_positions=None, method="horner", fine_grid_factor=None, legacy=False):
     # Ensure input values are numpy arrays
-    input_values: np.ndarray = np.asarray(input_values)
-    output_positions: np.ndarray = np.asarray(output_positions)
+    input_values = np.asarray(input_values)
+    output_positions = np.asarray(output_positions)
 
     # Check if input values are 1D and reshape if necessary
     if input_values.ndim == 1 and input_values.shape[0] == 1:
@@ -38,10 +38,10 @@ def interpolate_fourier_series(input_positions, input_values, output_positions=N
         case "horner_freq":
             output_positions = output_positions * 2
             if np.isreal(output_positions).all():
-                org_sz = output_positions.shape
-                input_values = input_values.reshape((-1, *input_values.shape[1:]))  # Ensure v is 2D
-                output_positions = output_positions.reshape((-1, *output_positions.shape[1:]))  # Ensure xq is 2D
-                output_values = horner_vec_real_freq_simpler(input_values, output_positions).reshape(org_sz)
+                original_size = output_positions.shape
+                input_values = input_values.reshape((input_values.shape[0], -1))  # Ensure v is 2D
+                output_positions = output_positions.reshape((output_positions.shape[0], -1))  # Ensure xq is 2D
+                output_values = horner_vec_real_freq_simpler(input_values, output_positions).reshape(original_size)
             else:
                 output_values = horner_vec_complex_freq(input_values, output_positions)
 
