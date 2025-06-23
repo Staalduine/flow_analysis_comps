@@ -49,11 +49,11 @@ def process(run_info_index, process_args):
 
     for kymo in kymograph_list:
         kymo_speeds = kymoAnalyser(kymograph_list[0], speed_config).output_speeds()
-        edge_out_folder = out_folder / f"edge_{kymo.name}"
+        edge_out_folder = out_folder / f"{kymo.name}"
         edge_out_folder.mkdir(exist_ok=True)
         analyser = kymoAnalyser(kymo, speed_config)
         fig, ax = GSTSpeedVizualizer(kymo_speeds).plot_summary(kymo)
-        fig.savefig(edge_out_folder / f"{kymo.name}_summary.png")
+        fig.savefig(edge_out_folder / f"{video_position}_{formatted_timestamp}_{kymo.name}_summary.png")
         time_series, averages = analyser.return_summary_frames()
         time_series.to_csv(edge_out_folder / f"{kymo.name}_time_series.csv")
         averages.to_csv(edge_out_folder / f"{kymo.name}_averages.csv")
