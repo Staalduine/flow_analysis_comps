@@ -16,8 +16,20 @@ from datetime import datetime, date, timedelta
 import json
 import dask.array as da
 from dask import delayed
-import numpy.typing as npt
-from imageio import imread
+# import numpy.typing as npt
+# from imageio import imread
+
+def coord_to_folder(x:float, y:float, precision:int=2):
+    def fmt(val):
+        val = round(val, precision)
+        if val < 0:
+            prefix = "n"
+            val = -val
+        else:
+            prefix = ""
+        return prefix + str(val).replace(".", "_")
+
+    return f"x_{fmt(x)}_y_{fmt(y)}"
 
 
 def load_tif_series_to_dask(folder_path) -> da.Array:

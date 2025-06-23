@@ -2,21 +2,8 @@ from datetime import datetime
 from pathlib import Path
 import imageio
 from flow_analysis_comps.io.video import videoIO
+from flow_analysis_comps.util.video_io import coord_to_folder
 import dask.array as da
-
-
-def coord_to_folder(x, y, precision=2):
-    def fmt(val):
-        val = round(val, precision)
-        if val < 0:
-            prefix = "n"
-            val = -val
-        else:
-            prefix = ""
-        return prefix + str(val).replace(".", "_")
-
-    return f"x_{fmt(x)}_y_{fmt(y)}"
-
 
 class VideoVisualizer:
     def __init__(self, video_path):
