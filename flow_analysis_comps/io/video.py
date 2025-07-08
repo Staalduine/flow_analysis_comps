@@ -21,13 +21,17 @@ from flow_analysis_comps.data_structs.plate_info import (
 
 
 class videoIO:
-    def __init__(self, root_folder):
+    def __init__(self, root_folder:str, user_metadata : videoInfo | None = None):
         self.root_folder = Path(root_folder)
         if not self.root_folder.exists():
             raise FileNotFoundError(f"Folder {self.root_folder} does not exist")
+        
+        if user_metadata:
+            self.metadata = user_metadata
+        else:
+            self.metadata_file_path = self._find_metadata()
+            self.metadata: videoInfo = self._read_video_metadata()
 
-        self.metadata_file_path = self._find_metadata()
-        self.metadata: videoInfo = self._read_video_metadata()
         self.video_array: da.Array = self._load_tif_series_to_dask()
 
     def _find_metadata(self):
@@ -75,6 +79,9 @@ class videoIO:
             z=video_json["video"]["location"][2],
         )
 
+        if "pixel_size" in video_json["camera"]:
+            camera_pixel_size = video_json["camera"]["pixel_size"]
+
         camera_settings = cameraSettings(
             model=video_json["camera"]["model"],
             exposure_us=video_json["camera"]["exposure_time"] * 1e6,
@@ -83,7 +90,11 @@ class videoIO:
             binning=video_json["camera"]["binning"].split("x")[0],
             gain=video_json["camera"]["gain"],
             gamma=video_json["camera"]["gamma"],
+            pixel_size_um=camera_pixel_size
         )
+
+        if "magnification" in video_json["video"]:
+            magnification = video_json["video"]["magnification"]
 
         info_obj = videoInfo(
             duration=video_json["video"]["duration"],
@@ -91,7 +102,7 @@ class videoIO:
                 video_json["video"]["duration"] * video_json["camera"]["frame_rate"]
             ),
             mode=videoMode(image_mode),
-            magnification=50.0,
+            magnification=magnification,
             position=position,
             camera_settings=camera_settings,
             storage_path=self.root_folder,
@@ -168,7 +179,11 @@ class videoIO:
         Returns:
             dask.array.Array: A Dask array representing the .tif series.
         """
+
         folder = Path(self.root_folder) / "Img"
+        if not folder.exists():
+            folder = Path(self.root_folder)
+
         tif_files = sorted(
             [f for f in folder.iterdir() if f.suffix.lower() in [".tif", ".tiff"]]
         )

@@ -48,7 +48,7 @@ def process(run_info_index, process_args):
     edge_extraction_fig.savefig(out_folder / "edges_map.png")
 
     for kymo in kymograph_list:
-        kymo_speeds = kymoAnalyser(kymograph_list[0], speed_config).output_speeds()
+        kymo_speeds = kymoAnalyser(kymo, speed_config).output_speeds()
         edge_out_folder = out_folder / f"{kymo.name}"
         edge_out_folder.mkdir(exist_ok=True)
         analyser = kymoAnalyser(kymo, speed_config)

@@ -21,6 +21,7 @@ class cameraSettings(BaseModel):
     binning: int
     gain: float
     gamma: float
+    pixel_size: float = 1.725
 
 
 class cameraPosition(BaseModel):
@@ -40,3 +41,6 @@ class videoInfo(BaseModel):
     magnification: float
     camera_settings: cameraSettings
     position: cameraPosition
+    magnification: float = 50.0
+    imaging_mode: str = "brightfield"
+    video_nr: int = 1

@@ -29,10 +29,10 @@ class VideoGraphExtractor:
 
     video_path: Path
 
-    def __init__(self, video_path: Path, extract_properties: graphExtractConfig):
+    def __init__(self, video_path: Path, extract_properties: graphExtractConfig, user_metadata : videoInfo | None = None):
         self.video_path = video_path
         self.extract_properties = extract_properties
-        self.io = videoIO(self.video_path)
+        self.io = videoIO(self.video_path, user_metadata=user_metadata)
         self.video_array: da.Array = self.io.video_array[:20].compute()
         self.metadata: videoInfo = self.io.metadata
 

@@ -1,4 +1,3 @@
-from datetime import datetime
 from pathlib import Path
 import imageio
 from flow_analysis_comps.io.video import videoIO
