@@ -3,8 +3,9 @@ from flow_analysis_comps.util.coord_space_util import extract_perp_lines
 import numpy as np
 
 
-def extract_kymo_coordinates(edge: VideoGraphEdge, step, resolution, target_length) -> KymoCoordinates | None:
-    
+def extract_kymo_coordinates(
+    edge: VideoGraphEdge, step, resolution, target_length
+) -> KymoCoordinates | None:
     """
     Extracts kymograph coordinates from a VideoGraphEdge.
     """
@@ -24,15 +25,11 @@ def extract_kymo_coordinates(edge: VideoGraphEdge, step, resolution, target_leng
         if start * 2 < len(edge.pixel_list)
         else []
     )
-    orientations = np.array(prev_segment_pixel_list) - np.array(
-        next_segment_pixel_list
-    )
+    orientations = np.array(prev_segment_pixel_list) - np.array(next_segment_pixel_list)
 
     perpendicular = np.array([orientations[:, 1], -orientations[:, 0]]).T
     perpendicular_norm = (
-        (perpendicular.T / np.linalg.norm(perpendicular, axis=1)).T
-        * target_length
-        / 2
+        (perpendicular.T / np.linalg.norm(perpendicular, axis=1)).T * target_length / 2
     )
 
     segment_coords = np.array(
@@ -49,9 +46,7 @@ def extract_kymo_coordinates(edge: VideoGraphEdge, step, resolution, target_leng
         ]
     )
     edge_perp_lines = [
-        extract_perp_lines(segment[0], segment[1])[
-            : target_length
-        ]
+        extract_perp_lines(segment[0], segment[1])[:target_length]
         for segment in segment_coords
     ]
     edge_perp_lines = np.array(edge_perp_lines)

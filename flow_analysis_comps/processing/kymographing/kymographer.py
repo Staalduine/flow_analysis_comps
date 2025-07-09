@@ -8,10 +8,6 @@ from flow_analysis_comps.data_structs.kymographs import (
 from flow_analysis_comps.processing.GSTSpeedExtract.classic_image_util import (
     filter_kymo_right,
 )
-from flow_analysis_comps.processing.graph_extraction.edge_utils import (
-    low_pass_filter,
-    resample_trail,
-)
 from flow_analysis_comps.data_structs.video_info import videoInfo
 from flow_analysis_comps.processing.kymographing.kymo_utils import (
     extract_kymo_coordinates,
