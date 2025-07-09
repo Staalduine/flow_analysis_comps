@@ -2,6 +2,7 @@ from flow_analysis_comps.data_structs.kymographs import (
     KymoCoordinates,
     VideoGraphExtraction,
     kymoDeltas,
+    kymoExtractConfig,
 )
 from flow_analysis_comps.processing.kymographing.kymo_utils import (
     extract_kymo_coordinates,
@@ -13,7 +14,9 @@ import colorcet
 
 
 class GraphVisualizer:
-    def __init__(self, graph: VideoGraphExtraction):
+    def __init__(
+        self, graph: VideoGraphExtraction, extract_properties: kymoExtractConfig
+    ):
         self.graph = graph
         self.image: np.ndarray = graph.io.video_array[0].compute()
         self.metadata = graph.io.metadata
@@ -22,8 +25,15 @@ class GraphVisualizer:
             delta_x=deltas[0],
             delta_t=deltas[1],
         )
+        self.extract_properties = extract_properties
         self.segment_coords = [
-            extract_kymo_coordinates(edge, 1, 1, 70) for edge in graph.edges
+            extract_kymo_coordinates(
+                edge,
+                self.extract_properties.step,
+                self.extract_properties.resolution,
+                self.extract_properties.target_length,
+            )
+            for edge in graph.edges
         ]
 
     def plot_extraction(self):
@@ -45,7 +55,7 @@ class GraphVisualizer:
             if edge is not None:
                 self._plot_segments(edge, self.deltas.delta_x, ax1)
         # Add 10 um scalebar
-        scalebar_length_um = 10 # Uses extent imshow
+        scalebar_length_um = 10  # Uses extent imshow
         x_start = self.deltas.delta_x * self.image.shape[1] * 0.05
         y_start = self.deltas.delta_x * self.image.shape[0] * 0.95
         ax1.plot(
@@ -71,7 +81,6 @@ class GraphVisualizer:
         ax1.set_axis_off()
         fig1.tight_layout()
         return fig1
-        
 
     def _plot_segments(self, edge: KymoCoordinates, adjust_val, ax):
         weight = 0.05

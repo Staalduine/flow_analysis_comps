@@ -11,9 +11,9 @@ class graphExtractConfig(BaseModel):
 
 
 class kymoExtractConfig(BaseModel):
-    resolution: int = 1
+    resolution: int = 1 # Pixel distance between sampled points
     step: int = 15
-    target_length: int = 150
+    target_length: int = 70 # Pixel length of perpendicular lines    
     bounds: tuple[float, float] = (0.0, 1.0)
     graph_extraction: graphExtractConfig = graphExtractConfig()
 

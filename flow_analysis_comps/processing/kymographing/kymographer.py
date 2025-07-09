@@ -64,6 +64,7 @@ class KymographExtractor:
         video_array: np.ndarray = self.video_array.compute()
 
         order = validate_interpolation_order(video_array[0].dtype, None)
+        order=3
 
         for im in video_array:
             for edge in self.edge_coords:
@@ -74,7 +75,7 @@ class KymographExtractor:
                     perp_lines,
                     prefilter=order > 1,
                     order=order,
-                    mode="reflect",
+                    mode="constant",
                     cval=0,
                 )
 
