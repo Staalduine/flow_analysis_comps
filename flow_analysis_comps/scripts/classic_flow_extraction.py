@@ -1,4 +1,5 @@
 from pathlib import Path
+import pandas as pd
 
 from flow_analysis_comps.data_structs.kymographs import (
     GSTConfig,
@@ -78,10 +79,19 @@ def process_video(
         f"Extracted edges from {root_folder} and saved edge map to {out_folder}"
     )
 
+    averages_list = []
     for kymo in kymograph_list:
-        process_kymo(
+        kymo_averages = process_kymo(
             kymo, out_folder, speed_config, video_position, formatted_timestamp
         )
+        kymo_averages["kymo_name"] = kymo.name  # Add name as a column
+        kymo_averages.set_index("kymo_name", inplace=True)  # Set as index
+        averages_list.append(kymo_averages)
+
+    # Merge averages into a single dataframe with kymo.name as index
+    all_averages_df = pd.concat(averages_list)
+    all_averages_df.to_json(out_folder / "all_kymograph_averages.json")
+
     video_process_logger.info(
         f"Processed {len(kymograph_list)} kymographs from {root_folder} and saved to {out_folder}"
     )
@@ -112,3 +122,4 @@ def process_kymo(
     time_series, averages = analyser.return_summary_frames()
     time_series.to_csv(edge_out_folder / f"{kymo.name}_time_series.csv")
     averages.to_csv(edge_out_folder / f"{kymo.name}_averages.csv")
+    return averages
