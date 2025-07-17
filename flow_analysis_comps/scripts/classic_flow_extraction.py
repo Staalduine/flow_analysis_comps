@@ -1,20 +1,24 @@
 from pathlib import Path
-from flow_analysis_comps.io.video import videoIO
+
 from flow_analysis_comps.data_structs.kymographs import (
     GSTConfig,
     graphExtractConfig,
     kymoExtractConfig,
+    kymoOutputs,
 )
+from flow_analysis_comps.data_structs.video_info import videoInfo
+from flow_analysis_comps.io.video import videoIO
 from flow_analysis_comps.processing.graph_extraction.graph_extract import (
     VideoGraphExtractor,
-)
-from flow_analysis_comps.visualizing.GSTSpeeds import GSTSpeedVizualizer
-from flow_analysis_comps.visualizing.GraphVisualize import (
-    GraphVisualizer,
 )
 from flow_analysis_comps.processing.GSTSpeedExtract.extract_velocity import kymoAnalyser
 from flow_analysis_comps.processing.kymographing.kymographer import KymographExtractor
 from flow_analysis_comps.util.video_io import coord_to_folder
+from flow_analysis_comps.visualizing.GraphVisualize import (
+    GraphVisualizer,
+)
+from flow_analysis_comps.visualizing.GSTSpeeds import GSTSpeedVizualizer
+from flow_analysis_comps.util.logging import setup_logger
 
 
 def process(run_info_index, process_args):
@@ -29,7 +33,7 @@ def process(run_info_index, process_args):
     video_io = videoIO(path)
     pos_x, pos_y = video_io.metadata.position.x, video_io.metadata.position.y
     video_position = coord_to_folder(pos_x, pos_y, precision=3)
-    
+
     timeformat = "%Y%m%d_%H%M%S"
     formatted_timestamp = video_io.metadata.date_time.strftime(timeformat)
 
@@ -38,22 +42,73 @@ def process(run_info_index, process_args):
     else:
         out_folder: Path = path / "flow_analysis" / formatted_timestamp
 
+    process_video(path, out_folder, speed_config, video_position, formatted_timestamp)
+
+
+def process_video(
+    root_folder: Path,
+    out_folder: Path,
+    speed_config: GSTConfig,
+    kymo_extract_config: kymoExtractConfig = kymoExtractConfig(),
+    video_position: str | None = None,
+    formatted_timestamp: str | None = None,
+    user_metadata: videoInfo | None = None,
+):
+    video_process_logger = setup_logger(name="flow_analysis_comps.video_processing")
     out_folder.mkdir(exist_ok=True, parents=True)
 
-    graph_data = VideoGraphExtractor(path, graphExtractConfig()).edge_data
+    if video_position is None:
+        video_position = "vid"
+    if formatted_timestamp is None:
+        formatted_timestamp = "extract"
+
+    graph_data = VideoGraphExtractor(
+        root_folder, graphExtractConfig(), user_metadata=user_metadata
+    ).edge_data
+
     kymograph_list = KymographExtractor(
-        graph_data, kymoExtractConfig()
+        graph_data, kymo_extract_config
     ).processed_kymographs
-    edge_extraction_fig = GraphVisualizer(graph_data).plot_extraction()
+
+    edge_extraction_fig = GraphVisualizer(
+        graph_data, kymo_extract_config
+    ).plot_extraction()
     edge_extraction_fig.savefig(out_folder / "edges_map.png")
+    video_process_logger.info(
+        f"Extracted edges from {root_folder} and saved edge map to {out_folder}"
+    )
 
     for kymo in kymograph_list:
-        kymo_speeds = kymoAnalyser(kymo, speed_config).output_speeds()
-        edge_out_folder = out_folder / f"{kymo.name}"
-        edge_out_folder.mkdir(exist_ok=True)
-        analyser = kymoAnalyser(kymo, speed_config)
-        fig, ax = GSTSpeedVizualizer(kymo_speeds).plot_summary(kymo)
-        fig.savefig(edge_out_folder / f"{video_position}_{formatted_timestamp}_{kymo.name}_summary.png")
-        time_series, averages = analyser.return_summary_frames()
-        time_series.to_csv(edge_out_folder / f"{kymo.name}_time_series.csv")
-        averages.to_csv(edge_out_folder / f"{kymo.name}_averages.csv")
+        process_kymo(
+            kymo, out_folder, speed_config, video_position, formatted_timestamp
+        )
+    video_process_logger.info(
+        f"Processed {len(kymograph_list)} kymographs from {root_folder} and saved to {out_folder}"
+    )
+    return
+
+
+def process_kymo(
+    kymo: kymoOutputs,
+    out_folder: Path,
+    speed_config: GSTConfig,
+    video_position: str | None = None,
+    formatted_timestamp: str | None = None,
+):
+    if video_position is None:
+        video_position = "vid"
+    if formatted_timestamp is None:
+        formatted_timestamp = "extract"
+
+    kymo_speeds = kymoAnalyser(kymo, speed_config).output_speeds()
+    edge_out_folder = out_folder / f"{kymo.name}"
+    edge_out_folder.mkdir(exist_ok=True)
+    analyser = kymoAnalyser(kymo, speed_config)
+    fig, ax = GSTSpeedVizualizer(kymo_speeds).plot_summary(kymo)
+    fig.savefig(
+        edge_out_folder
+        / f"{video_position}_{formatted_timestamp}_{kymo.name}_summary.png"
+    )
+    time_series, averages = analyser.return_summary_frames()
+    time_series.to_csv(edge_out_folder / f"{kymo.name}_time_series.csv")
+    averages.to_csv(edge_out_folder / f"{kymo.name}_averages.csv")
