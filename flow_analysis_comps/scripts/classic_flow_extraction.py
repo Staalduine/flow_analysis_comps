@@ -34,6 +34,11 @@ def process(run_info_index, process_args):
     path = Path(row["total_path"])
 
     video_io = videoIO(path)
+
+    metadata_json_path = video_io.root_folder / "video_metadata.json"
+    with open(metadata_json_path, "w", encoding="utf-8-sig") as f:
+        f.write(video_io.metadata.model_dump_json())
+
     pos_x, pos_y = video_io.metadata.position.x, video_io.metadata.position.y
     video_position = coord_to_folder(pos_x, pos_y, precision=3)
 
