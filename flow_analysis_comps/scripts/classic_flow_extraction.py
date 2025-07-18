@@ -96,7 +96,7 @@ def process_video(
         imageio.mimsave(
             str(hyphal_video_path),
             hyphal_video,
-            fps=kymo_extractor.metadata.camera_settings.frame_rate
+            fps=kymo_extractor.metadata.camera.frame_rate
         )
 
         kymo_averages["kymo_name"] = kymo.name  # Add name as a column

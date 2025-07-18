@@ -39,7 +39,7 @@ class videoInfo(BaseModel):
     frame_nr: int
     mode: videoMode
     magnification: float
-    camera_settings: cameraSettings
+    camera: cameraSettings
     position: cameraPosition
     magnification: float = 50.0
     imaging_mode: str = "brightfield"

@@ -119,7 +119,7 @@ def read_video_info_json(address: Path) -> videoInfo:
         mode=image_mode,
         magnification=50.0,
         position=position,
-        camera_settings=camera_settings,
+        camera=camera_settings,
     )
     return info_obj
 
@@ -173,7 +173,7 @@ def read_video_info_txt(address: Path) -> videoInfo:
         frame_nr=int(raw_data["Frames Recorded"].strip().split("/")[0]),
         mode=raw_data["Operation"].strip().split(" ")[1].lower(),
         magnification=float(raw_data["Operation"].strip().split()[0][:-1]),
-        camera_settings=camera_settings,
+        camera=camera_settings,
         position=position,
     )
     return info_obj

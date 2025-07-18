@@ -33,7 +33,7 @@ class videoIO:
             self.metadata: videoInfo = self._read_video_metadata()
             # copy metadata to video_metadata.json
             metadata_json_path = self.root_folder / "video_metadata.json"
-            with open(metadata_json_path, "w", encoding="utf-8") as f:
+            with open(metadata_json_path, "w", encoding="utf-8-sig") as f:
                 f.write(self.metadata.model_dump_json())
 
         self.video_array: da.Array = self._load_tif_series_to_dask()
@@ -116,7 +116,7 @@ class videoIO:
             mode=videoMode(image_mode),
             magnification=magnification,
             position=position,
-            camera_settings=camera_settings,
+            camera=camera_settings,
             storage_path=self.root_folder,
             date_time=date_time,
         )
@@ -176,7 +176,7 @@ class videoIO:
             frame_nr=int(raw_data["Frames Recorded"].strip().split("/")[0]),
             mode=videoMode(raw_data["Operation"].strip().split(" ")[1].lower()),
             magnification=float(raw_data["Operation"].strip().split()[0][:-1]),
-            camera_settings=camera_settings,
+            camera=camera_settings,
             position=position,
         )
         return info_obj
@@ -224,11 +224,11 @@ class videoIO:
         """
         Returns the time and spatial deltas for the video.
         """
-        delta_t = 1 / self.metadata.camera_settings.frame_rate
+        delta_t = 1 / self.metadata.camera.frame_rate
         delta_x = (
             1.725
             * 2
             / self.metadata.magnification
-            * self.metadata.camera_settings.binning
+            * self.metadata.camera.binning
         )
         return delta_x, delta_t

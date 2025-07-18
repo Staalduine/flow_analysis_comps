@@ -30,7 +30,7 @@ class VideoVisualizer:
 
         writer = imageio.get_writer(
             output_path / f"{formatted_timestamp}_Video.mp4",
-            fps=int(self.metadata.camera_settings.frame_rate),
+            fps=int(self.metadata.camera.frame_rate),
             codec="libx264",
         )
         for frame in video_array:
