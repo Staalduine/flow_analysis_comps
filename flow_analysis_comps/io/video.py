@@ -31,6 +31,10 @@ class videoIO:
         else:
             self.metadata_file_path = self._find_metadata()
             self.metadata: videoInfo = self._read_video_metadata()
+            # copy metadata to video_metadata.json
+            metadata_json_path = self.root_folder / "video_metadata.json"
+            with open(metadata_json_path, "w", encoding="utf-8") as f:
+                json.dump(self.metadata.model_dump_json(), f, indent=4, default=str)
 
         self.video_array: da.Array = self._load_tif_series_to_dask()
 
