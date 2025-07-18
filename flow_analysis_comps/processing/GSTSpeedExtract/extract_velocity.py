@@ -79,12 +79,32 @@ class kymoAnalyser:
             speeds_mean_over_time * speed_fields_coverage_ratio, axis=0
         )
 
+        speed_left_std = np.nanstd(speed_fields[0], axis=1)
+        speed_right_std = np.nanstd(speed_fields[1], axis=1)
+
+        # Compute fluxes 
+        # Multiply speed fields by intensity, and delta_x, sum up, divide by total length x
+        total_length = self.kymograph.kymo_left.shape[0] * self.video_deltas.delta_x
+        flux_left = speed_fields[0] * self.kymograph.kymo_left * self.video_deltas.delta_x
+        flux_right = speed_fields[1] * self.kymograph.kymo_right * self.video_deltas.delta_x
+        flux_left_mean = np.nansum(flux_left, axis=1) / total_length
+        flux_right_mean = np.nansum(flux_right, axis=1) / total_length
+        flux_total_mean = (flux_left_mean + flux_right_mean) / 2
+
+
         time_series_df = pd.DataFrame(
             {
                 "time": np.arange(speed_fields.shape[1]) * self.video_deltas.delta_t,
-                "speed_left": speeds_mean_over_time[0],
-                "speed_right": speeds_mean_over_time[1],
+                "speed_left_mean": speeds_mean_over_time[0],
+                "speed_left_std": speed_left_std,
+                "speed_right_mean": speeds_mean_over_time[1],
+                "speed_right_std": speed_right_std,
                 "speed_mean": speeds_mean_nan_weighted,
+                "flux_left_mean": flux_left_mean,
+                "flux_right_mean": flux_right_mean,
+                "flux_total_mean": flux_total_mean,
+                "coverage_left": speed_fields_coverage[0],
+                "coverage_right": speed_fields_coverage[1],
             }
         )
         return time_series_df
@@ -92,14 +112,14 @@ class kymoAnalyser:
     def compute_speed_means(self) -> pd.DataFrame:
         # Returns a DataFrame with mean speeds.
         time_series_df = self.compute_speed_time_series()
-        speed_mean_left = np.nanmean(time_series_df["speed_left"])
-        speed_mean_right = np.nanmean(time_series_df["speed_right"])
+        speed_mean_left = np.nanmean(time_series_df["speed_left_mean"])
+        speed_mean_right = np.nanmean(time_series_df["speed_right_mean"])
         speed_mean = np.nanmean(time_series_df["speed_mean"])
 
         mean_speeds_df = pd.DataFrame(
             {
-                "speed_left": speed_mean_left,
-                "speed_right": speed_mean_right,
+                "speed_left_mean": speed_mean_left,
+                "speed_right_mean": speed_mean_right,
                 "speed_mean": speed_mean,
             },
             index=[0],

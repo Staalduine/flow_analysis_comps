@@ -20,6 +20,8 @@ from flow_analysis_comps.visualizing.GraphVisualize import (
 )
 from flow_analysis_comps.visualizing.GSTSpeeds import GSTSpeedVizualizer
 from flow_analysis_comps.util.logging import setup_logger
+import imageio
+
 
 
 def process(run_info_index, process_args):
@@ -67,9 +69,12 @@ def process_video(
         root_folder, graphExtractConfig(), user_metadata=user_metadata
     ).edge_data
 
-    kymograph_list = KymographExtractor(
+    kymo_extractor = KymographExtractor(
         graph_data, kymo_extract_config
-    ).processed_kymographs
+    )
+
+    kymograph_list = kymo_extractor.processed_kymographs
+    kymograph_videos = kymo_extractor.hyphal_videos
 
     edge_extraction_fig = GraphVisualizer(
         graph_data, kymo_extract_config
@@ -84,6 +89,16 @@ def process_video(
         kymo_averages = process_kymo(
             kymo, out_folder, speed_config, video_position, formatted_timestamp
         )
+        # save hyphal video with video settings
+        hyphal_video = kymograph_videos[kymo.name]
+        hyphal_video_path = out_folder / kymo.name / f"{video_position}_{formatted_timestamp}_{kymo.name}_hyphal_video.mp4"
+
+        imageio.mimsave(
+            str(hyphal_video_path),
+            hyphal_video,
+            fps=kymo_extractor.metadata.camera_settings.frame_rate
+        )
+
         kymo_averages["kymo_name"] = kymo.name  # Add name as a column
         kymo_averages.set_index("kymo_name", inplace=True)  # Set as index
         averages_list.append(kymo_averages)
@@ -120,6 +135,6 @@ def process_kymo(
         / f"{video_position}_{formatted_timestamp}_{kymo.name}_summary.png"
     )
     time_series, averages = analyser.return_summary_frames()
-    time_series.to_csv(edge_out_folder / f"{kymo.name}_time_series.csv")
+    time_series.to_json(edge_out_folder / f"{kymo.name}_time_series.json")
     averages.to_csv(edge_out_folder / f"{kymo.name}_averages.csv")
     return averages
