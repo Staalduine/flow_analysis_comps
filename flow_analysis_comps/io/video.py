@@ -70,9 +70,13 @@ class videoIO:
             else:
                 date_time = None
 
-        if video_json["camera"]["intensity"][0] == 0:
+        intensity = video_json["camera"]["intensity"]
+        if isinstance(intensity, str):
+            # Try to convert string to list of numbers, e.g. "0,255" -> [0, 255]
+            intensity = [float(x) for x in intensity.replace('[','').replace(']','').split(',') if x.strip()]
+        if intensity[0] == 0:
             image_mode = "fluorescence"
-        elif video_json["camera"]["intensity"][1] == 0:
+        elif intensity[1] == 0:
             image_mode = "brightfield"
         else:
             image_mode = "brightfield"
