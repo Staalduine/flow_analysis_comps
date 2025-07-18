@@ -81,6 +81,8 @@ class videoIO:
 
         if "pixel_size" in video_json["camera"]:
             camera_pixel_size = video_json["camera"]["pixel_size"]
+        else:
+            camera_pixel_size = 1.725
 
         camera_settings = cameraSettings(
             model=video_json["camera"]["model"],
@@ -95,6 +97,8 @@ class videoIO:
 
         if "magnification" in video_json["video"]:
             magnification = video_json["video"]["magnification"]
+        else:
+            magnification = 50.0
 
         info_obj = videoInfo(
             duration=video_json["video"]["duration"],
