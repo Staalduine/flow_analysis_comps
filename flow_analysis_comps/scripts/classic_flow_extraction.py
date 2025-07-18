@@ -57,14 +57,14 @@ def process_video(
     root_folder: Path,
     out_folder: Path,
     speed_config: GSTConfig,
-    kymo_extract_config: kymoExtractConfig | None = None,
     video_position: str | None = None,
     formatted_timestamp: str | None = None,
+    kymo_extract_config: kymoExtractConfig | None = None,
     user_metadata: videoInfo | None = None,
 ):
     video_process_logger = setup_logger(name="flow_analysis_comps.video_processing")
     out_folder.mkdir(exist_ok=True, parents=True)
-    
+
     if kymo_extract_config is None:
         kymo_extract_config = kymoExtractConfig()
     if video_position is None:
