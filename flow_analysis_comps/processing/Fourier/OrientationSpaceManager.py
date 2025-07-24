@@ -135,7 +135,7 @@ class orientationSpaceManager:
             else:
                 f_hat = np.array([1])
 
-            f_hat = np.broadcast_to(f_hat, (1, 1, f_hat.shape[0]))
+            f_hat = np.broadcast_to(f_hat.reshape(-1, 1,1), self.response.response_stack_fft.shape)
             # a_hat: np.ndarray = fftpack.fft(self.response.response_stack.real, axis=2)
 
             a_hat = self.response.response_stack_fft * f_hat
@@ -165,7 +165,7 @@ class orientationSpaceManager:
 
         nanTemplate = np.zeros_like(nlsm_mask, dtype=np.float32)
         nanTemplate[:] = np.nan
-        a_hat = np.rollaxis(self.response.response_stack_fft, 2, 0)
+        a_hat = self.response.response_stack_fft.copy()
         a_hat = a_hat[:, nlsm_mask]
 
         maximum_single_angle = nanTemplate
@@ -175,7 +175,7 @@ class orientationSpaceManager:
         return maximum_single_angle
 
     def get_all_angles(self) -> dict:
-        a_hat = self.response.response_stack_fft
+        a_hat = self.response.response_stack_fft # dims = (D, x, y)
         interpolated_extrema_dict = interpft_extrema_fast(a_hat, dim=0)
         return interpolated_extrema_dict
 

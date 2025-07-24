@@ -44,7 +44,7 @@ class OrientationSpaceResponse:
 
     @property
     def mean_response(self) -> np.ndarray:
-        mean_response = self.response_stack_fft[:, :, 0] / self.response_stack_fft.shape[-1]
+        mean_response = self.response_stack_fft[0, :, :] / self.response_stack_fft.shape[0]
         return mean_response
 
     response = property(get_resp, set_resp)
