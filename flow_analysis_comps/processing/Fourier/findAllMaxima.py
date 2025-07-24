@@ -62,43 +62,44 @@ def interpft_extrema_fast(
     response_fft_derivative1 = fftshift(response_fft_derivative1, axes=0)
     response_fft_deriv1_flat = response_fft_derivative1.reshape((response_fft_derivative1.shape[0], -1))
 
-    # Compute coefficients for polynomial roots
-    coefficients = [response_fft_deriv1_flat[:, i] for i in range(response_fft_deriv1_flat.shape[1])]
-    roots_out = list(Parallel(n_jobs=n_jobs)(
-        delayed(np.roots)(coefficient[::-1]) for coefficient in tqdm(coefficients, desc="Finding roots", total=len(coefficients))
-    ))
+"""Recode below to the actual method"""
+    # # Compute coefficients for polynomial roots
+    # coefficients = [response_fft_deriv1_flat[:, i] for i in range(response_fft_deriv1_flat.shape[1])]
+    # roots_out = list(Parallel(n_jobs=n_jobs)(
+    #     delayed(np.roots)(coefficient[::-1]) for coefficient in tqdm(coefficients, desc="Finding roots", total=len(coefficients))
+    # ))
 
-    # Find maximum number of roots, allocate space for output
-    safe_roots_out = [r if r is not None else [] for r in roots_out]
-    max_root_count = max(len(r) for r in safe_roots_out)
-    roots_array = np.full((max_root_count, len(safe_roots_out)), np.nan, dtype=complex)
+    # # Find maximum number of roots, allocate space for output
+    # safe_roots_out = [r if r is not None else [] for r in roots_out]
+    # max_root_count = max(len(r) for r in safe_roots_out)
+    # roots_array = np.full((max_root_count, len(safe_roots_out)), np.nan, dtype=complex)
 
-    # Fill roots array with roots
-    for i, ri in enumerate(roots_out):
-        if ri is None:
-            ri = []
-        roots_array[: len(ri), i] = ri
+    # # Fill roots array with roots
+    # for i, ri in enumerate(roots_out):
+    #     if ri is None:
+    #         ri = []
+    #     roots_array[: len(ri), i] = ri
 
-    # Reshape roots array to match filter response shape
-    roots_array = roots_array.reshape((max_root_count,) + filter_response.shape[1:])
+    # # Reshape roots array to match filter response shape
+    # roots_array = roots_array.reshape((max_root_count,) + filter_response.shape[1:])
 
-    # Compute magnitude and real map
-    epsilon = 1e-12  # Small value to avoid log(0)
-    magnitude = np.abs(np.log(np.abs(roots_array) + epsilon))
-    real_map = magnitude <= abs(TOL)
-    # If TOL is negative, ensure that at least one root is considered real by relaxing the tolerance.
-    if TOL < 0:
-        no_real = ~np.any(real_map, axis=0)
-        for i in np.where(no_real.flatten())[0]:
-            idx = np.unravel_index(i, no_real.shape)
-            min_mag = np.min(magnitude[:, idx[0]])
-            real_map[:, idx[0]] = magnitude[:, idx[0]] <= min_mag * 10
+    # # Compute magnitude and real map
+    # epsilon = 1e-12  # Small value to avoid log(0)
+    # magnitude = np.abs(np.log(np.abs(roots_array) + epsilon))
+    # real_map = magnitude <= abs(TOL)
+    # # If TOL is negative, ensure that at least one root is considered real by relaxing the tolerance.
+    # if TOL < 0:
+    #     no_real = ~np.any(real_map, axis=0)
+    #     for i in np.where(no_real.flatten())[0]:
+    #         idx = np.unravel_index(i, no_real.shape)
+    #         min_mag = np.min(magnitude[:, idx[0]])
+    #         real_map[:, idx[0]] = magnitude[:, idx[0]] <= min_mag * 10
 
-    # Assign real angles to output
-    response_angles = -np.angle(roots_array)
-    response_angles[response_angles < 0] += 2 * np.pi
-    real_response_angles = np.full_like(response_angles, np.nan)
-    real_response_angles[real_map] = response_angles[real_map]
+    # # Assign real angles to output
+    # response_angles = -np.angle(roots_array)
+    # response_angles[response_angles < 0] += 2 * np.pi
+    # real_response_angles = np.full_like(response_angles, np.nan)
+    # real_response_angles[real_map] = response_angles[real_map]
 
     # Interpolate to find extrema
     response_deriv2_interpolated = interpolate_fourier_series([0, 2 * np.pi], response_fft_derivative2, real_response_angles)
