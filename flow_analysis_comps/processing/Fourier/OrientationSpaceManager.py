@@ -22,6 +22,7 @@ import numpy.typing as npt
 from flow_analysis_comps.processing.Fourier.NLMSPrecise import nlms_precise
 from flow_analysis_comps.processing.Fourier.findAllMaxima import interpft_extrema_fast
 from flow_analysis_comps.util.coord_space_util import wraparoundN
+from flow_analysis_comps.util.image_manips import mirror_pad_with_exponential_fade
 
 
 class orientationSpaceManager:
@@ -44,10 +45,15 @@ class orientationSpaceManager:
             instance of object
         """
         self.filter_params = params
-        self.image = image
+        self.image = (
+            image
+            if self.filter_params.padding <= 0
+            else mirror_pad_with_exponential_fade(image, self.filter_params.padding)
+        )
+
         self.os_filter: OrientationSpaceFilter = OrientationSpaceFilter(params)
-        self.filter_arrays, self.setup_imdims = self.init_filter_on_img(image)
-        self.response = self.get_response(image)
+        self.filter_arrays, self.setup_imdims = self.init_filter_on_img(self.image)
+        self.response = self.get_response(self.image, self.filter_params.padding)
         self.thresh_method = thresh_method
         self.mask = self.response.nlms_mask(thresh_method=thresh_method)
 
@@ -59,10 +65,13 @@ class orientationSpaceManager:
         """
         img_shape = img.shape
         filter_arrays = self.os_filter.calculate_numerical_filter(img_shape)
+        # print(filter_arrays.shape)
+
+        # print(abs(np.sum(filter_arrays, axis=(0, 1))))
         filter_shape = img_shape
         return filter_arrays, filter_shape
 
-    def get_response(self, img: np.ndarray):
+    def get_response(self, img: np.ndarray, pad: int):
         """Applies filter onto input image, first uses image shape to create filter arrays
 
         Args:
@@ -77,7 +86,10 @@ class orientationSpaceManager:
         # Apply filters
         ridge_resp = self.apply_ridge_filter(image_fft)
         edge_resp = self.apply_edge_filter(image_fft)
-        ang_resp = ridge_resp + edge_resp
+        ang_resp = ridge_resp + edge_resp # Output array, for now still (x, y, n)
+        if pad > 0:
+            # Crop out the padded region
+            ang_resp = ang_resp[pad:-pad, pad:-pad, ...]  # Handles 2D and 3D arrays
 
         # Create response object capable of further processing results
         return OrientationSpaceResponse(ang_resp)
@@ -135,7 +147,9 @@ class orientationSpaceManager:
             else:
                 f_hat = np.array([1])
 
-            f_hat = np.broadcast_to(f_hat.reshape(-1, 1,1), self.response.response_stack_fft.shape)
+            f_hat = np.broadcast_to(
+                f_hat.reshape(-1, 1, 1), self.response.response_stack_fft.shape
+            )
             # a_hat: np.ndarray = fftpack.fft(self.response.response_stack.real, axis=2)
 
             a_hat = self.response.response_stack_fft * f_hat
@@ -175,7 +189,7 @@ class orientationSpaceManager:
         return maximum_single_angle
 
     def get_all_angles(self) -> dict:
-        a_hat = self.response.response_stack_fft # dims = (D, x, y)
+        a_hat = self.response.response_stack_fft  # dims = (D, x, y)
         interpolated_extrema_dict = interpft_extrema_fast(a_hat, dim=0)
         return interpolated_extrema_dict
 
@@ -262,8 +276,11 @@ class orientationSpaceManager:
         maxima_highest = np.moveaxis(maxima_highest, 0, -1)
         return maxima_highest
 
-    def nlms_simple_case(self, order=5):
-        updated_response, filter = self.update_response_at_order_FT(order)
+    def nlms_simple_case(self, order: int | None = None):
+        if order:
+            updated_response, filter = self.update_response_at_order_FT(order)
+        else:
+            updated_response = self.response
         maximum_single_angle = self.get_max_angles()
         nlms_single = nlms_precise(
             updated_response.response_stack.real,

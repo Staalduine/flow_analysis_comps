@@ -11,6 +11,7 @@ class OSFilterParams(BaseModel):
     orientation_accuracy: float = 5.0  # Width of orientation band
     sampling_factor: int = 1
     nr_of_samples: Optional[int] = None  # Number of filter samplings to take.
+    padding: int = 0
     x_spacing: float = 1.0
     y_spacing: float = 1.0
     z_spacing: float = 1.0

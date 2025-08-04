@@ -35,7 +35,12 @@ class OrientationSpaceFilter:
             self.params.space_frequency_width,
             coords,
         )
-        return angular_filter * radial_filter[:, :, None]
+
+        out_filter = angular_filter * radial_filter[:, :, None]
+
+        filter_sums = abs(np.sum(out_filter, axis=(0, 1)))
+        out_filter /= filter_sums
+        return out_filter
 
 
 def calculate_angular_filter(
@@ -65,7 +70,7 @@ def calculate_angular_filter(
             theta_s = theta_coords / s_a
 
             angularFilter = 2 * np.exp(-(theta_s**2) / 2)
-            angularFilter_reversed = angularFilter[::-1, ::-1, :]
+            angularFilter_reversed = np.fft.ifftshift(np.fft.fftshift(angularFilter)[::-1, ::-1])
             filterKernel = 0.5 * (angularFilter + angularFilter_reversed)
             filterKernel = filterKernel * (1 + 1j * (posMask * 2 - 1))
             return filterKernel

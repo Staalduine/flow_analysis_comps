@@ -12,7 +12,7 @@ def nlms_precise(
     mask=None,
     offset_angle=None,
     angle_multiplier=3,
-)-> np.ndarray:
+) -> np.ndarray:
     """Perform nonlocal maximum suppression. Sample for each point along its strongest angle, then remove all points that are not a maximum.
 
     Args:
@@ -29,7 +29,7 @@ def nlms_precise(
         ValueError: Raises if dimensionality is weird
 
     Returns:
-        np.ndarray: Array with masked (nan) pixels, suppressed (default: 0) pixels and non-suppressed pixels which carry the response value of the filter. 
+        np.ndarray: Array with masked (nan) pixels, suppressed (default: 0) pixels and non-suppressed pixels which carry the response value of the filter.
     """
     # Adjust to dimensionality
     match len(theta_max.shape):
@@ -51,9 +51,9 @@ def nlms_precise(
     # Set up size of nlms arrays
     rot_response_size = response.shape
 
-    ny = rot_response_size[0]
-    nx = rot_response_size[1]
-    na = rot_response_size[2]
+    ny = rot_response_size[1]
+    nx = rot_response_size[2]
+    na = rot_response_size[0]
     period = na * angle_multiplier
 
     # Pad data with more periods
@@ -63,7 +63,7 @@ def nlms_precise(
             assert isinstance(new_response, np.ndarray)
             response = new_response
     else:
-        response = np.moveaxis(response, 2, 0)
+        # response = np.moveaxis(response, 2, 0)
         rotationResponseTemp = resample(response[:, mask], period, axis=0)
         response = np.zeros((period, mask.shape[0], mask.shape[1]))
         response[:, :, :] = np.nan

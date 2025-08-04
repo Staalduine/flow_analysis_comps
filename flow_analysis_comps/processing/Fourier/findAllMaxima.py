@@ -62,7 +62,10 @@ def interpft_extrema_fast(
     response_fft_derivative1 = fftshift(response_fft_derivative1, axes=0)
     response_fft_deriv1_flat = response_fft_derivative1.reshape((response_fft_derivative1.shape[0], -1))
 
-"""Recode below to the actual method"""
+    real_response_angles = np.array([])
+    real_map = True
+
+    """Recode below to the actual method"""
     # # Compute coefficients for polynomial roots
     # coefficients = [response_fft_deriv1_flat[:, i] for i in range(response_fft_deriv1_flat.shape[1])]
     # roots_out = list(Parallel(n_jobs=n_jobs)(
