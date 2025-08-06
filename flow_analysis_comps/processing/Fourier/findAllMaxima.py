@@ -1,149 +1,206 @@
 import numpy as np
-from numpy.fft import fft, fftshift
-from numpy.polynomial import Polynomial
-from joblib import Parallel, delayed
-from tqdm import tqdm
-from flow_analysis_comps.processing.Fourier.utils.Interpolation import interpolate_fourier_series
+from pydantic import BaseModel
 
 
-def roots_batch(coeffs_batch):
-    roots_out = []
-    for coeffs in coeffs_batch:
-        try:
-            roots = np.roots(coeffs[::-1])  # MATLAB-style coeff order
-        except Exception as e:
-            print(e)
-            roots = np.array([np.nan])
-        roots_out.append(roots)
-    return roots_out
+def get_value_from_fft_series(coeffs: np.ndarray, xv: np.ndarray, period: float):
+    """
+    Sample trigonometric polynomial using the complex fourier series coefficients
+
+    Args:
+        coeffs (np.ndarray): Series coefficients
+        xv (np.ndarray): Points on which to sample
+        period (float): Period of the function
+
+    Returns:
+        np.ndarray: Sampled points on trigonometric polynomial
+    """
+
+    # Normalize points to a [-1, 1] domain
+    xv = xv / period
+    size = len(coeffs)
+
+    # adjust the spatial frequencies to period and number of coefficients
+    kn = np.fft.fftfreq(size, period / size) * period
+
+    # Sample contributions from each exponential
+    eikx = np.exp(2.0j * np.pi * np.outer(xv, kn))
+
+    # Sum and return
+    return np.einsum("ab,b->a", eikx, coeffs) / size
 
 
-def interpft_extrema_fast(
-    filter_response, dim=1, sorted_output=False, TOL=1e-10, do_fft=False, n_jobs=-1
+def find_extrema(
+    func_fft: np.ndarray, der1_fft: np.ndarray, der2_fft: np.ndarray
 ) -> dict:
-    # Ensure filter_response is a numpy array
-    filter_response = np.asarray(filter_response) # dims= (D, x, y)
+    """
+    Finds extrema using companion matrix approach (n fourier coefficients yields n-1 roots). All input arrays need to be of the same size. Values are sorted along the function values to make significant extrema
 
-    # Make sure response is in first dimension
-    if dim != 0:
-        filter_response = np.moveaxis(filter_response, dim, 0)
+    Args:
+        func_fft (np.ndarray): Fourier coefficients of original function
+        der1_fft (np.ndarray): _description_
+        der2_fft (np.ndarray): _description_
 
-    # Get response shape
-    response_shape = filter_response.shape
-    response_depth = response_shape[0]
+    Returns:
+        np.ndarray: angles of the function extrema, along with magnitude, sampled function, derivative and second derivative values
+    """
+    output_depth = len(func_fft) - 1
+    coeffs = -np.fft.fftshift(der1_fft)
+    # Assemble Matrix
+    mat = np.zeros((output_depth, output_depth), dtype=np.complex128)
+    mat[:-1, 1:] = np.eye(output_depth - 1)
+    mat[-1] = coeffs[:-1] / coeffs[-1]
 
-    # Check if response depth is valid
-    if response_depth == 1:
-        empty = np.zeros_like(filter_response)
-        raise ValueError
-        return tuple(np.moveaxis(arr, 0, dim) for arr in (empty, empty, empty, filter_response, filter_response, filter_response))
+    eigenvalues = np.linalg.eigvals(mat)
+    angles = (np.angle(eigenvalues) - np.log(abs(eigenvalues)) * 1j).real % (
+        2 * np.pi
+    ) - np.pi
 
-    # Ensure response is in frequency domain
-    filter_response_fft = fft(filter_response, axis=0) if do_fft else filter_response
+    magnitudes = np.log(abs(eigenvalues))
+    origin_values = get_value_from_fft_series(func_fft, angles + np.pi, 2 * np.pi)
+    deriv1_values = get_value_from_fft_series(der1_fft, angles + np.pi, 2 * np.pi)
+    deriv2_values = get_value_from_fft_series(der2_fft, angles + np.pi, 2 * np.pi)
 
-    # Get Nyquist frequency of response
-    nyquist = int(np.ceil((response_depth + 1) / 2))
+    sort = np.argsort(origin_values)[::-1]
 
-    # Adjust filter response for even/odd response depth
-    if response_depth % 2 == 0:
-        filter_response_fft = filter_response_fft.copy()  # Create a copy to avoid modifying the input array
-        filter_response_fft[nyquist - 1] /= 2
-        filter_response_fft = np.insert(filter_response_fft, nyquist, filter_response_fft[nyquist - 1], axis=0)
+    return {
+        "angles": angles[sort],
+        "magnit": magnitudes[sort],
+        "origin": origin_values[sort],
+        "deriv1": deriv1_values[sort],
+        "deriv2": deriv2_values[sort],
+    }
 
-    # Create frequency array
-    response_frequencies = np.concatenate([np.arange(nyquist), -np.arange(nyquist - 1, 0, -1)])
-    response_frequencies = response_frequencies[..., np.newaxis, np.newaxis]  # Add new axis for broadcasting
+class angle_filter_values(BaseModel):
+    magnitude: float = 0.1
+    first_derivative: float = 0.1
+    second_derivative: float = 5.0
 
-    # Compute derivatives
-    response_fft_derivative1 = filter_response_fft * (1j * response_frequencies)
-    response_fft_derivative2 = filter_response_fft * -(response_frequencies**2)
-
-    # Shift first derivative to center, flatten it
-    response_fft_derivative1 = fftshift(response_fft_derivative1, axes=0)
-    response_fft_deriv1_flat = response_fft_derivative1.reshape((response_fft_derivative1.shape[0], -1))
-
-    real_response_angles = np.array([])
-    real_map = True
-
-    """Recode below to the actual method"""
-    # # Compute coefficients for polynomial roots
-    # coefficients = [response_fft_deriv1_flat[:, i] for i in range(response_fft_deriv1_flat.shape[1])]
-    # roots_out = list(Parallel(n_jobs=n_jobs)(
-    #     delayed(np.roots)(coefficient[::-1]) for coefficient in tqdm(coefficients, desc="Finding roots", total=len(coefficients))
-    # ))
-
-    # # Find maximum number of roots, allocate space for output
-    # safe_roots_out = [r if r is not None else [] for r in roots_out]
-    # max_root_count = max(len(r) for r in safe_roots_out)
-    # roots_array = np.full((max_root_count, len(safe_roots_out)), np.nan, dtype=complex)
-
-    # # Fill roots array with roots
-    # for i, ri in enumerate(roots_out):
-    #     if ri is None:
-    #         ri = []
-    #     roots_array[: len(ri), i] = ri
-
-    # # Reshape roots array to match filter response shape
-    # roots_array = roots_array.reshape((max_root_count,) + filter_response.shape[1:])
-
-    # # Compute magnitude and real map
-    # epsilon = 1e-12  # Small value to avoid log(0)
-    # magnitude = np.abs(np.log(np.abs(roots_array) + epsilon))
-    # real_map = magnitude <= abs(TOL)
-    # # If TOL is negative, ensure that at least one root is considered real by relaxing the tolerance.
-    # if TOL < 0:
-    #     no_real = ~np.any(real_map, axis=0)
-    #     for i in np.where(no_real.flatten())[0]:
-    #         idx = np.unravel_index(i, no_real.shape)
-    #         min_mag = np.min(magnitude[:, idx[0]])
-    #         real_map[:, idx[0]] = magnitude[:, idx[0]] <= min_mag * 10
-
-    # # Assign real angles to output
-    # response_angles = -np.angle(roots_array)
-    # response_angles[response_angles < 0] += 2 * np.pi
-    # real_response_angles = np.full_like(response_angles, np.nan)
-    # real_response_angles[real_map] = response_angles[real_map]
-
-    # Interpolate to find extrema
-    response_deriv2_interpolated = interpolate_fourier_series([0, 2 * np.pi], response_fft_derivative2, real_response_angles)
-
-    angles_maxima = np.full_like(real_response_angles, np.nan)
-    angles_minima = np.full_like(real_response_angles, np.nan)
-
-    maxima_map = response_deriv2_interpolated < 0
-    minima_map = response_deriv2_interpolated > 0
-
-    # Find maxima and minima
-    angles_maxima[maxima_map] = real_response_angles[maxima_map]
-    angles_minima[minima_map] = real_response_angles[minima_map]
-
-    # Handle other extrema
-    angles_other = np.full_like(real_response_angles, np.nan)
-    angles_other[(~maxima_map & ~minima_map) & real_map] = real_response_angles[
-        (~maxima_map & ~minima_map) & real_map
+def filter_angle_outputs(extrema_results, filter_vals: angle_filter_values):
+    # Ensure root is near the unit circle
+    low_magnitude = abs(extrema_results["magnit"]) < filter_vals.magnitude
+    
+    # Ensure root is a root
+    low_deriv1 = abs(extrema_results["deriv1"]) < filter_vals.first_derivative
+    
+    # Ensure root is a sharp extreme
+    high_deriv2_max = extrema_results["deriv2"] < - filter_vals.second_derivative
+    high_deriv2_min = extrema_results["deriv2"] > filter_vals.second_derivative
+    
+    # Gather maxima indices
+    maxima_index = [
+        mag * der1 * der2 for mag, der1, der2 in zip(low_magnitude, low_deriv1, high_deriv2_max)
+    ]
+    
+    # Gather minima indices
+    minima_index = [
+        mag * der1 * der2 for mag, der1, der2 in zip(low_magnitude, low_deriv1, high_deriv2_min)
     ]
 
-    # Interpolate values at extrema
-    maxima_value = interpolate_fourier_series([0, 2 * np.pi], filter_response_fft, angles_maxima)
-    minima_value = interpolate_fourier_series([0, 2 * np.pi], filter_response_fft, angles_minima)
-    other_value = interpolate_fourier_series([0, 2 * np.pi], filter_response_fft, angles_other)
+    # Filter angles and original function values
+    angles_maxima = extrema_results["angles"][maxima_index]
+    angles_minima = extrema_results["angles"][minima_index]
+    values_maxima = extrema_results["origin"][maxima_index]
+    values_minima = extrema_results["origin"][minima_index]
 
-    # Reshape output arrays
-    if dim != 0:
-        angles_maxima = np.moveaxis(angles_maxima, 0, dim)
-        angles_minima = np.moveaxis(angles_minima, 0, dim)
-        maxima_value = np.moveaxis(maxima_value, 0, dim)
-        minima_value = np.moveaxis(minima_value, 0, dim)
-        angles_other = np.moveaxis(angles_other, 0, dim)
-        other_value = np.moveaxis(other_value, 0, dim)
+    return (
+        angles_maxima,
+        angles_minima,
+        values_maxima,
+        values_minima,
+        maxima_index,
+        minima_index,
+    )
 
-    # Return results in a dictionary
+
+def preprocess_filter_stack(filter_stack: np.ndarray):
+    """
+    Take in a filter response stack and convert it to a readily processable stack of Fourier coefficients, along with first and second derivatives
+
+    Args:
+        filter_stack (np.ndarray): (D, x,y) array with the real filter response along D axis.
+
+    Returns:
+        np.ndarray: 3 flattened arrays with (x*y, D) axes, providing a Fourier series for each pixel in an image. These are the Fourier coefficients of the original function and first and second derivative
+    """
+    filter_stack /= np.max(filter_stack.flatten())
+
+    response_shape = filter_stack.shape
+    response_depth = response_shape[0]
+    output_depth = response_depth - 1
+
+    filter_stack_fft = np.fft.fft(filter_stack.real, axis=0)
+    # filter_stack_fft = filter_stack
+
+    nyquist = int(np.ceil((len(filter_stack) + 1) / 2))
+
+    # Extend filter stack if depth is even
+    if response_depth % 2 == 0:
+        filter_response_fft = (
+            filter_stack_fft.copy()
+        )  # Create a copy to avoid modifying the input array
+        filter_response_fft[nyquist - 1] /= 2
+        filter_response_fft = np.insert(
+            filter_response_fft, nyquist, filter_response_fft[nyquist - 1], axis=0
+        )
+        filter_stack_fft = filter_response_fft
+        output_depth = output_depth + 1
+
+    response_frequencies = np.concatenate(
+        [np.arange(nyquist), -np.arange(nyquist - 1, 0, -1)]
+    )
+    response_frequencies_full = response_frequencies[
+        ..., np.newaxis, np.newaxis
+    ]  # Add new axis for broadcasting
+
+    response_fft_derivative1 = filter_stack_fft * (1j * response_frequencies_full)
+    response_fft_derivative2 = filter_stack_fft * -(response_frequencies_full**2)
+
+    function_flat = np.reshape(
+        np.moveaxis(filter_stack_fft, 0, 2), (-1, response_depth)
+    )
+    derivat1_flat = np.reshape(
+        np.moveaxis(response_fft_derivative1, 0, 2), (-1, response_depth)
+    )
+    derivat2_flat = np.reshape(
+        np.moveaxis(response_fft_derivative2, 0, 2), (-1, response_depth)
+    )
+    return function_flat, derivat1_flat, derivat2_flat
+
+
+def process_filter_stack(function_flat, derivat1_flat, derivat2_flat, filter_vals):
+    output_depth = function_flat.shape[-1] - 1
+
     output_dict = {
-        "angles_maxima": angles_maxima,
-        "angles_minima": angles_minima,
-        "maxima_value": maxima_value,
-        "minima_value": minima_value,
-        "angles_other": angles_other,
-        "other_value": other_value,
+        "maxima": np.full((function_flat.shape[0], output_depth), fill_value=np.nan),
+        "minima": np.full((function_flat.shape[0], output_depth), fill_value=np.nan),
+        "values_max": np.full(
+            (function_flat.shape[0], output_depth), fill_value=np.nan
+        ),
+        "values_min": np.full(
+            (function_flat.shape[0], output_depth), fill_value=np.nan
+        ),
     }
+
+    for i, (func, der1, der2) in enumerate(
+        zip(function_flat, derivat1_flat, derivat2_flat)
+    ):
+        extrema_results = find_extrema(func, der1, der2)
+
+        angles_maxima, angles_minima, values_maxima, values_minima, _, _ = (
+            filter_angle_outputs(extrema_results, filter_vals)
+        )
+
+        output_dict["maxima"][i, : len(angles_maxima)] = angles_maxima.real
+        output_dict["minima"][i, : len(angles_minima)] = angles_minima.real
+        output_dict["values_max"][i, : len(values_maxima)] = values_maxima.real
+        output_dict["values_min"][i, : len(values_minima)] = values_minima.real
+
     return output_dict
+        
+def find_maxima(filter_stack: np.ndarray):
+    flat_arrays = preprocess_filter_stack(filter_stack)
+    
+    
+    for key, item in output_dict.items():
+        output_dict[key] = np.reshape(item.T, (output_depth, *filter_stack.shape[1:]))
+    
