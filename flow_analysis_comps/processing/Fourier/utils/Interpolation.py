@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.fftpack as fftpack
 
-
+# TODO: Check if this works
 def interpolate_fourier_series(input_positions, input_values, output_positions=None, method="horner", fine_grid_factor=None, legacy=False):
     # Ensure input values are numpy arrays
     input_values = np.asarray(input_values)

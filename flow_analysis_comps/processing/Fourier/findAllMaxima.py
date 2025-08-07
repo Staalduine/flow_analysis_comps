@@ -1,5 +1,23 @@
 import numpy as np
-from pydantic import BaseModel
+from flow_analysis_comps.data_structs.AOS_structs import angle_filter_values
+
+
+def find_all_extrema_in_filter_response(
+    filter_stack: np.ndarray,
+    filter_vals: angle_filter_values | None = None,
+    do_fft: bool = True,
+):
+    if not filter_vals:
+        filter_vals = angle_filter_values()
+
+    # Convert input stack into flat arrays. Each entry is a pixel which has a filter response F(z)
+    # Arrays are of frequency spectrum, plus first and second derivatives
+    flat_arrays = preprocess_filter_stack(filter_stack, do_fft)
+
+    # Parallel process each pixel response, then filter based on F(z)' and F(z)'' values
+    filtered_angles_dict = process_filter_stack(*flat_arrays, filter_vals)
+    # output_dict = reshape_flat_stack_to_image(filter_stack, filtered_angles_dict)
+    return filtered_angles_dict
 
 
 def get_value_from_fft_series(coeffs: np.ndarray, xv: np.ndarray, period: float):
@@ -29,7 +47,131 @@ def get_value_from_fft_series(coeffs: np.ndarray, xv: np.ndarray, period: float)
     return np.einsum("ab,b->a", eikx, coeffs) / size
 
 
-def find_extrema(
+def preprocess_filter_stack(aos_filter_response: np.ndarray, do_fft: bool = True):
+    """
+    Take in a filter response stack in real-space, and return its Fourier-transform, as well as its first and second derivative.
+
+    Args:
+        filter_stack (np.ndarray): (D, x,y) array with the real filter response along D axis.
+
+    Returns:
+        np.ndarray: 3 flattened arrays with (x*y, D) axes, providing a Fourier series for each pixel in an image. These are the Fourier coefficients of the original function and first and second derivative
+    """
+
+    # Normalize all values to range [0, 1]
+    aos_filter_response /= np.max(aos_filter_response.flatten())
+
+    response_shape = aos_filter_response.shape
+    response_depth = response_shape[0]
+    # output_depth = response_depth - 1
+
+    # Calculate fft along filter axis
+    if do_fft:
+        aos_filter_response_fft = np.fft.fft(aos_filter_response.real, axis=0)
+    else:
+        aos_filter_response_fft = aos_filter_response
+
+    # Get nyquist rate
+    nyquist = int(np.ceil((len(aos_filter_response) + 1) / 2))
+
+    # Extend filter stack if depth is even
+    if response_depth % 2 == 0:
+        filter_response_fft = (
+            aos_filter_response_fft.copy()
+        )  # Create a copy to avoid modifying the input array
+        filter_response_fft[nyquist - 1] /= 2
+        filter_response_fft = np.insert(
+            filter_response_fft, nyquist, filter_response_fft[nyquist - 1], axis=0
+        )
+        aos_filter_response_fft = filter_response_fft
+        # output_depth = output_depth + 1
+
+    # Find values of frequency axis
+    frequency_axis = np.concatenate(
+        [np.arange(nyquist), -np.arange(nyquist - 1, 0, -1)]
+    )
+    frequency_axis_broadcastable = frequency_axis[
+        ..., np.newaxis, np.newaxis
+    ]  # Add new axis for broadcasting
+
+    # Calculate first and second derivative
+    aos_filter_response_deriv1_fft = aos_filter_response_fft * (
+        1j * frequency_axis_broadcastable
+    )
+    aos_filter_response_deriv2_fft = aos_filter_response_fft * -(
+        frequency_axis_broadcastable**2
+    )
+
+    return (
+        aos_filter_response_fft,
+        aos_filter_response_deriv1_fft,
+        aos_filter_response_deriv2_fft,
+    )
+
+
+def process_filter_stack(
+    filter_response_fft: np.ndarray,
+    filter_response_deriv1_fft: np.ndarray,
+    filter_response_deriv2_fft: np.ndarray,
+    multi_ori_filter_params: angle_filter_values,
+):
+    # get values for reshapes
+    response_depth = filter_response_fft.shape[0]
+    img_size = filter_response_fft.shape[1:]
+
+    # Ensure 2D case for now
+    assert len(img_size) == 2
+
+    output_depth = response_depth - 1
+
+    # Reshape (D, x, y, (z)) arrays into (x*y*(z), D) arrays
+    function_fft_flat = np.reshape(
+        np.moveaxis(filter_response_fft, 0, 2), (-1, response_depth)
+    )
+    deriv1_fft_flat = np.reshape(
+        np.moveaxis(filter_response_deriv1_fft, 0, 2), (-1, response_depth)
+    )
+    deriv2_fft_flat = np.reshape(
+        np.moveaxis(filter_response_deriv2_fft, 0, 2), (-1, response_depth)
+    )
+
+    # Pre-allocate output arrays
+    output_dict = {
+        "maxima": np.full(
+            (function_fft_flat.shape[0], output_depth), fill_value=np.nan
+        ),
+        "minima": np.full(
+            (function_fft_flat.shape[0], output_depth), fill_value=np.nan
+        ),
+        "values_max": np.full(
+            (function_fft_flat.shape[0], output_depth), fill_value=np.nan
+        ),
+        "values_min": np.full(
+            (function_fft_flat.shape[0], output_depth), fill_value=np.nan
+        ),
+    }
+
+    for i, (func, der1, der2) in enumerate(
+        zip(function_fft_flat, deriv1_fft_flat, deriv2_fft_flat)
+    ):
+        extrema_results = find_extrema_with_function_deriv1_deriv2(func, der1, der2)
+
+        angles_maxima, angles_minima, values_maxima, values_minima, _, _ = (
+            filter_angle_outputs(extrema_results, multi_ori_filter_params)
+        )
+
+        output_dict["maxima"][i, : len(angles_maxima)] = angles_maxima.real
+        output_dict["minima"][i, : len(angles_minima)] = angles_minima.real
+        output_dict["values_max"][i, : len(values_maxima)] = values_maxima.real
+        output_dict["values_min"][i, : len(values_minima)] = values_minima.real
+
+    for key, item in output_dict.items():
+        output_dict[key] = np.reshape(item.T, (output_depth, *img_size))
+
+    return output_dict
+
+
+def find_extrema_with_function_deriv1_deriv2(
     func_fft: np.ndarray, der1_fft: np.ndarray, der2_fft: np.ndarray
 ) -> dict:
     """
@@ -37,8 +179,8 @@ def find_extrema(
 
     Args:
         func_fft (np.ndarray): Fourier coefficients of original function
-        der1_fft (np.ndarray): _description_
-        der2_fft (np.ndarray): _description_
+        der1_fft (np.ndarray): Fourier coefficients of first derivative function
+        der2_fft (np.ndarray): Fourier coefficients of second function
 
     Returns:
         np.ndarray: angles of the function extrema, along with magnitude, sampled function, derivative and second derivative values
@@ -62,45 +204,45 @@ def find_extrema(
 
     sort = np.argsort(origin_values)[::-1]
 
-    return {
-        "angles": angles[sort],
-        "magnit": magnitudes[sort],
-        "origin": origin_values[sort],
-        "deriv1": deriv1_values[sort],
-        "deriv2": deriv2_values[sort],
-    }
+    return (
+        angles[sort],
+        magnitudes[sort],
+        origin_values[sort],
+        deriv1_values[sort],
+        deriv2_values[sort],
+    )
 
-class angle_filter_values(BaseModel):
-    magnitude: float = 0.1
-    first_derivative: float = 0.1
-    second_derivative: float = 5.0
 
 def filter_angle_outputs(extrema_results, filter_vals: angle_filter_values):
+    angles, magnitudes, origin_vals, deriv1_vals, deriv2_vals = extrema_results
+
     # Ensure root is near the unit circle
-    low_magnitude = abs(extrema_results["magnit"]) < filter_vals.magnitude
-    
+    low_magnitude = abs(magnitudes) < filter_vals.magnitude
+
     # Ensure root is a root
-    low_deriv1 = abs(extrema_results["deriv1"]) < filter_vals.first_derivative
-    
+    low_deriv1 = abs(deriv1_vals) < filter_vals.first_derivative
+
     # Ensure root is a sharp extreme
-    high_deriv2_max = extrema_results["deriv2"] < - filter_vals.second_derivative
-    high_deriv2_min = extrema_results["deriv2"] > filter_vals.second_derivative
-    
+    high_deriv2_max = deriv2_vals < -filter_vals.second_derivative
+    high_deriv2_min = deriv2_vals > filter_vals.second_derivative
+
     # Gather maxima indices
     maxima_index = [
-        mag * der1 * der2 for mag, der1, der2 in zip(low_magnitude, low_deriv1, high_deriv2_max)
+        mag * der1 * der2
+        for mag, der1, der2 in zip(low_magnitude, low_deriv1, high_deriv2_max)
     ]
-    
+
     # Gather minima indices
     minima_index = [
-        mag * der1 * der2 for mag, der1, der2 in zip(low_magnitude, low_deriv1, high_deriv2_min)
+        mag * der1 * der2
+        for mag, der1, der2 in zip(low_magnitude, low_deriv1, high_deriv2_min)
     ]
 
     # Filter angles and original function values
-    angles_maxima = extrema_results["angles"][maxima_index]
-    angles_minima = extrema_results["angles"][minima_index]
-    values_maxima = extrema_results["origin"][maxima_index]
-    values_minima = extrema_results["origin"][minima_index]
+    angles_maxima = angles[maxima_index]
+    angles_minima = angles[minima_index]
+    values_maxima = origin_vals[maxima_index]
+    values_minima = origin_vals[minima_index]
 
     return (
         angles_maxima,
@@ -112,95 +254,9 @@ def filter_angle_outputs(extrema_results, filter_vals: angle_filter_values):
     )
 
 
-def preprocess_filter_stack(filter_stack: np.ndarray):
-    """
-    Take in a filter response stack and convert it to a readily processable stack of Fourier coefficients, along with first and second derivatives
-
-    Args:
-        filter_stack (np.ndarray): (D, x,y) array with the real filter response along D axis.
-
-    Returns:
-        np.ndarray: 3 flattened arrays with (x*y, D) axes, providing a Fourier series for each pixel in an image. These are the Fourier coefficients of the original function and first and second derivative
-    """
-    filter_stack /= np.max(filter_stack.flatten())
-
-    response_shape = filter_stack.shape
-    response_depth = response_shape[0]
-    output_depth = response_depth - 1
-
-    filter_stack_fft = np.fft.fft(filter_stack.real, axis=0)
-    # filter_stack_fft = filter_stack
-
-    nyquist = int(np.ceil((len(filter_stack) + 1) / 2))
-
-    # Extend filter stack if depth is even
-    if response_depth % 2 == 0:
-        filter_response_fft = (
-            filter_stack_fft.copy()
-        )  # Create a copy to avoid modifying the input array
-        filter_response_fft[nyquist - 1] /= 2
-        filter_response_fft = np.insert(
-            filter_response_fft, nyquist, filter_response_fft[nyquist - 1], axis=0
-        )
-        filter_stack_fft = filter_response_fft
-        output_depth = output_depth + 1
-
-    response_frequencies = np.concatenate(
-        [np.arange(nyquist), -np.arange(nyquist - 1, 0, -1)]
-    )
-    response_frequencies_full = response_frequencies[
-        ..., np.newaxis, np.newaxis
-    ]  # Add new axis for broadcasting
-
-    response_fft_derivative1 = filter_stack_fft * (1j * response_frequencies_full)
-    response_fft_derivative2 = filter_stack_fft * -(response_frequencies_full**2)
-
-    function_flat = np.reshape(
-        np.moveaxis(filter_stack_fft, 0, 2), (-1, response_depth)
-    )
-    derivat1_flat = np.reshape(
-        np.moveaxis(response_fft_derivative1, 0, 2), (-1, response_depth)
-    )
-    derivat2_flat = np.reshape(
-        np.moveaxis(response_fft_derivative2, 0, 2), (-1, response_depth)
-    )
-    return function_flat, derivat1_flat, derivat2_flat
-
-
-def process_filter_stack(function_flat, derivat1_flat, derivat2_flat, filter_vals):
-    output_depth = function_flat.shape[-1] - 1
-
-    output_dict = {
-        "maxima": np.full((function_flat.shape[0], output_depth), fill_value=np.nan),
-        "minima": np.full((function_flat.shape[0], output_depth), fill_value=np.nan),
-        "values_max": np.full(
-            (function_flat.shape[0], output_depth), fill_value=np.nan
-        ),
-        "values_min": np.full(
-            (function_flat.shape[0], output_depth), fill_value=np.nan
-        ),
-    }
-
-    for i, (func, der1, der2) in enumerate(
-        zip(function_flat, derivat1_flat, derivat2_flat)
-    ):
-        extrema_results = find_extrema(func, der1, der2)
-
-        angles_maxima, angles_minima, values_maxima, values_minima, _, _ = (
-            filter_angle_outputs(extrema_results, filter_vals)
-        )
-
-        output_dict["maxima"][i, : len(angles_maxima)] = angles_maxima.real
-        output_dict["minima"][i, : len(angles_minima)] = angles_minima.real
-        output_dict["values_max"][i, : len(values_maxima)] = values_maxima.real
-        output_dict["values_min"][i, : len(values_minima)] = values_minima.real
-
-    return output_dict
-        
-def find_maxima(filter_stack: np.ndarray):
-    flat_arrays = preprocess_filter_stack(filter_stack)
-    
-    
-    for key, item in output_dict.items():
-        output_dict[key] = np.reshape(item.T, (output_depth, *filter_stack.shape[1:]))
-    
+# def reshape_flat_stack_to_image(filter_stack, filtered_angles_dict):
+#     for key, item in filtered_angles_dict.items():
+#         filtered_angles_dict[key] = np.reshape(
+#             item.T, (filtered_angles_dict, *filter_stack.shape[1:])
+#         )
+#     return filtered_angles_dict

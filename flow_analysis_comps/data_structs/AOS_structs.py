@@ -3,6 +3,11 @@ import numpy as np
 from pydantic import BaseModel, model_validator
 
 
+class angle_filter_values(BaseModel):
+    magnitude: float = 0.1
+    first_derivative: float = 0.1
+    second_derivative: float = 5.0
+
 class OSFilterParams(BaseModel):
     space_frequency_center: float  # Central frequency band, selects for object sizes
     space_frequency_width: Optional[float] = (
@@ -15,6 +20,7 @@ class OSFilterParams(BaseModel):
     x_spacing: float = 1.0
     y_spacing: float = 1.0
     z_spacing: float = 1.0
+    multires_filter_params: angle_filter_values = angle_filter_values()
 
     @model_validator(mode="after")
     def set_defaults(self):
@@ -28,3 +34,4 @@ class OSFilterParams(BaseModel):
                 + 1
             )
         return self
+

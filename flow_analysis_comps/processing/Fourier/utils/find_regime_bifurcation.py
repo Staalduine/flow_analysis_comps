@@ -1,8 +1,8 @@
 import numpy as np
 from flow_analysis_comps.processing.Fourier.utils.halleyft import halleyft
-from flow_analysis_comps.processing.Fourier.findAllMaxima import interpft_extrema_fast
+from flow_analysis_comps.processing.Fourier.findAllMaxima import find_all_extrema_in_filter_response
 
-
+#TODO: Check if this works
 def find_regime_bifurcation(
     response_fft: np.ndarray,
     K_response,
@@ -179,8 +179,8 @@ def find_regime_bifurcation_hat(
 
         if np.any(oddIdx):
             # You must implement interpft_extrema_fast or similar
-            odd_maxima, odd_minima = interpft_extrema_fast(
-                response_midpoint_hat[:, oddIdx], 1, True
+            odd_maxima, odd_minima = find_all_extrema_in_filter_response(
+                response_midpoint_hat[:, oddIdx], do_fft= False
             )
             oddExtrema = np.sort(
                 np.concatenate([odd_maxima, odd_minima], axis=0), axis=0

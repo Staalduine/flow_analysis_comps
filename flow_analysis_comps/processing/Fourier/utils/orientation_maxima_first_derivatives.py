@@ -1,9 +1,11 @@
 import numpy as np
 
 from flow_analysis_comps.processing.Fourier.utils.halleyft import halleyft
-from flow_analysis_comps.processing.Fourier.findAllMaxima import interpft_extrema_fast
+from flow_analysis_comps.processing.Fourier.findAllMaxima import find_all_extrema_in_filter_response
 from flow_analysis_comps.processing.Fourier.utils.interpft_derivatives import interpft1_derivatives
 
+
+# TODO: Fix this. Does not work now
 def orientation_maxima_first_derivative(response_hat, response_K, maxima, period=None, refine=False):
     """
     Get first derivative of the maxima with respect to K and t.
@@ -48,7 +50,7 @@ def orientation_maxima_first_derivative(response_hat, response_K, maxima, period
         nNewMaxima = new_maxima.shape[0] - np.sum(np.isnan(new_maxima), axis=0)
         error = nMaxima != nNewMaxima
         if np.any(error):
-            temp_maxima, _ = interpft_extrema_fast(response_hat[:, error], 1, True)
+            temp_maxima, _ = find_all_extrema_in_filter_response(response_hat[:, error], do_fft=False)
             # Pad or truncate temp_maxima to match new_maxima rows
             s = temp_maxima.shape[0]
             new_maxima[:s, error] = temp_maxima

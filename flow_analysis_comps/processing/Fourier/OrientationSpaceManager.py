@@ -20,7 +20,7 @@ from flow_analysis_comps.processing.Fourier.OrientationSpaceResponse import (
 import numpy.typing as npt
 
 from flow_analysis_comps.processing.Fourier.NLMSPrecise import nlms_precise
-from flow_analysis_comps.processing.Fourier.findAllMaxima import interpft_extrema_fast
+from flow_analysis_comps.processing.Fourier.findAllMaxima import find_all_extrema_in_filter_response
 from flow_analysis_comps.util.coord_space_util import wraparoundN
 from flow_analysis_comps.util.image_manips import mirror_pad_with_exponential_fade
 
@@ -189,8 +189,7 @@ class orientationSpaceManager:
         return maximum_single_angle
 
     def get_all_angles(self) -> dict:
-        a_hat = self.response.response_stack_fft  # dims = (D, x, y)
-        interpolated_extrema_dict = interpft_extrema_fast(a_hat, dim=0)
+        interpolated_extrema_dict = find_all_extrema_in_filter_response(self.response.response_stack, dim=0) # dims = (D, x, y)
         return interpolated_extrema_dict
 
     def refine_all_angles(self, lowest_response_order: float, all_angles_dict=None):
