@@ -37,7 +37,7 @@ class videoIO:
     def _find_metadata(self):
         metadata_file_path = next(self.root_folder.glob("*.txt"), None)
         if metadata_file_path is None:
-            metadata_file_path = next(self.root_folder.glob("metadata.json"), None)
+            metadata_file_path = next(self.root_folder.glob("*.json"), None)
         if metadata_file_path is None:
             raise ValueError(
                 f"No metadata file found in {self.root_folder}. Expected .txt or .json file."

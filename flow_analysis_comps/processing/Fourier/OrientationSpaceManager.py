@@ -189,7 +189,7 @@ class orientationSpaceManager:
         return maximum_single_angle
 
     def get_all_angles(self) -> dict:
-        interpolated_extrema_dict = find_all_extrema_in_filter_response(self.response.response_stack, dim=0) # dims = (D, x, y)
+        interpolated_extrema_dict = find_all_extrema_in_filter_response(self.response.response_stack, self.filter_params.multires_filter_params) # dims = (D, x, y)
         return interpolated_extrema_dict
 
     def refine_all_angles(self, lowest_response_order: float, all_angles_dict=None):

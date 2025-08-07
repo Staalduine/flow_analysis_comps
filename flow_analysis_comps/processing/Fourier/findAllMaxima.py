@@ -1,5 +1,8 @@
+import numba
 import numpy as np
 from flow_analysis_comps.data_structs.AOS_structs import angle_filter_values
+from joblib import Parallel, delayed
+from flow_analysis_comps.processing.Fourier.utils.Interpolation import interpolate_fourier_series
 
 
 def find_all_extrema_in_filter_response(
@@ -16,13 +19,20 @@ def find_all_extrema_in_filter_response(
 
     # Parallel process each pixel response, then filter based on F(z)' and F(z)'' values
     filtered_angles_dict = process_filter_stack(*flat_arrays, filter_vals)
-    # output_dict = reshape_flat_stack_to_image(filter_stack, filtered_angles_dict)
+
+    filtered_angles_dict = postprocess_angles(filtered_angles_dict)
+    
     return filtered_angles_dict
 
+def postprocess_angles(output_dict):
+    output_dict["maxima"] = (output_dict["maxima"]  + np.pi) / 2
+    output_dict["minima"] = (output_dict["minima"]  + np.pi) / 2
+    return output_dict
 
 def get_value_from_fft_series(coeffs: np.ndarray, xv: np.ndarray, period: float):
     """
-    Sample trigonometric polynomial using the complex fourier series coefficients
+    Sample trigonometric polynomial using the complex fourier series coefficients.
+    Uses Horner method for real-valued query points
 
     Args:
         coeffs (np.ndarray): Series coefficients
@@ -33,18 +43,20 @@ def get_value_from_fft_series(coeffs: np.ndarray, xv: np.ndarray, period: float)
         np.ndarray: Sampled points on trigonometric polynomial
     """
 
-    # Normalize points to a [-1, 1] domain
-    xv = xv / period
-    size = len(coeffs)
+    # # Normalize points to a [-1, 1] domain
+    # xv = xv / period
+    # size = len(coeffs)
 
-    # adjust the spatial frequencies to period and number of coefficients
-    kn = np.fft.fftfreq(size, period / size) * period
+    # # adjust the spatial frequencies to period and number of coefficients
+    # kn = np.fft.fftfreq(size, period / size) * period
 
-    # Sample contributions from each exponential
-    eikx = np.exp(2.0j * np.pi * np.outer(xv, kn))
+    # # Sample contributions from each exponential
+    # eikx = np.exp(2.0j * np.pi * np.outer(xv, kn))
 
-    # Sum and return
-    return np.einsum("ab,b->a", eikx, coeffs) / size
+    # # Sum and return
+    # return np.einsum("ab,b->a", eikx, coeffs) / size
+
+    return interpolate_fourier_series([0, period], coeffs, xv, method="horner_freq")
 
 
 def preprocess_filter_stack(aos_filter_response: np.ndarray, do_fft: bool = True):
@@ -135,35 +147,42 @@ def process_filter_stack(
         np.moveaxis(filter_response_deriv2_fft, 0, 2), (-1, response_depth)
     )
 
-    # Pre-allocate output arrays
-    output_dict = {
-        "maxima": np.full(
-            (function_fft_flat.shape[0], output_depth), fill_value=np.nan
-        ),
-        "minima": np.full(
-            (function_fft_flat.shape[0], output_depth), fill_value=np.nan
-        ),
-        "values_max": np.full(
-            (function_fft_flat.shape[0], output_depth), fill_value=np.nan
-        ),
-        "values_min": np.full(
-            (function_fft_flat.shape[0], output_depth), fill_value=np.nan
-        ),
-    }
+    # Pre-make Frobenius matrices
+    big_frob = np.zeros(
+        (function_fft_flat.shape[0], output_depth, output_depth), dtype=np.complex128
+    )
+    big_frob[:, :-1, 1:] = np.eye(output_depth - 1)
+    deriv1_fft_flat_fftshift = np.fft.fftshift(deriv1_fft_flat, axes=1)
+    coeff_array = (
+        deriv1_fft_flat_fftshift[:, :-1]
+        / (deriv1_fft_flat_fftshift[:, -1])[..., np.newaxis]
+    )
+    big_frob[:, -1] = coeff_array
 
-    for i, (func, der1, der2) in enumerate(
-        zip(function_fft_flat, deriv1_fft_flat, deriv2_fft_flat)
-    ):
-        extrema_results = find_extrema_with_function_deriv1_deriv2(func, der1, der2)
+    eigenvalues = np.array(
+        Parallel(n_jobs=-1)(delayed(np.linalg.eigvals)(frob) for frob in big_frob)
+    )
+    angles = (np.angle(eigenvalues) - np.log(abs(eigenvalues)) * 1j).real % (
+        2 * np.pi
+    ) - np.pi
+    magnitudes = np.abs(np.log(abs(eigenvalues)))
 
-        angles_maxima, angles_minima, values_maxima, values_minima, _, _ = (
-            filter_angle_outputs(extrema_results, multi_ori_filter_params)
+    full_properties_array = np.array(
+        Parallel(n_jobs=-1)(
+            delayed(sample_and_filter_angles)(
+                multi_ori_filter_params, angle, mag, func, der1, der2
+            )
+            for angle, mag, func, der1, der2 in zip(
+                angles, magnitudes, function_fft_flat, deriv1_fft_flat, deriv2_fft_flat
+            )
         )
+    )
 
-        output_dict["maxima"][i, : len(angles_maxima)] = angles_maxima.real
-        output_dict["minima"][i, : len(angles_minima)] = angles_minima.real
-        output_dict["values_max"][i, : len(values_maxima)] = values_maxima.real
-        output_dict["values_min"][i, : len(values_minima)] = values_minima.real
+    output_dict = {}
+    output_dict["maxima"] = full_properties_array[:, 0]
+    output_dict["minima"] = full_properties_array[:, 1]
+    output_dict["values_max"] = full_properties_array[:, 2]
+    output_dict["values_min"] = full_properties_array[:, 3]
 
     for key, item in output_dict.items():
         output_dict[key] = np.reshape(item.T, (output_depth, *img_size))
@@ -171,8 +190,18 @@ def process_filter_stack(
     return output_dict
 
 
-def find_extrema_with_function_deriv1_deriv2(
-    func_fft: np.ndarray, der1_fft: np.ndarray, der2_fft: np.ndarray
+def sample_and_filter_angles(multi_ori_filter_params, angle, mag, func, der1, der2):
+    extrema_results = sample_function_deriv1_deriv2_values(angle, mag, func, der1, der2)
+    filtered_outputs = filter_angle_outputs(extrema_results, multi_ori_filter_params)
+    return filtered_outputs
+
+
+def sample_function_deriv1_deriv2_values(
+    angles: np.ndarray,
+    magnitudes: np.ndarray,
+    func_fft: np.ndarray,
+    der1_fft: np.ndarray,
+    der2_fft: np.ndarray,
 ) -> dict:
     """
     Finds extrema using companion matrix approach (n fourier coefficients yields n-1 roots). All input arrays need to be of the same size. Values are sorted along the function values to make significant extrema
@@ -185,22 +214,9 @@ def find_extrema_with_function_deriv1_deriv2(
     Returns:
         np.ndarray: angles of the function extrema, along with magnitude, sampled function, derivative and second derivative values
     """
-    output_depth = len(func_fft) - 1
-    coeffs = -np.fft.fftshift(der1_fft)
-    # Assemble Matrix
-    mat = np.zeros((output_depth, output_depth), dtype=np.complex128)
-    mat[:-1, 1:] = np.eye(output_depth - 1)
-    mat[-1] = coeffs[:-1] / coeffs[-1]
-
-    eigenvalues = np.linalg.eigvals(mat)
-    angles = (np.angle(eigenvalues) - np.log(abs(eigenvalues)) * 1j).real % (
-        2 * np.pi
-    ) - np.pi
-
-    magnitudes = np.log(abs(eigenvalues))
-    origin_values = get_value_from_fft_series(func_fft, angles + np.pi, 2 * np.pi)
-    deriv1_values = get_value_from_fft_series(der1_fft, angles + np.pi, 2 * np.pi)
-    deriv2_values = get_value_from_fft_series(der2_fft, angles + np.pi, 2 * np.pi)
+    origin_values = get_value_from_fft_series(func_fft, angles + np.pi, 2 * np.pi).real
+    deriv1_values = get_value_from_fft_series(der1_fft, angles + np.pi, 2 * np.pi).real
+    deriv2_values = get_value_from_fft_series(der2_fft, angles + np.pi, 2 * np.pi).real
 
     sort = np.argsort(origin_values)[::-1]
 
@@ -214,49 +230,61 @@ def find_extrema_with_function_deriv1_deriv2(
 
 
 def filter_angle_outputs(extrema_results, filter_vals: angle_filter_values):
-    angles, magnitudes, origin_vals, deriv1_vals, deriv2_vals = extrema_results
+    # angles, magnitudes, origin_vals, deriv1_vals, deriv2_vals = extrema_results
 
-    # Ensure root is near the unit circle
-    low_magnitude = abs(magnitudes) < filter_vals.magnitude
-
-    # Ensure root is a root
-    low_deriv1 = abs(deriv1_vals) < filter_vals.first_derivative
-
-    # Ensure root is a sharp extreme
-    high_deriv2_max = deriv2_vals < -filter_vals.second_derivative
-    high_deriv2_min = deriv2_vals > filter_vals.second_derivative
-
-    # Gather maxima indices
-    maxima_index = [
-        mag * der1 * der2
-        for mag, der1, der2 in zip(low_magnitude, low_deriv1, high_deriv2_max)
-    ]
-
-    # Gather minima indices
-    minima_index = [
-        mag * der1 * der2
-        for mag, der1, der2 in zip(low_magnitude, low_deriv1, high_deriv2_min)
-    ]
-
-    # Filter angles and original function values
-    angles_maxima = angles[maxima_index]
-    angles_minima = angles[minima_index]
-    values_maxima = origin_vals[maxima_index]
-    values_minima = origin_vals[minima_index]
-
-    return (
-        angles_maxima,
-        angles_minima,
-        values_maxima,
-        values_minima,
-        maxima_index,
-        minima_index,
+    return fast_filter_angle_outputs(
+        *extrema_results,
+        filter_vals.magnitude,
+        filter_vals.first_derivative,
+        filter_vals.second_derivative,
     )
 
 
-# def reshape_flat_stack_to_image(filter_stack, filtered_angles_dict):
-#     for key, item in filtered_angles_dict.items():
-#         filtered_angles_dict[key] = np.reshape(
-#             item.T, (filtered_angles_dict, *filter_stack.shape[1:])
-#         )
-#     return filtered_angles_dict
+@numba.jit
+def fast_filter_angle_outputs(
+    angles,
+    magnitudes,
+    origin_vals,
+    deriv1_vals,
+    deriv2_vals,
+    mag_constr: float,
+    df1_constr: float,
+    df2_constr: float,
+):
+    # 6 entries for 6 results:
+
+    """
+    angles_maxima,
+    angles_minima,
+    values_maxima,
+    values_minima,
+    maxima_index,
+    minima_index,
+    """
+    output_array = np.full((6, len(angles)), fill_value=np.nan, dtype=np.float32)
+
+    # Ensure root is near the unit circle
+    low_magnitude = np.abs(magnitudes) < mag_constr
+
+    # Ensure root is a root
+    low_deriv1 = np.abs(deriv1_vals) < df1_constr
+
+    # Ensure root is a sharp extreme
+    high_deriv2_max = deriv2_vals < -df2_constr
+    high_deriv2_min = deriv2_vals > df2_constr
+
+    # Gather maxima indices
+    maxima_index = low_magnitude * low_deriv1 * high_deriv2_max
+
+    # Gather minima indices
+    minima_index = low_magnitude * low_deriv1 * high_deriv2_min
+
+    # Filter angles and original function values
+    output_array[0, : np.sum(maxima_index)] = angles[maxima_index]
+    output_array[1, : np.sum(minima_index)] = angles[minima_index]
+    output_array[2, : np.sum(maxima_index)] = origin_vals[maxima_index]
+    output_array[3, : np.sum(minima_index)] = origin_vals[minima_index]
+    output_array[4] = maxima_index
+    output_array[5] = minima_index
+
+    return output_array

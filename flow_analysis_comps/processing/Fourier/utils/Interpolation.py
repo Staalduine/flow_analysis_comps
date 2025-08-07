@@ -1,3 +1,4 @@
+import numba
 import numpy as np
 import scipy.fftpack as fftpack
 
@@ -215,6 +216,7 @@ def horner_vec_complex(v, xq):
     return vq
 
 
+@numba.jit
 def horner_vec_real_freq(v_h: np.ndarray, xq: np.ndarray):
     """
     Port of the MATLAB function horner_vec_real_freq.
@@ -261,6 +263,7 @@ def horner_vec_real_freq(v_h: np.ndarray, xq: np.ndarray):
     return vq
 
 
+@numba.jit
 def horner_vec_complex_freq(v_h: np.ndarray, xq: np.ndarray):
     """
     Port of the MATLAB function horner_vec_complex_freq.
@@ -305,7 +308,7 @@ def horner_vec_complex_freq(v_h: np.ndarray, xq: np.ndarray):
 
     return vq
 
-
+# @numba.jit
 def horner_vec_real_freq_simpler(v_h: np.ndarray, xq: np.ndarray):
     """
     Simplified version of horner_vec_real_freq, evaluating polynomials with real coefficients at query points.
