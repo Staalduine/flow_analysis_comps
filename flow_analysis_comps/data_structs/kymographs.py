@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 
 class graphExtractConfig(BaseModel):
-    edge_length_threshold: int = 200
+    edge_length_threshold: int = 200 #TODO maybe take into account pixel size so this is in um?
     segmentation_threshold: float = 1.15
 
 

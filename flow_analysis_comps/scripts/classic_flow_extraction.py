@@ -1,5 +1,6 @@
 from pathlib import Path
 import pandas as pd
+import numpy as np
 
 from flow_analysis_comps.data_structs.kymographs import (
     GSTConfig,
@@ -50,7 +51,7 @@ def process(run_info_index, process_args):
     else:
         out_folder: Path = path / "flow_analysis" / formatted_timestamp
 
-    process_video(path, out_folder, speed_config, video_position, formatted_timestamp)
+    process_video(path, out_folder, speed_config, video_position, formatted_timestamp,user_metadata=video_io.metadata)
 
 
 def process_video(
@@ -82,6 +83,7 @@ def process_video(
 
     kymograph_list = kymo_extractor.processed_kymographs
     kymograph_videos = kymo_extractor.hyphal_videos
+    edges = kymo_extractor.edges
 
     edge_extraction_fig = GraphVisualizer(
         graph_data, kymo_extract_config
@@ -92,20 +94,28 @@ def process_video(
     )
 
     averages_list = []
-    for kymo in kymograph_list:
+    for kymo, edge in zip(kymograph_list,edges):
+
         kymo_averages = process_kymo(
             kymo, out_folder, speed_config, video_position, formatted_timestamp
         )
         # save hyphal video with video settings
         hyphal_video = kymograph_videos[kymo.name]
         hyphal_video_path = out_folder / kymo.name / f"{video_position}_{formatted_timestamp}_{kymo.name}_hyphal_video.mp4"
+        hyphal_edge_path = out_folder / kymo.name / f"edge_pixels.npy"
+        metadata_path = out_folder / kymo.name / f"metadata.json"
 
+        video_json = user_metadata.model_dump_json()
+
+        # Save to file
+        with open(metadata_path, "w") as f:
+            f.write(video_json)
         imageio.mimsave(
             str(hyphal_video_path),
             hyphal_video,
             fps=kymo_extractor.metadata.camera.frame_rate
         )
-
+        np.save(hyphal_edge_path,edge.pixel_list)
         kymo_averages["kymo_name"] = kymo.name  # Add name as a column
         kymo_averages.set_index("kymo_name", inplace=True)  # Set as index
         averages_list.append(kymo_averages)
