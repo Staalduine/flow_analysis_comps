@@ -3,9 +3,10 @@ from flow_analysis_comps.data_structs.kymographs import (
     VideoGraphExtraction,
     VideoGraphEdge,
     graphOutput,
-    graphExtractConfig,
+    # graphExtractConfig,
 )
-from flow_analysis_comps.io.video import videoIO
+from flow_analysis_comps.data_structs.process_configs import graphExtractConfig
+# from flow_analysis_comps.io.video import videoIO
 from flow_analysis_comps.data_structs.video_info import videoInfo
 from flow_analysis_comps.processing.graph_extraction.edge_utils import (
     low_pass_filter,
@@ -20,7 +21,19 @@ from flow_analysis_comps.processing.graph_extraction.graph_utils import (
 )
 import dask.array as da
 import numpy as np
+from flow_analysis_comps.io import read_video_array
 
+
+def extract_graph_from_video(
+    metadata: videoInfo, extract_properties: graphExtractConfig | None = None
+) -> VideoGraphExtraction:
+    """
+    Extracts a graph from a video file using the specified extraction properties.
+    """
+    if extract_properties is None:
+        extract_properties = graphExtractConfig()
+    extractor = VideoGraphExtractor(metadata, extract_properties)
+    return extractor.edge_data
 
 class VideoGraphExtractor:
     """
@@ -29,12 +42,13 @@ class VideoGraphExtractor:
 
     video_path: Path
 
-    def __init__(self, video_path: Path, extract_properties: graphExtractConfig, user_metadata : videoInfo | None = None):
-        self.video_path = video_path
+    def __init__(self, metadata: videoInfo, extract_properties: graphExtractConfig):
+        self.video_path = metadata.root_path
         self.extract_properties = extract_properties
-        self.io = videoIO(self.video_path, user_metadata=user_metadata)
-        self.video_array: da.Array = self.io.video_array[:20].compute()
-        self.metadata: videoInfo = self.io.metadata
+        self.metadata = metadata
+        # self.io = videoIO(self.video_path, user_metadata=user_metadata)
+        self.video_array = read_video_array(self.metadata)[:20].compute()
+        # self.video_array: da.Array = self.video_array[:20].compute()
 
     @property
     def mean_img(self):
@@ -68,7 +82,7 @@ class VideoGraphExtractor:
 
     @property
     def edge_data(self) -> VideoGraphExtraction:
-        output = VideoGraphExtraction(io=self.io, edges=[])
+        output = VideoGraphExtraction(io=self.metadata, edges=[])
         for edge_graph in self.edge_graphs:
             edge_pixels = orient(
                 self.graph.graph.get_edge_data(*edge_graph)["pixel_list"],

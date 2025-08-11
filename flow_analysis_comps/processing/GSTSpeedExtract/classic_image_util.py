@@ -1,8 +1,9 @@
-from flow_analysis_comps.data_structs.kymographs import kymoDeltas
+# from flow_analysis_comps.data_structs.kymographs import kymoDeltas
 import numpy as np
 import cv2
 
-from flow_analysis_comps.data_structs.kymographs import GST_params
+from flow_analysis_comps.data_structs.process_configs import GST_params
+from flow_analysis_comps.data_structs.video_info import videoDeltas
 
 
 def calcGST(inputIMG: np.ndarray, window_size: int):
@@ -150,7 +151,7 @@ def extract_orientations(image: np.ndarray, gst_params: GST_params):
 
 
 def speed_from_orientation_image(
-    image, deltas: kymoDeltas, speed_threshold: float, positive_speed: bool
+    image, deltas: videoDeltas, speed_threshold: float, positive_speed: bool
 ):
     """
     Calculates the speed from an orientation image using the tangent of the angle.

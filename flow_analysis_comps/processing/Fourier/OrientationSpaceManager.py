@@ -109,7 +109,7 @@ class orientationSpaceManager:
         return edge_response
 
     def __mul__(self, other: np.ndarray):
-        return self.get_response(other)
+        return self.get_response(other, pad=0)
 
     def update_response_at_order_FT(
         self, K_new: float, normalize: int = 2
@@ -157,7 +157,7 @@ class orientationSpaceManager:
             filter_new = OrientationSpaceFilter(
                 OSFilterParams(
                     space_frequency_center=self.os_filter.params.space_frequency_center,
-                    space_frequency_width=self.os_filter.params.space_frequency_width,
+                    # space_frequency_width=self.os_filter.params.space_frequency_width,
                     orientation_accuracy=K_new,
                 )
             )

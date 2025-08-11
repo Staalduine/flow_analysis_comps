@@ -1,9 +1,10 @@
 from enum import StrEnum, auto
 from pathlib import Path
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationInfo, computed_field, model_validator, field_validator
 from datetime import datetime, timedelta
 from flow_analysis_comps.data_structs.plate_info import plateInfo
+from typing import Annotated
 
 
 class videoMode(StrEnum):
@@ -19,9 +20,9 @@ class cameraSettings(BaseModel):
     frame_rate: float
     frame_size: tuple[int, int]
     binning: int
-    gain: float
-    gamma: float
-    pixel_size: float = 1.725
+    gain: float = 0.0
+    gamma: float = 1.0
+    pixel_size_um: float = 1.725
 
 
 class cameraPosition(BaseModel):
@@ -29,18 +30,31 @@ class cameraPosition(BaseModel):
     y: float
     z: float
 
+class videoDeltas(BaseModel):
+    delta_t: float
+    delta_x: float
+
 
 class videoInfo(BaseModel):
     date_time: Optional[datetime] = None
-    storage_path: Path
+    root_path: Path
     plate_info: Optional[plateInfo] = None
     run_nr: Optional[int] = None
     duration: timedelta
     frame_nr: int
-    mode: videoMode
-    magnification: float
+    mode: videoMode = videoMode.BRIGHTFIELD
     camera: cameraSettings
-    position: cameraPosition
+    position: Optional[cameraPosition] = None
     magnification: float = 50.0
-    imaging_mode: str = "brightfield"
-    video_nr: int = 1
+
+    @computed_field
+    @property
+    def deltas(self) -> videoDeltas:
+        delta_t = 1 / self.camera.frame_rate
+        delta_x = (
+            self.camera.pixel_size_um
+            * 2
+            / self.magnification
+            * self.camera.binning
+        )
+        return videoDeltas(delta_t=delta_t, delta_x=delta_x)

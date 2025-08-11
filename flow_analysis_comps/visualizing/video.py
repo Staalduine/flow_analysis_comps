@@ -23,10 +23,10 @@ class VideoVisualizer:
         formatted_timestamp = timestamp_str.strftime(timeformat)
 
         if separate_into_positions:
-            output_path = Path(self.metadata.storage_path) / "video" / folder_name
+            output_path = Path(self.metadata.root_path) / "video" / folder_name
             output_path.mkdir(parents=True, exist_ok=True)
         else:
-            output_path = Path(self.metadata.storage_path)
+            output_path = Path(self.metadata.root_path)
 
         writer = imageio.get_writer(
             output_path / f"{formatted_timestamp}_Video.mp4",

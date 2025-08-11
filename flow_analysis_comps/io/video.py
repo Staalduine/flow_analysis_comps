@@ -20,12 +20,29 @@ from flow_analysis_comps.data_structs.plate_info import (
 )
 
 
+def read_video_metadata(root_folder: str | Path, user_metadata: videoInfo | None = None) -> videoInfo:
+    """
+    Reads the metadata from a video folder and returns a videoInfo object.
+    If user_metadata is provided, it will be used instead of reading from the folder.
+    """
+    video_io = videoIO(root_folder, user_metadata=user_metadata)
+    return video_io.metadata
+
+def read_video_array(user_metadata: videoInfo) -> da.Array:
+    """
+    Reads the video array from a folder and returns it as a Dask array.
+    If user_metadata is provided, it will be used instead of reading from the folder.
+    """
+    root_folder = user_metadata.root_path
+    video_io = videoIO(root_folder, user_metadata=user_metadata)
+    return video_io.video_array
+
 class videoIO:
-    def __init__(self, root_folder:str, user_metadata : videoInfo | None = None):
+    def __init__(self, root_folder: str | Path, user_metadata: videoInfo | None = None):
         self.root_folder = Path(root_folder)
         if not self.root_folder.exists():
             raise FileNotFoundError(f"Folder {self.root_folder} does not exist")
-        
+
         if user_metadata:
             self.metadata = user_metadata
         else:
@@ -69,7 +86,11 @@ class videoIO:
         intensity = video_json["camera"]["intensity"]
         if isinstance(intensity, str):
             # Try to convert string to list of numbers, e.g. "0,255" -> [0, 255]
-            intensity = [float(x) for x in intensity.replace('[','').replace(']','').split(',') if x.strip()]
+            intensity = [
+                float(x)
+                for x in intensity.replace("[", "").replace("]", "").split(",")
+                if x.strip()
+            ]
         if intensity[0] == 0:
             image_mode = "fluorescence"
         elif intensity[1] == 0:
@@ -96,7 +117,7 @@ class videoIO:
             binning=video_json["camera"]["binning"].split("x")[0],
             gain=video_json["camera"]["gain"],
             gamma=video_json["camera"]["gamma"],
-            pixel_size_um=camera_pixel_size
+            pixel_size_um=camera_pixel_size,
         )
 
         if "magnification" in video_json["video"]:
@@ -113,7 +134,7 @@ class videoIO:
             magnification=magnification,
             position=position,
             camera=camera_settings,
-            storage_path=self.root_folder,
+            root_path=self.root_folder,
             date_time=date_time,
         )
 
@@ -166,7 +187,7 @@ class videoIO:
         info_obj = videoInfo(
             plate_info=plate_info_obj,
             date_time=time_obj,
-            storage_path=self.root_folder,
+            root_path=self.root_folder,
             run_nr=int(raw_data["Run"]),
             duration=timedelta(seconds=int(raw_data["Time"].strip().split(" ")[0])),
             frame_nr=int(raw_data["Frames Recorded"].strip().split("/")[0]),
@@ -221,10 +242,5 @@ class videoIO:
         Returns the time and spatial deltas for the video.
         """
         delta_t = 1 / self.metadata.camera.frame_rate
-        delta_x = (
-            1.725
-            * 2
-            / self.metadata.magnification
-            * self.metadata.camera.binning
-        )
+        delta_x = 1.725 * 2 / self.metadata.magnification * self.metadata.camera.binning
         return delta_x, delta_t

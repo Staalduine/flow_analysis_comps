@@ -167,7 +167,7 @@ def read_video_info_txt(address: Path) -> videoInfo:
     info_obj = videoInfo(
         plate_info=plate_info_obj,
         date_time=time_obj,
-        storage_path=raw_data["StoragePath"],
+        root_path=raw_data["StoragePath"],
         run_nr=raw_data["Run"],
         duration=timedelta(seconds=int(raw_data["Time"].strip().split(" ")[0])),
         frame_nr=int(raw_data["Frames Recorded"].strip().split("/")[0]),

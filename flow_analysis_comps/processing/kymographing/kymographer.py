@@ -1,13 +1,13 @@
 from flow_analysis_comps.data_structs.kymographs import (
     KymoCoordinates,
     VideoGraphExtraction,
-    kymoDeltas,
-    kymoExtractConfig,
+    # kymoExtractConfig,
     kymoOutputs,
 )
-from flow_analysis_comps.processing.GSTSpeedExtract.classic_image_util import (
-    filter_kymo_right,
-)
+from flow_analysis_comps.data_structs.process_configs import kymoExtractConfig
+# from flow_analysis_comps.processing.GSTSpeedExtract.classic_image_util import (
+#     filter_kymo_right,
+# )
 from flow_analysis_comps.data_structs.video_info import videoInfo
 from flow_analysis_comps.processing.kymographing.kymo_utils import (
     extract_kymo_coordinates,
@@ -19,11 +19,19 @@ import numpy as np
 from scipy import ndimage as ndi
 from flow_analysis_comps.util.logging import setup_logger
 import dask.array as da
+import flow_analysis_comps.io as io
 
 
-class Kymograph:
-    def __init__(self, kymodata) -> None:
-        pass
+def extract_kymographs_from_video(
+    video_metadata: videoInfo,
+    extracted_graph: VideoGraphExtraction,
+    extract_params: kymoExtractConfig,
+) -> list[kymoOutputs]:
+    """
+    Extracts kymographs from a video file using the specified extraction parameters.
+    """
+    extractor = KymographExtractor(video_metadata, extracted_graph, extract_params)
+    return extractor.processed_kymographs
 
 
 class KymographExtractor:
@@ -33,26 +41,23 @@ class KymographExtractor:
 
     def __init__(
         self,
+        video_metadata: videoInfo,
         graph_extraction: VideoGraphExtraction,
-        extract_properties: kymoExtractConfig,
+        extract_params: kymoExtractConfig,
     ):
-        self.extract_properties = extract_properties
+        self.metadata = video_metadata
+        self.extract_properties = extract_params
         self.io = graph_extraction.io
-        self.video_array: da.Array = self.io.video_array
-        self.metadata: videoInfo = self.io.metadata
+        self.video_array: da.Array = io.read_video_array(self.metadata)
         self.logger = setup_logger(name="flow_analysis_comps.kymographer")
 
-        deltas = self.io.get_deltas()
-        self.deltas = kymoDeltas(
-            delta_x=deltas[0],
-            delta_t=deltas[1],
-        )
+        self.deltas = self.metadata.deltas.model_copy()
         self.deltas.delta_x *= self.extract_properties.resolution
 
         self.edges = graph_extraction.edges
 
         self.edge_coords = self._prepare_coordinates()
-        self.logger.info(f"Extracted edge coordinates from {self.io.root_folder}")
+        self.logger.info(f"Extracted edge coordinates from {self.metadata.root_path}")
 
     @property
     def hyphal_videos(self) -> dict[str, np.ndarray]:
@@ -60,7 +65,7 @@ class KymographExtractor:
         video_array: np.ndarray = self.video_array.compute()
 
         order = validate_interpolation_order(video_array[0].dtype, None)
-        order=3
+        order = 3
 
         for im in video_array:
             for edge in self.edge_coords:
@@ -87,14 +92,14 @@ class KymographExtractor:
     def simple_kymographs(self):
         return {name: video.mean(axis=2) for name, video in self.hyphal_videos.items()}
 
-    @staticmethod
-    def _decompose_kymograph(kymograph: np.ndarray) -> np.ndarray:
-        kymo_filtered_left = filter_kymo_right(kymograph)
-        kymo_filtered_right = np.flip(
-            filter_kymo_right(np.flip(kymograph, axis=1)), axis=1
-        )
-        out = np.array([kymo_filtered_left, kymo_filtered_right])
-        return out
+    # @staticmethod
+    # def _decompose_kymograph(kymograph: np.ndarray) -> np.ndarray:
+    #     kymo_filtered_left = filter_kymo_right(kymograph)
+    #     kymo_filtered_right = np.flip(
+    #         filter_kymo_right(np.flip(kymograph, axis=1)), axis=1
+    #     )
+    #     out = np.array([kymo_filtered_left, kymo_filtered_right])
+    #     return out
 
     @property
     def processed_kymographs(self) -> list[kymoOutputs]:
@@ -105,14 +110,11 @@ class KymographExtractor:
         processed_kymographs = []
 
         for name, kymo in kymographs.items():
-            decomposed_kymo = self._decompose_kymograph(kymo)
+            # decomposed_kymo = self._decompose_kymograph(kymo)
             processed_kymo = kymoOutputs(
                 deltas=self.deltas,
                 name=name,
                 kymograph=kymo,
-                kymo_left=decomposed_kymo[0],
-                kymo_right=decomposed_kymo[1],
-                kymo_no_static=decomposed_kymo[0] + decomposed_kymo[1],
             )
             processed_kymographs.append(processed_kymo)
 
