@@ -1,11 +1,13 @@
 import numba
 import numpy as np
+from tqdm import tqdm
 from flow_analysis_comps.data_structs.AOS_structs import angle_filter_values
 from joblib import Parallel, delayed
 from flow_analysis_comps.processing.Fourier.utils.Interpolation import (
     interpolate_fourier_series,
 )
 
+MEMORY_THRESHOLD_NBYTES = 1024 * 1024  # Threshold for low memory processing
 
 def find_all_extrema_in_filter_response(
     filter_stack: np.ndarray,
@@ -153,7 +155,12 @@ def _process_filter_stack(
     # The Frobenius matrix is a square matrix that has ones on the first sub-diagonal and the coefficients of the polynomial on the last row.
     # In theory, the same output can be achieved with np.roots, which might be more memory efficient. I have not gotten an equivalent output with np.roots yet, so I am sticking with this for now.
 
-    eigenvalues = calculate_eigenvalues_from_stack(deriv1_fft_flat)
+    print(f"Calculating eigenvalues, using {'low memory' if deriv1_fft_flat.nbytes > MEMORY_THRESHOLD_NBYTES else 'full memory'}")
+    if deriv1_fft_flat.nbytes > MEMORY_THRESHOLD_NBYTES:
+        # If the input is large, use a low memory version
+        eigenvalues = calculate_eigenvalues_from_stack_low_mem(deriv1_fft_flat)
+    else:
+        eigenvalues = calculate_eigenvalues_from_stack_high_mem(deriv1_fft_flat)
 
     # Calculate angles and magnitudes of eigenvalues
     # The real eigenvalues are the arguments of the complex roots of the companion matrix. For an adjustment, we also use the complex logarithm.
@@ -187,7 +194,7 @@ def _process_filter_stack(
     return output_dict
 
 
-def calculate_eigenvalues_from_stack(deriv1_fft_flat: np.ndarray):
+def calculate_eigenvalues_from_stack_high_mem(deriv1_fft_flat: np.ndarray):
     """
     Create Frobenius matrices from the first derivative Fourier coefficients and calculate eigenvalues.
     This function creates a large array for the entire image, so it can be memory intensive. It is fast tho.
@@ -215,6 +222,45 @@ def calculate_eigenvalues_from_stack(deriv1_fft_flat: np.ndarray):
     )
 
     return eigenvalues
+
+
+def calculate_eigenvalues_from_stack_low_mem(deriv1_fft_flat: np.ndarray):
+    """
+    Calculate eigenvalues from the first derivative Fourier coefficients without creating a large array.
+    This function is more memory efficient but slower than the full version.
+
+    Args:
+        deriv1_fft_flat (np.ndarray): First derivative Fourier coefficients.
+
+    Returns:
+        np.ndarray: Eigenvalues for each sequence of Fourier coefficients.
+    """
+    eigenvalues = np.array(
+        Parallel(n_jobs=-1)(
+            delayed(eigenvalues_single_sequence)(deriv1_fft_flat[i])
+            for i in tqdm(range(deriv1_fft_flat.shape[0]))
+        )
+    )
+    return eigenvalues
+
+def eigenvalues_single_sequence(deriv1_fft_flat:np.ndarray) -> np.ndarray:
+    """
+    Calculates the eigenvalues for a single sequence of Fourier coefficients using a Frobenius matrix.
+    Expected input is a single row of the first derivative Fourier coefficients.
+
+    Args:
+        deriv1_fft_flat (np.ndarray): First derivative Fourier coefficients. Direct result of fft.
+
+    Returns:
+        np.ndarray: Eigenvalues for the given sequence of Fourier coefficients.
+    """
+    output_depth= deriv1_fft_flat.shape[0] - 1
+    deriv1_fftshift = np.fft.fftshift(deriv1_fft_flat)
+    frob_matrix = np.zeros((output_depth, output_depth), dtype=np.complex128)
+    frob_matrix[:-1, 1:] = np.eye(output_depth - 1)
+    frob_matrix[-1, :] = deriv1_fftshift[:-1] / deriv1_fftshift[-1]
+    eigvals = np.linalg.eigvals(frob_matrix)
+    return eigvals
 
 
 def sample_and_filter_angles(multi_ori_filter_params, angle, mag, func, der1, der2):
@@ -271,7 +317,7 @@ def filter_angle_outputs(extrema_results, filter_vals: angle_filter_values):
     )
 
 
-@numba.jit
+@numba.njit
 def fast_filter_angle_outputs(
     angles,
     magnitudes,
