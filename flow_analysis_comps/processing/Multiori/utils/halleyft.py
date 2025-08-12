@@ -1,8 +1,6 @@
 import numpy as np
-
 from flow_analysis_comps.util.coord_space_util import wraparoundN
-
-from flow_analysis_comps.processing.Fourier.utils.Interpolation import (
+from flow_analysis_comps.processing.Multiori.utils.Interpolation import (
     interpolate_fourier_series,
 )
 

@@ -1,8 +1,6 @@
 from copy import copy
-from typing import Optional
-from flow_analysis_comps.data_structs.AOS_structs import OSFilterParams
-from flow_analysis_comps.processing.Fourier.OrientationSpaceManager import orientationSpaceManager
-from flow_analysis_comps.processing.Fourier.OrientationSpaceResponse import ThresholdMethods
+from flow_analysis_comps.data_structs.multiori_config_struct import OSFilterParams
+from flow_analysis_comps.processing.Multiori.OrientationSpaceManager import orientationSpaceManager
 from flow_analysis_comps.util.coord_space_util import cart2pol
 from matplotlib import pyplot as plt
 import numpy as np

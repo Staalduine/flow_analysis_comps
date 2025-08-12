@@ -1,6 +1,6 @@
 import numpy as np
-from flow_analysis_comps.processing.Fourier.utils.halleyft import halleyft
-from flow_analysis_comps.processing.Fourier.utils.findAllMaxima import find_all_extrema_in_filter_response
+from flow_analysis_comps.processing.Multiori.utils.halleyft import halleyft
+from flow_analysis_comps.processing.Multiori.utils.findAllMaxima import find_all_extrema_in_filter_response
 
 #TODO: Check if this works
 def find_regime_bifurcation(

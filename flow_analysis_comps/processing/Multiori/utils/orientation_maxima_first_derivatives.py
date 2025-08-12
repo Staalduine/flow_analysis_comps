@@ -1,10 +1,9 @@
 import numpy as np
-
-from flow_analysis_comps.processing.Fourier.utils.halleyft import halleyft
-from flow_analysis_comps.processing.Fourier.utils.findAllMaxima import (
+from flow_analysis_comps.processing.Multiori.utils.halleyft import halleyft
+from flow_analysis_comps.processing.Multiori.utils.findAllMaxima import (
     find_all_extrema_in_filter_response,
 )
-from flow_analysis_comps.processing.Fourier.utils.interpft_derivatives import (
+from flow_analysis_comps.processing.Multiori.utils.interpft_derivatives import (
     interpft1_derivatives,
 )
 

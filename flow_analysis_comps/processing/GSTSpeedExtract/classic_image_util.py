@@ -174,9 +174,6 @@ def speed_from_orientation_image(
     Line-by-line description
     -----------------------
     1. Computes the unthresholded speed for each pixel using the tangent of the angle (converted from degrees to radians), scaled by the spatial and temporal resolution.
-    2. Sets speeds above the positive threshold to NaN.
-    3. Sets speeds below the negative threshold to NaN.
-    4. Retains only speeds of the desired sign (positive or negative), setting others to NaN.
     5. Returns the resulting speed array.
     """
 
