@@ -1,10 +1,9 @@
 from enum import StrEnum, auto
 from pathlib import Path
 from typing import Optional
-from pydantic import BaseModel, ValidationInfo, computed_field, model_validator, field_validator
+from pydantic import BaseModel, computed_field
 from datetime import datetime, timedelta
 from flow_analysis_comps.data_structs.plate_info import plateInfo
-from typing import Annotated
 
 
 class videoMode(StrEnum):
@@ -30,6 +29,7 @@ class cameraPosition(BaseModel):
     y: float
     z: float
 
+
 class videoDeltas(BaseModel):
     delta_t: float
     delta_x: float
@@ -52,9 +52,6 @@ class videoInfo(BaseModel):
     def deltas(self) -> videoDeltas:
         delta_t = 1 / self.camera.frame_rate
         delta_x = (
-            self.camera.pixel_size_um
-            * 2
-            / self.magnification
-            * self.camera.binning
+            self.camera.pixel_size_um * 2 / self.magnification * self.camera.binning
         )
         return videoDeltas(delta_t=delta_t, delta_x=delta_x)

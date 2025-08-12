@@ -2,7 +2,9 @@ import numba
 import numpy as np
 from flow_analysis_comps.data_structs.AOS_structs import angle_filter_values
 from joblib import Parallel, delayed
-from flow_analysis_comps.processing.Fourier.utils.Interpolation import interpolate_fourier_series
+from flow_analysis_comps.processing.Fourier.utils.Interpolation import (
+    interpolate_fourier_series,
+)
 
 
 def find_all_extrema_in_filter_response(
@@ -15,19 +17,32 @@ def find_all_extrema_in_filter_response(
 
     # Convert input stack into flat arrays. Each entry is a pixel which has a filter response F(z)
     # Arrays are of frequency spectrum, plus first and second derivatives
-    flat_arrays = preprocess_filter_stack(filter_stack, do_fft)
+    filter_stack_preprocessed = _preprocess_filter_stack(filter_stack, do_fft)
 
     # Parallel process each pixel response, then filter based on F(z)' and F(z)'' values
-    filtered_angles_dict = process_filter_stack(*flat_arrays, filter_vals)
+    filtered_angles_dict = _process_filter_stack(
+        *filter_stack_preprocessed, filter_vals
+    )
 
     filtered_angles_dict = postprocess_angles(filtered_angles_dict)
-    
+
     return filtered_angles_dict
 
+
 def postprocess_angles(output_dict):
-    output_dict["maxima"] = (output_dict["maxima"]  + np.pi) / 2
-    output_dict["minima"] = (output_dict["minima"]  + np.pi) / 2
+    """
+    Place angles in expected range [-pi, pi] and put the zero velocity in the center.
+
+    Args:
+        output_dict (dict): Dictionary containing angle information.
+
+    Returns:
+        dict: Postprocessed dictionary with angles in expected range.
+    """
+    output_dict["maxima"] = (output_dict["maxima"]) / 2
+    output_dict["minima"] = (output_dict["minima"]) / 2
     return output_dict
+
 
 def get_value_from_fft_series(coeffs: np.ndarray, xv: np.ndarray, period: float):
     """
@@ -43,23 +58,10 @@ def get_value_from_fft_series(coeffs: np.ndarray, xv: np.ndarray, period: float)
         np.ndarray: Sampled points on trigonometric polynomial
     """
 
-    # # Normalize points to a [-1, 1] domain
-    # xv = xv / period
-    # size = len(coeffs)
-
-    # # adjust the spatial frequencies to period and number of coefficients
-    # kn = np.fft.fftfreq(size, period / size) * period
-
-    # # Sample contributions from each exponential
-    # eikx = np.exp(2.0j * np.pi * np.outer(xv, kn))
-
-    # # Sum and return
-    # return np.einsum("ab,b->a", eikx, coeffs) / size
-
     return interpolate_fourier_series([0, period], coeffs, xv, method="horner_freq")
 
 
-def preprocess_filter_stack(aos_filter_response: np.ndarray, do_fft: bool = True):
+def _preprocess_filter_stack(aos_filter_response: np.ndarray, do_fft: bool = True):
     """
     Take in a filter response stack in real-space, and return its Fourier-transform, as well as its first and second derivative.
 
@@ -75,7 +77,6 @@ def preprocess_filter_stack(aos_filter_response: np.ndarray, do_fft: bool = True
 
     response_shape = aos_filter_response.shape
     response_depth = response_shape[0]
-    # output_depth = response_depth - 1
 
     # Calculate fft along filter axis
     if do_fft:
@@ -96,7 +97,6 @@ def preprocess_filter_stack(aos_filter_response: np.ndarray, do_fft: bool = True
             filter_response_fft, nyquist, filter_response_fft[nyquist - 1], axis=0
         )
         aos_filter_response_fft = filter_response_fft
-        # output_depth = output_depth + 1
 
     # Find values of frequency axis
     frequency_axis = np.concatenate(
@@ -121,7 +121,7 @@ def preprocess_filter_stack(aos_filter_response: np.ndarray, do_fft: bool = True
     )
 
 
-def process_filter_stack(
+def _process_filter_stack(
     filter_response_fft: np.ndarray,
     filter_response_deriv1_fft: np.ndarray,
     filter_response_deriv2_fft: np.ndarray,
@@ -148,24 +148,21 @@ def process_filter_stack(
     )
 
     # Pre-make Frobenius matrices
-    big_frob = np.zeros(
-        (function_fft_flat.shape[0], output_depth, output_depth), dtype=np.complex128
-    )
-    big_frob[:, :-1, 1:] = np.eye(output_depth - 1)
-    deriv1_fft_flat_fftshift = np.fft.fftshift(deriv1_fft_flat, axes=1)
-    coeff_array = (
-        deriv1_fft_flat_fftshift[:, :-1]
-        / (deriv1_fft_flat_fftshift[:, -1])[..., np.newaxis]
-    )
-    big_frob[:, -1] = coeff_array
+    # Technically, what we are doing here is set up a companion matrix for a trigonometric polynomial of order n, where n is the number of Fourier coefficients minus 1.
+    # The companion matrix is used to find the roots of the polynomial, which correspond to the extrema of the function.
+    # The Frobenius matrix is a square matrix that has ones on the first sub-diagonal and the coefficients of the polynomial on the last row.
+    # In theory, the same output can be achieved with np.roots, which might be more memory efficient. I have not gotten an equivalent output with np.roots yet, so I am sticking with this for now.
 
-    eigenvalues = np.array(
-        Parallel(n_jobs=-1)(delayed(np.linalg.eigvals)(frob) for frob in big_frob)
-    )
-    angles = (np.angle(eigenvalues) - np.log(abs(eigenvalues)) * 1j).real % (
+    eigenvalues = calculate_eigenvalues_from_stack(deriv1_fft_flat)
+
+    # Calculate angles and magnitudes of eigenvalues
+    # The real eigenvalues are the arguments of the complex roots of the companion matrix. For an adjustment, we also use the complex logarithm.
+    # Real angles are only supposed to be on the unit circle, which means that their magnitudes should be close to 1.
+    # The magnitudes are calculated with the logarithm of the absolute value of the eigenvalues, such that the magnitudes are close to 0 for angles on the unit circle.
+    angles = (np.angle(eigenvalues) - np.log(np.abs(eigenvalues)) * 1j).real % (
         2 * np.pi
-    ) - np.pi
-    magnitudes = np.abs(np.log(abs(eigenvalues)))
+    )  # - np.pi
+    magnitudes = np.abs(np.log(np.abs(eigenvalues)))
 
     full_properties_array = np.array(
         Parallel(n_jobs=-1)(
@@ -190,6 +187,36 @@ def process_filter_stack(
     return output_dict
 
 
+def calculate_eigenvalues_from_stack(deriv1_fft_flat: np.ndarray):
+    """
+    Create Frobenius matrices from the first derivative Fourier coefficients and calculate eigenvalues.
+    This function creates a large array for the entire image, so it can be memory intensive. It is fast tho.
+
+    Args:
+        deriv1_fft_flat (np.ndarray): First derivative Fourier coefficients.
+
+    Returns:
+        np.ndarray: Eigenvalues for each sequence of Fourier coefficients.
+    """
+    output_depth = deriv1_fft_flat.shape[1] - 1
+    big_frob = np.zeros(
+        (deriv1_fft_flat.shape[0], output_depth, output_depth), dtype=np.complex128
+    )
+    big_frob[:, :-1, 1:] = np.eye(output_depth - 1)
+    deriv1_fft_flat_fftshift = np.fft.fftshift(deriv1_fft_flat, axes=1)
+    coeff_array = (
+        deriv1_fft_flat_fftshift[:, :-1]
+        / (deriv1_fft_flat_fftshift[:, -1])[..., np.newaxis]
+    )
+    big_frob[:, -1] = coeff_array
+
+    eigenvalues = np.array(
+        Parallel(n_jobs=-1)(delayed(np.linalg.eigvals)(frob) for frob in big_frob)
+    )
+
+    return eigenvalues
+
+
 def sample_and_filter_angles(multi_ori_filter_params, angle, mag, func, der1, der2):
     extrema_results = sample_function_deriv1_deriv2_values(angle, mag, func, der1, der2)
     filtered_outputs = filter_angle_outputs(extrema_results, multi_ori_filter_params)
@@ -202,7 +229,7 @@ def sample_function_deriv1_deriv2_values(
     func_fft: np.ndarray,
     der1_fft: np.ndarray,
     der2_fft: np.ndarray,
-) -> dict:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Finds extrema using companion matrix approach (n fourier coefficients yields n-1 roots). All input arrays need to be of the same size. Values are sorted along the function values to make significant extrema
 
@@ -214,9 +241,9 @@ def sample_function_deriv1_deriv2_values(
     Returns:
         np.ndarray: angles of the function extrema, along with magnitude, sampled function, derivative and second derivative values
     """
-    origin_values = get_value_from_fft_series(func_fft, angles + np.pi, 2 * np.pi).real
-    deriv1_values = get_value_from_fft_series(der1_fft, angles + np.pi, 2 * np.pi).real
-    deriv2_values = get_value_from_fft_series(der2_fft, angles + np.pi, 2 * np.pi).real
+    origin_values = get_value_from_fft_series(func_fft, angles, 2 * np.pi).real
+    deriv1_values = get_value_from_fft_series(der1_fft, angles, 2 * np.pi).real
+    deriv2_values = get_value_from_fft_series(der2_fft, angles, 2 * np.pi).real
 
     sort = np.argsort(origin_values)[::-1]
 
@@ -230,10 +257,14 @@ def sample_function_deriv1_deriv2_values(
 
 
 def filter_angle_outputs(extrema_results, filter_vals: angle_filter_values):
-    # angles, magnitudes, origin_vals, deriv1_vals, deriv2_vals = extrema_results
+    angles, magnitudes, origin_vals, deriv1_vals, deriv2_vals = extrema_results
 
     return fast_filter_angle_outputs(
-        *extrema_results,
+        angles,
+        magnitudes,
+        origin_vals,
+        deriv1_vals,
+        deriv2_vals,
         filter_vals.magnitude,
         filter_vals.first_derivative,
         filter_vals.second_derivative,

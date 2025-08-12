@@ -8,6 +8,7 @@ from flow_analysis_comps.processing.GSTSpeedExtract.classic_image_util import (
     filter_kymo_right,
 )
 
+
 class graphOutput(BaseModel):
     graph: Graph
     positions: dict

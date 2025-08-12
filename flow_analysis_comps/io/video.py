@@ -20,13 +20,16 @@ from flow_analysis_comps.data_structs.plate_info import (
 )
 
 
-def read_video_metadata(root_folder: str | Path, user_metadata: videoInfo | None = None) -> videoInfo:
+def read_video_metadata(
+    root_folder: str | Path, user_metadata: videoInfo | None = None
+) -> videoInfo:
     """
     Reads the metadata from a video folder and returns a videoInfo object.
     If user_metadata is provided, it will be used instead of reading from the folder.
     """
     video_io = videoIO(root_folder, user_metadata=user_metadata)
     return video_io.metadata
+
 
 def read_video_array(user_metadata: videoInfo) -> da.Array:
     """
@@ -36,6 +39,7 @@ def read_video_array(user_metadata: videoInfo) -> da.Array:
     root_folder = user_metadata.root_path
     video_io = videoIO(root_folder, user_metadata=user_metadata)
     return video_io.video_array
+
 
 class videoIO:
     def __init__(self, root_folder: str | Path, user_metadata: videoInfo | None = None):
@@ -241,6 +245,4 @@ class videoIO:
         """
         Returns the time and spatial deltas for the video.
         """
-        delta_t = 1 / self.metadata.camera.frame_rate
-        delta_x = 1.725 * 2 / self.metadata.magnification * self.metadata.camera.binning
-        return delta_x, delta_t
+        return self.metadata.deltas.delta_x, self.metadata.deltas.delta_t

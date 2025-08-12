@@ -1,14 +1,11 @@
+from flow_analysis_comps.data_structs.process_configs import kymoExtractConfig
 from flow_analysis_comps.data_structs.kymographs import (
     KymoCoordinates,
     VideoGraphExtraction,
-    # kymoExtractConfig,
     kymoOutputs,
 )
-from flow_analysis_comps.data_structs.process_configs import kymoExtractConfig
-# from flow_analysis_comps.processing.GSTSpeedExtract.classic_image_util import (
-#     filter_kymo_right,
-# )
 from flow_analysis_comps.data_structs.video_info import videoInfo
+from flow_analysis_comps.processing.GSTSpeedExtract.classic_image_util import filter_kymo_right
 from flow_analysis_comps.processing.kymographing.kymo_utils import (
     extract_kymo_coordinates,
 )
@@ -92,14 +89,14 @@ class KymographExtractor:
     def simple_kymographs(self):
         return {name: video.mean(axis=2) for name, video in self.hyphal_videos.items()}
 
-    # @staticmethod
-    # def _decompose_kymograph(kymograph: np.ndarray) -> np.ndarray:
-    #     kymo_filtered_left = filter_kymo_right(kymograph)
-    #     kymo_filtered_right = np.flip(
-    #         filter_kymo_right(np.flip(kymograph, axis=1)), axis=1
-    #     )
-    #     out = np.array([kymo_filtered_left, kymo_filtered_right])
-    #     return out
+    @staticmethod
+    def _decompose_kymograph(kymograph: np.ndarray) -> np.ndarray:
+        kymo_filtered_left = filter_kymo_right(kymograph)
+        kymo_filtered_right = np.flip(
+            filter_kymo_right(np.flip(kymograph, axis=1)), axis=1
+        )
+        out = np.array([kymo_filtered_left, kymo_filtered_right])
+        return out
 
     @property
     def processed_kymographs(self) -> list[kymoOutputs]:

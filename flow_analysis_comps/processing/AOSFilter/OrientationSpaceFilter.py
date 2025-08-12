@@ -19,9 +19,7 @@ class OrientationSpaceFilter:
             np.arange(0, self.params.nr_of_samples) / self.params.nr_of_samples * np.pi
         )
 
-    def calculate_numerical_filter(
-        self, imshape: tuple[int, ...]
-    ):
+    def calculate_numerical_filter(self, imshape: tuple[int, ...]):
         # Assembles the big filter stack, can be a lot of memory for large images.
         coords = freqSpaceCoords(
             imshape, x_spacing=self.params.x_spacing, y_spacing=self.params.y_spacing
@@ -62,7 +60,9 @@ def calculate_angular_filter(
         case 2:
             s_a = np.pi / n
             # Expand theta with all of the angles
-            theta_coords = coord_system.theta[:, :, None] - angles[None, None, :]
+            theta_coords: np.ndarray = (
+                coord_system.theta[:, :, None] - angles[None, None, :]
+            )
 
             # Normalize data within [-pi, pi] range
             theta_coords = ((theta_coords + np.pi) % (2 * np.pi)) - np.pi
@@ -70,7 +70,9 @@ def calculate_angular_filter(
             theta_s = theta_coords / s_a
 
             angularFilter = 2 * np.exp(-(theta_s**2) / 2)
-            angularFilter_reversed = np.fft.ifftshift(np.fft.fftshift(angularFilter)[::-1, ::-1])
+            angularFilter_reversed = np.fft.ifftshift(
+                np.fft.fftshift(angularFilter)[::-1, ::-1]
+            )
             filterKernel = 0.5 * (angularFilter + angularFilter_reversed)
             filterKernel = filterKernel * (1 + 1j * (posMask * 2 - 1))
             return filterKernel

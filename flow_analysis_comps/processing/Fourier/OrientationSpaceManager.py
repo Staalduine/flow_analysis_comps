@@ -20,7 +20,9 @@ from flow_analysis_comps.processing.Fourier.OrientationSpaceResponse import (
 import numpy.typing as npt
 
 from flow_analysis_comps.processing.Fourier.NLMSPrecise import nlms_precise
-from flow_analysis_comps.processing.Fourier.findAllMaxima import find_all_extrema_in_filter_response
+from flow_analysis_comps.processing.Fourier.findAllMaxima import (
+    find_all_extrema_in_filter_response,
+)
 from flow_analysis_comps.util.coord_space_util import wraparoundN
 from flow_analysis_comps.util.image_manips import mirror_pad_with_exponential_fade
 
@@ -52,12 +54,12 @@ class orientationSpaceManager:
         )
 
         self.os_filter: OrientationSpaceFilter = OrientationSpaceFilter(params)
-        self.filter_arrays, self.setup_imdims = self.init_filter_on_img(self.image)
+        self.filter_arrays, self.setup_imdims = self._init_filter_on_img(self.image)
         self.response = self.get_response(self.image, self.filter_params.padding)
         self.thresh_method = thresh_method
         self.mask = self.response.nlms_mask(thresh_method=thresh_method)
 
-    def init_filter_on_img(self, img: np.ndarray):
+    def _init_filter_on_img(self, img: np.ndarray):
         """Create filters for the specific image size
 
         Args:
@@ -65,9 +67,6 @@ class orientationSpaceManager:
         """
         img_shape = img.shape
         filter_arrays = self.os_filter.calculate_numerical_filter(img_shape)
-        # print(filter_arrays.shape)
-
-        # print(abs(np.sum(filter_arrays, axis=(0, 1))))
         filter_shape = img_shape
         return filter_arrays, filter_shape
 
@@ -84,9 +83,9 @@ class orientationSpaceManager:
         image_fft = fftpack.fftn(img)
 
         # Apply filters
-        ridge_resp = self.apply_ridge_filter(image_fft)
-        edge_resp = self.apply_edge_filter(image_fft)
-        ang_resp = ridge_resp + edge_resp # Output array, for now still (x, y, n)
+        ridge_resp = self._apply_ridge_filter(image_fft)
+        edge_resp = self._apply_edge_filter(image_fft)
+        ang_resp = ridge_resp + edge_resp  # Output array, for now still (x, y, n)
         if pad > 0:
             # Crop out the padded region
             ang_resp = ang_resp[pad:-pad, pad:-pad, ...]  # Handles 2D and 3D arrays
@@ -94,13 +93,13 @@ class orientationSpaceManager:
         # Create response object capable of further processing results
         return OrientationSpaceResponse(ang_resp)
 
-    def apply_ridge_filter(self, If: npt.NDArray[np.complex128]):
+    def _apply_ridge_filter(self, If: npt.NDArray[np.complex128]):
         ridge_response = fftpack.ifftn(
             If[:, :, None] * self.filter_arrays.real, axes=(0, 1)
         ).real
         return ridge_response
 
-    def apply_edge_filter(self, If: npt.NDArray[np.complex128]):
+    def _apply_edge_filter(self, If: npt.NDArray[np.complex128]):
         edge_response = 1j * (
             fftpack.ifftn(
                 (If * -1j)[:, :, None] * (self.filter_arrays.imag), axes=(0, 1)
@@ -150,14 +149,12 @@ class orientationSpaceManager:
             f_hat = np.broadcast_to(
                 f_hat.reshape(-1, 1, 1), self.response.response_stack_fft.shape
             )
-            # a_hat: np.ndarray = fftpack.fft(self.response.response_stack.real, axis=2)
 
             a_hat = self.response.response_stack_fft * f_hat
 
             filter_new = OrientationSpaceFilter(
                 OSFilterParams(
                     space_frequency_center=self.os_filter.params.space_frequency_center,
-                    # space_frequency_width=self.os_filter.params.space_frequency_width,
                     orientation_accuracy=K_new,
                 )
             )
@@ -189,7 +186,9 @@ class orientationSpaceManager:
         return maximum_single_angle
 
     def get_all_angles(self) -> dict:
-        interpolated_extrema_dict = find_all_extrema_in_filter_response(self.response.response_stack, self.filter_params.multires_filter_params) # dims = (D, x, y)
+        interpolated_extrema_dict = find_all_extrema_in_filter_response(
+            self.response.response_stack, self.filter_params.multires_filter_params
+        )  # dims = (D, x, y), response should be in real space
         return interpolated_extrema_dict
 
     def refine_all_angles(self, lowest_response_order: float, all_angles_dict=None):
@@ -203,9 +202,6 @@ class orientationSpaceManager:
             np.isnan(maxima_highest_temporary), axis=0
         )
         K_high = self.filter_params.orientation_accuracy
-        # K_low = max(
-        #     n_maxima_highest_temp - 1, lowest_response_order
-        # )  # responseOrder should be defined or passed in
         K_low = np.where(
             n_maxima_highest_temp - 1 > lowest_response_order,
             n_maxima_highest_temp - 1,

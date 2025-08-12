@@ -5,6 +5,7 @@ Data structures for configuring video processing functions. Handles default valu
 Important rule: ONLY use basic types, no function imports.
 """
 
+
 class graphExtractConfig(BaseModel):
     edge_length_threshold: int = 200
     segmentation_threshold: float = 1.15
