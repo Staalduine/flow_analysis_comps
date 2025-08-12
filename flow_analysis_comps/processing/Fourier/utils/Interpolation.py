@@ -2,8 +2,16 @@ import numba
 import numpy as np
 import scipy.fftpack as fftpack
 
+
 # TODO: Check if this works
-def interpolate_fourier_series(input_positions, input_values, output_positions=None, method="horner", fine_grid_factor=None, legacy=False):
+def interpolate_fourier_series(
+    input_positions,
+    input_values,
+    output_positions=None,
+    method="horner",
+    fine_grid_factor=None,
+    legacy=False,
+):
     # Ensure input values are numpy arrays
     input_values = np.asarray(input_values)
     output_positions = np.asarray(output_positions)
@@ -12,7 +20,11 @@ def interpolate_fourier_series(input_positions, input_values, output_positions=N
     if input_values.ndim == 1 and input_values.shape[0] == 1:
         input_values = input_values.T
     # Check if output positions are 1D and reshape if necessary
-    if output_positions.ndim == 1 and output_positions.shape[0] == 1 and (input_values.ndim > 1 or legacy):
+    if (
+        output_positions.ndim == 1
+        and output_positions.shape[0] == 1
+        and (input_values.ndim > 1 or legacy)
+    ):
         output_positions = output_positions.T
     # Create input positions if not provided
     if input_positions is None:
@@ -24,7 +36,9 @@ def interpolate_fourier_series(input_positions, input_values, output_positions=N
 
     period = input_positions[1] - input_positions[0]
     output_positions = output_positions - input_positions[0]
-    output_positions = np.mod(np.real(output_positions), period) + 1j * np.imag(output_positions)
+    output_positions = np.mod(np.real(output_positions), period) + 1j * np.imag(
+        output_positions
+    )
     output_positions = output_positions / period
 
     match method:
@@ -40,9 +54,15 @@ def interpolate_fourier_series(input_positions, input_values, output_positions=N
             output_positions = output_positions * 2
             if np.isreal(output_positions).all():
                 original_size = output_positions.shape
-                input_values = input_values.reshape((input_values.shape[0], -1))  # Ensure v is 2D
-                output_positions = output_positions.reshape((output_positions.shape[0], -1))  # Ensure xq is 2D
-                output_values = horner_vec_real_freq_simpler(input_values, output_positions).reshape(original_size)
+                input_values = input_values.reshape(
+                    (input_values.shape[0], -1)
+                )  # Ensure v is 2D
+                output_positions = output_positions.reshape(
+                    (output_positions.shape[0], -1)
+                )  # Ensure xq is 2D
+                output_values = horner_vec_real_freq_simpler(
+                    input_values, output_positions
+                ).reshape(original_size)
             else:
                 output_values = horner_vec_complex_freq(input_values, output_positions)
 
@@ -60,11 +80,15 @@ def interpolate_fourier_series(input_positions, input_values, output_positions=N
 
         case "mmt":
             output_positions = output_positions * 2 * np.pi
-            output_values = matrixMultiplicationTransform(input_values, output_positions)
+            output_values = matrixMultiplicationTransform(
+                input_values, output_positions
+            )
 
         case "mmt_freq":
             output_positions = output_positions * 2 * np.pi
-            output_values = matrixMultiplicationTransformFreq(input_values, output_positions)
+            output_values = matrixMultiplicationTransformFreq(
+                input_values, output_positions
+            )
         case _:
             # Use interp1 methods by expanding grid points using interpft
             fineGridFactor = parse_fine_grid_factor(fine_grid_factor, method)
@@ -72,12 +96,20 @@ def interpolate_fourier_series(input_positions, input_values, output_positions=N
             vft3 = np.vstack([vft3[-3:, :], vft3[:, :], vft3[:4, :]])
 
             # Map indices from [0,1) to [4, size(v,1) * fineGridFactor + 4)
-            output_positions = output_positions * (input_values.shape[0] * fineGridFactor)
+            output_positions = output_positions * (
+                input_values.shape[0] * fineGridFactor
+            )
             output_positions = output_positions + 4
 
-            if legacy or output_positions.ndim == 1:  # Legacy mode or xq is a column vector
+            if (
+                legacy or output_positions.ndim == 1
+            ):  # Legacy mode or xq is a column vector
                 output_values = np.interp(
-                    output_positions, np.arange(len(vft3)), vft3, left=np.nan, right=np.nan
+                    output_positions,
+                    np.arange(len(vft3)),
+                    vft3,
+                    left=np.nan,
+                    right=np.nan,
                 )
             else:
                 # Break xq into columns and apply interp1 to each column of v
@@ -93,7 +125,9 @@ def interpolate_fourier_series(input_positions, input_values, output_positions=N
                         for i in range(output_positions.shape[1])
                     ]
                 ).T
-                output_values = output_values.reshape((output_positions.shape[0],) + input_values.shape[1:])
+                output_values = output_values.reshape(
+                    (output_positions.shape[0],) + input_values.shape[1:]
+                )
     return output_values
 
 
@@ -307,6 +341,7 @@ def horner_vec_complex_freq(v_h: np.ndarray, xq: np.ndarray):
     vq = vq / scale_factor
 
     return vq
+
 
 # @numba.jit
 def horner_vec_real_freq_simpler(v_h: np.ndarray, xq: np.ndarray):

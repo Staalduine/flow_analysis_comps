@@ -19,8 +19,8 @@ from flow_analysis_comps.processing.Fourier.OrientationSpaceResponse import (
 )
 import numpy.typing as npt
 
-from flow_analysis_comps.processing.Fourier.NLMSPrecise import nlms_precise
-from flow_analysis_comps.processing.Fourier.findAllMaxima import (
+from flow_analysis_comps.processing.Fourier.utils.NLMSPrecise import nlms_precise
+from flow_analysis_comps.processing.Fourier.utils.findAllMaxima import (
     find_all_extrema_in_filter_response,
 )
 from flow_analysis_comps.util.coord_space_util import wraparoundN
@@ -47,6 +47,17 @@ class orientationSpaceManager:
             instance of object
         """
         self.filter_params = params
+
+        # If image has even dimension sizes, pad to make it odd
+        # TODO: Even-sized images lead to orientation offsets, possibly related to FFT artifacts for even dimensions. 
+        # This is a workaround, but should be fixed in the future.
+        if image.ndim == 2 and (image.shape[0] % 2 == 0 or image.shape[1] % 2 == 0):
+            image = np.pad(
+                image,
+                ((0, int(image.shape[0] % 2 == 0)), (0, int(image.shape[1] % 2 == 0))),
+                mode='reflect',
+            )
+
         self.image = (
             image
             if self.filter_params.padding <= 0

@@ -8,8 +8,8 @@ from flow_analysis_comps.processing.Fourier.utils.Interpolation import (
 
 
 def halleyft(
-    fourier_coeffs: np.ndarray, # [K, M]
-    initial_guesses: np.ndarray, # [N, M]
+    fourier_coeffs: np.ndarray,  # [K, M]
+    initial_guesses: np.ndarray,  # [N, M]
     is_frequency_domain: bool = False,
     derivative_order: int = 0,
     tolerance: float = 1e-12,
@@ -81,15 +81,14 @@ def halleyft(
 
     K_range = int(np.floor(fourier_coeffs.shape[0] / 2))
     freq_multipliers = np.fft.ifftshift(np.arange(-K_range, K_range + 1)) * 1j
-    
-    
+
     freq_multipliers_stack = np.stack(
         [freq_multipliers**d for d in derivative_indices], axis=-1
     )
     # broadcast such that freq_multipliers_stack has shape (N, M, 3)
     freq_multipliers_stack = np.broadcast_to(
         freq_multipliers_stack[:, None, :],
-        (fourier_coeffs_freq.shape[0], fourier_coeffs_freq.shape[1], 3)
+        (fourier_coeffs_freq.shape[0], fourier_coeffs_freq.shape[1], 3),
     )
     # broadcast fourier_coeffs_freq to (N, M, 3)
     fourier_coeffs_freq = np.broadcast_to(

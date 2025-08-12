@@ -1,10 +1,17 @@
 import numpy as np
-from flow_analysis_comps.processing.Fourier.utils.Interpolation import interpolate_fourier_series
+from flow_analysis_comps.processing.Fourier.utils.Interpolation import (
+    interpolate_fourier_series,
+)
 
 
 # TODO: Check if this works
 def interpft1_derivatives(
-    fourier_coeffs, query_points, derivative_orders, period=None, is_freq_domain=False, method='horner_freq'
+    fourier_coeffs,
+    query_points,
+    derivative_orders,
+    period=None,
+    is_freq_domain=False,
+    method="horner_freq",
 ):
     """
     Interpolate the derivatives of a Fourier series.
@@ -44,24 +51,34 @@ def interpft1_derivatives(
         fourier_coeffs_freq = fourier_coeffs
 
     coeffs_ndim = fourier_coeffs.ndim + 1
-    derivative_orders = np.asarray(derivative_orders).reshape((-1,) + (1,) * (coeffs_ndim - 1))
+    derivative_orders = np.asarray(derivative_orders).reshape(
+        (-1,) + (1,) * (coeffs_ndim - 1)
+    )
     freq_indices_powers = freq_indices[:, None] ** derivative_orders.reshape(1, -1)
 
     # Multiply fourier_coeffs_freq by freq_indices_powers for each derivative
-    fourier_coeffs_freq = fourier_coeffs_freq[..., None] * freq_indices_powers  # shape: (..., n_derivs)
+    fourier_coeffs_freq = (
+        fourier_coeffs_freq[..., None] * freq_indices_powers
+    )  # shape: (..., n_derivs)
 
     # Prepare query_points for all derivatives
     query_points_repeat = [1] * coeffs_ndim
     query_points_repeat[-1] = len(derivative_orders)
     query_points_full = np.tile(query_points, query_points_repeat)
 
-    interpolated_derivatives = interpolate_fourier_series([0, period], fourier_coeffs_freq, query_points_full, method)
+    interpolated_derivatives = interpolate_fourier_series(
+        [0, period], fourier_coeffs_freq, query_points_full, method
+    )
 
     if period_scaling_factor != 1:
         # Adjust for period scaling
         scaling_factors = period_scaling_factor ** derivative_orders.flatten()
         # Broadcast scaling_factors to match interpolated_derivatives shape
-        scaling_shape = [1] * (interpolated_derivatives.ndim - 1) + [len(scaling_factors)]
-        interpolated_derivatives = interpolated_derivatives * scaling_factors.reshape(scaling_shape)
+        scaling_shape = [1] * (interpolated_derivatives.ndim - 1) + [
+            len(scaling_factors)
+        ]
+        interpolated_derivatives = interpolated_derivatives * scaling_factors.reshape(
+            scaling_shape
+        )
 
     return interpolated_derivatives

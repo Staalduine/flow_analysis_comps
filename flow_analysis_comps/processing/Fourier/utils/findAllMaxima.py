@@ -9,6 +9,7 @@ from flow_analysis_comps.processing.Fourier.utils.Interpolation import (
 
 MEMORY_THRESHOLD_NBYTES = 1024 * 1024  # Threshold for low memory processing
 
+
 def find_all_extrema_in_filter_response(
     filter_stack: np.ndarray,
     filter_vals: angle_filter_values | None = None,
@@ -155,7 +156,9 @@ def _process_filter_stack(
     # The Frobenius matrix is a square matrix that has ones on the first sub-diagonal and the coefficients of the polynomial on the last row.
     # In theory, the same output can be achieved with np.roots, which might be more memory efficient. I have not gotten an equivalent output with np.roots yet, so I am sticking with this for now.
 
-    print(f"Calculating eigenvalues, using {'low memory' if deriv1_fft_flat.nbytes > MEMORY_THRESHOLD_NBYTES else 'full memory'}")
+    print(
+        f"Calculating eigenvalues, using {'low memory' if deriv1_fft_flat.nbytes > MEMORY_THRESHOLD_NBYTES else 'full memory'}"
+    )
     if deriv1_fft_flat.nbytes > MEMORY_THRESHOLD_NBYTES:
         # If the input is large, use a low memory version
         eigenvalues = calculate_eigenvalues_from_stack_low_mem(deriv1_fft_flat)
@@ -243,7 +246,8 @@ def calculate_eigenvalues_from_stack_low_mem(deriv1_fft_flat: np.ndarray):
     )
     return eigenvalues
 
-def eigenvalues_single_sequence(deriv1_fft_flat:np.ndarray) -> np.ndarray:
+
+def eigenvalues_single_sequence(deriv1_fft_flat: np.ndarray) -> np.ndarray:
     """
     Calculates the eigenvalues for a single sequence of Fourier coefficients using a Frobenius matrix.
     Expected input is a single row of the first derivative Fourier coefficients.
@@ -254,7 +258,7 @@ def eigenvalues_single_sequence(deriv1_fft_flat:np.ndarray) -> np.ndarray:
     Returns:
         np.ndarray: Eigenvalues for the given sequence of Fourier coefficients.
     """
-    output_depth= deriv1_fft_flat.shape[0] - 1
+    output_depth = deriv1_fft_flat.shape[0] - 1
     deriv1_fftshift = np.fft.fftshift(deriv1_fft_flat)
     frob_matrix = np.zeros((output_depth, output_depth), dtype=np.complex128)
     frob_matrix[:-1, 1:] = np.eye(output_depth - 1)
