@@ -1,8 +1,7 @@
 import numpy as np
 import cv2
-
-from flow_analysis_comps.data_structs.process_configs import GST_params
-from flow_analysis_comps.data_structs.video_info import videoDeltas
+from flow_analysis_comps.data_structs.GST_structs import GST_params
+from flow_analysis_comps.data_structs.video_metadata_structs import videoDeltas
 
 
 def calcGST(inputIMG: np.ndarray, window_size: int):
@@ -17,7 +16,7 @@ def calcGST(inputIMG: np.ndarray, window_size: int):
     # If the largest eigenvalue is much bigger than the smallest eigenvalue, that indicates a strong orientation.
 
     img = inputIMG.astype(np.float32)
-    imgDiffX = cv2.Sobel(img, cv2.CV_32F, 1, 0) #TODO: check if this is correct
+    imgDiffX = cv2.Sobel(img, cv2.CV_32F, 1, 0)  # TODO: check if this is correct
     imgDiffY = cv2.Sobel(img, cv2.CV_32F, 0, 1)
     imgDiffXY = cv2.multiply(imgDiffX, imgDiffY)
     imgDiffXX = cv2.multiply(imgDiffX, imgDiffX)
@@ -101,7 +100,7 @@ def filter_kymo_right(kymo: np.ndarray):
     return filtered_kymo
 
 
-def extract_orientations(image: np.ndarray, gst_params: GST_params):
+def GST_extract_orientations(image: np.ndarray, gst_params: GST_params):
     """
     Extracts the orientations from an image using the Generalized Structure Tensor (GST) method.
     This function calculates the GST for a range of window sizes and determines the orientation
@@ -149,9 +148,7 @@ def extract_orientations(image: np.ndarray, gst_params: GST_params):
     return imgGSTMax
 
 
-def speed_from_orientation_image(
-    image:np.ndarray, deltas: videoDeltas
-):
+def speed_from_orientation_image(image: np.ndarray, deltas: videoDeltas):
     """
     Calculates the speed from an orientation image using the tangent of the angle.
 
@@ -161,10 +158,6 @@ def speed_from_orientation_image(
         The orientation image, where each pixel represents an angle in degrees. Range of orientation is 0-180 degrees.
     deltas : kymoDeltas
         An object containing the spatial (`delta_x`) and temporal (`delta_t`) resolution of the image.
-    speed_threshold : float
-        The threshold value for the speed; speeds with absolute value above this threshold are set to NaN.
-    positive_speed : bool
-        If True, only positive speeds are retained; if False, only negative speeds are retained.
 
     Returns
     -------
@@ -178,11 +171,9 @@ def speed_from_orientation_image(
     """
 
     # Ensure orientation is in range (-pi/2, pi/2)
-    assert np.all(image >= -np.pi / 2) and np.all(image <=  np.pi / 2), \
+    assert np.all(image >= -np.pi / 2) and np.all(image <= np.pi / 2), (
         "Orientation image must be in range (-pi/2, pi/2) radians."
+    )
 
     speed = np.tan(image) * deltas.delta_x / deltas.delta_t
-    # speed = np.where(speed_unthr < speed_threshold, speed_unthr, np.nan)
-    # speed = np.where(speed > -1 * speed_threshold, speed, np.nan)
-    # spd_interest = np.where([speed < 0, speed > 0][positive_speed], speed, np.nan)
     return speed

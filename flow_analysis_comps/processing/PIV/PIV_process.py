@@ -1,24 +1,22 @@
 from pathlib import Path
 from typing import Optional
-from openpiv import tools, pyprocess, validation, filters, scaling, windef
+from openpiv import windef
 import tifffile
-from tqdm import tqdm
-from flow_analysis_comps.data_structs.video_info import videoMode
-from flow_analysis_comps.video_manipulation.threshold_methods import (
+from flow_analysis_comps import io
+from flow_analysis_comps.processing.graph_extraction.graph_extract import video_to_mask
+from flow_analysis_comps.processing.video_manipulation.threshold_methods import (
     harmonic_mean_thresh,
 )
-from flow_analysis_comps.video_manipulation.segmentation_methods import (
-    segment_hyphae_general,
+from flow_analysis_comps.processing.graph_extraction.segmentation_utils import (
+    segment_hyphae_w_mean_std,
 )
-import cv2
 from glob import glob
 import os
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.colors import hsv_to_rgb
-from flow_analysis_comps.PIV.definitions import PIV_params, segmentMode
+from flow_analysis_comps.processing.PIV.definitions import PIV_params
 
-from flow_analysis_comps.PIV.PIV_visualize import PIV_visualize, visualizerParams
+from flow_analysis_comps.processing.PIV.PIV_visualize import PIV_visualize
 
 
 class AMF_PIV:
@@ -28,6 +26,7 @@ class AMF_PIV:
         # visualize_params: Optional[visualizerParams] = None,
     ):
         self.parameters = parameters
+        self.metadata = io.read_video_metadata(parameters.root_path)
 
         self.frame_paths = sorted(
             glob(str(self.parameters.root_path / "Img") + os.sep + "Img*")
@@ -35,17 +34,13 @@ class AMF_PIV:
         if len(self.frame_paths) == 0:
             raise FileNotFoundError("No images in given folder")
 
-        self.segmented_img = segment_hyphae_general(
-            self.frame_paths[:200:10],
-            mode=self.parameters.segment_mode,
-        )
+        self.segmented_img = video_to_mask(self.metadata)
 
         window_sizes = tuple(
             int(self.parameters.window_size_start / (2**i))
             for i in range(self.parameters.number_of_passes)
         )
         overlap_sizes = tuple(window_size // 2 for window_size in window_sizes)
-
 
         speed_thresholds = (
             -self.parameters.max_speed_px_per_frame,
@@ -94,7 +89,6 @@ class AMF_PIV:
         self.visualizer = PIV_visualize(
             self.windef_settings.save_path,
             self.windef_settings.save_path / output_folder_name,
-
         )
 
     def run_single_frame(self, frame_idxs: Optional[tuple[int, int]] = None):
@@ -122,9 +116,10 @@ class AMF_PIV:
         fig, ax = plt.subplot_mosaic(
             [["img1", "img2"], ["img1", "img2"]], figsize=(10, 6)
         )
-        ax["img1"].imshow(img1 * self.segmented_img, cmap=plt.cm.gray)
-        ax["img2"].imshow(img2, cmap=plt.cm.gray)
+        ax["img1"].imshow(img1 * self.segmented_img, cmap="gray")
+        ax["img2"].imshow(img2, cmap="gray")
 
     def start_visualizer(self, output_file, limit_data=True):
-        self.visualizer = PIV_visualize(self.parameters.root_path, output_file, limit_data=limit_data)
-
+        self.visualizer = PIV_visualize(
+            self.parameters.root_path, output_file, limit_data=limit_data
+        )

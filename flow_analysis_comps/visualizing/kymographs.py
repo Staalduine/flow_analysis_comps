@@ -1,4 +1,5 @@
-from flow_analysis_comps.data_structs.kymographs import kymoOutputs
+import numpy as np
+from flow_analysis_comps.data_structs.kymograph_structs import kymoOutputs
 import matplotlib.pyplot as plt
 import colorcet
 
@@ -18,6 +19,7 @@ class kymoVisualizer:
         self.data = data
 
     def plot(self):
+        assert isinstance(self.data.kymograph, np.ndarray), "Data must be of type kymoOutputs"
         # Plot original kymograph, decomposed and non-static kymographs
         extent = (
             0,

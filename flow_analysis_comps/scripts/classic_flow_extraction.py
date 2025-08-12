@@ -1,20 +1,20 @@
+import flow_analysis_comps.io as io
 from pathlib import Path
 import pandas as pd
 
-from flow_analysis_comps.data_structs.kymographs import (
-    GSTConfig,
-    graphExtractConfig,
+from flow_analysis_comps.data_structs.kymograph_structs import (
     kymoExtractConfig,
     kymoOutputs,
 )
-from flow_analysis_comps.data_structs.video_info import videoInfo
+from flow_analysis_comps.data_structs.GST_structs import GST_params
+
+from flow_analysis_comps.data_structs.video_metadata_structs import videoInfo
 from flow_analysis_comps.io.video import videoIO
 from flow_analysis_comps.processing.graph_extraction.graph_extract import (
     VideoGraphExtractor,
 )
 from flow_analysis_comps.processing.GSTSpeedExtract.extract_velocity import kymoAnalyser
 from flow_analysis_comps.processing.kymographing.kymographer import KymographExtractor
-from flow_analysis_comps.util.video_io import coord_to_folder
 from flow_analysis_comps.visualizing.GraphVisualize import (
     GraphVisualizer,
 )
@@ -23,12 +23,23 @@ from flow_analysis_comps.util.logging import setup_logger
 import imageio
 
 
+def coord_to_folder(x: float, y: float, precision: int = 2):
+    def fmt(val):
+        val = round(val, precision)
+        if val < 0:
+            prefix = "n"
+            val = -val
+        else:
+            prefix = ""
+        return prefix + str(val).replace(".", "_")
+
+    return f"x_{fmt(x)}_y_{fmt(y)}"
+
 
 def process(run_info_index, process_args):
     # expecting a float in um/s
-    speed_limit = float(process_args[0])
     separate_positions = bool(process_args[1]) if len(process_args) > 1 else False
-    speed_config = GSTConfig(speed_limit=speed_limit)
+    speed_config = GST_params()
 
     row = run_info_index
     path = Path(row["total_path"])
@@ -39,11 +50,18 @@ def process(run_info_index, process_args):
     with open(metadata_json_path, "w", encoding="utf-8-sig") as f:
         f.write(video_io.metadata.model_dump_json())
 
-    pos_x, pos_y = video_io.metadata.position.x, video_io.metadata.position.y
+    if video_io.metadata.position:
+        pos_x, pos_y = video_io.metadata.position.x, video_io.metadata.position.y
+    else:
+        pos_x, pos_y = 0.0, 0.0
     video_position = coord_to_folder(pos_x, pos_y, precision=3)
 
     timeformat = "%Y%m%d_%H%M%S"
-    formatted_timestamp = video_io.metadata.date_time.strftime(timeformat)
+    formatted_timestamp = (
+        video_io.metadata.date_time.strftime(timeformat)
+        if video_io.metadata.date_time
+        else "unknown_timestamp"
+    )
 
     if separate_positions:
         out_folder: Path = path / "flow_analysis" / video_position / formatted_timestamp
@@ -56,7 +74,7 @@ def process(run_info_index, process_args):
 def process_video(
     root_folder: Path,
     out_folder: Path,
-    speed_config: GSTConfig,
+    speed_config: GST_params,
     video_position: str | None = None,
     formatted_timestamp: str | None = None,
     kymo_extract_config: kymoExtractConfig | None = None,
@@ -71,14 +89,12 @@ def process_video(
         video_position = "vid"
     if formatted_timestamp is None:
         formatted_timestamp = "extract"
+    if not user_metadata:
+        user_metadata = io.read_video_metadata(root_folder)
 
-    graph_data = VideoGraphExtractor(
-        root_folder, graphExtractConfig(), user_metadata=user_metadata
-    ).edge_data
+    graph_data = VideoGraphExtractor(user_metadata).edge_data
 
-    kymo_extractor = KymographExtractor(
-        graph_data, kymo_extract_config
-    )
+    kymo_extractor = KymographExtractor(user_metadata, graph_data, kymo_extract_config)
 
     kymograph_list = kymo_extractor.processed_kymographs
     kymograph_videos = kymo_extractor.hyphal_videos
@@ -98,12 +114,18 @@ def process_video(
         )
         # save hyphal video with video settings
         hyphal_video = kymograph_videos[kymo.name]
-        hyphal_video_path = out_folder / kymo.name / f"{video_position}_{formatted_timestamp}_{kymo.name}_hyphal_video.mp4"
+        hyphal_video_path = (
+            out_folder
+            / kymo.name
+            / f"{video_position}_{formatted_timestamp}_{kymo.name}_hyphal_video.mp4"
+        )
+
+        hyphal_video = list(hyphal_video)
 
         imageio.mimsave(
             str(hyphal_video_path),
             hyphal_video,
-            fps=kymo_extractor.metadata.camera.frame_rate
+            fps=kymo_extractor.metadata.camera.frame_rate,
         )
 
         kymo_averages["kymo_name"] = kymo.name  # Add name as a column
@@ -123,7 +145,7 @@ def process_video(
 def process_kymo(
     kymo: kymoOutputs,
     out_folder: Path,
-    speed_config: GSTConfig,
+    speed_config: GST_params,
     video_position: str | None = None,
     formatted_timestamp: str | None = None,
 ):

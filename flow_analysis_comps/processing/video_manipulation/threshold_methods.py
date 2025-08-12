@@ -32,10 +32,12 @@ def find_histogram_edge(image: np.ndarray) -> float:
 def calculate_renyi_entropy(threshold: float, pixels: np.ndarray) -> np.ndarray:
     # Calculate probabilities and entropies
     Ps = np.mean(pixels <= threshold)
+    
+    assert pixels.dtype is not np.bool_, "Pixels should be a boolean array"
     Hs = -np.sum(
         pixels[pixels <= threshold] * np.log(pixels[pixels <= threshold] + 1e-10)
-    )
-    Hn = -np.sum(pixels * np.log(pixels + 1e-10))
+    ) # type: ignore
+    Hn = -np.sum(pixels * np.log(pixels + 1e-10)) # type: ignore
 
     # Calculate phi(s)
     phi_s = np.log(Ps * (1 - Ps)) + Hs / Ps + (Hn - Hs) / (1 - Ps)
@@ -66,7 +68,7 @@ def harmonic_mean(pixels: np.ndarray, mask: Optional[np.ndarray] = None) -> floa
         arr = np.array(
             [arr_val for arr_val, mask_val in zip(arr, mask.flatten()) if mask_val > 0]
         )
-    return len(arr) / np.sum(1.0 / (arr[arr > 0]))
+    return float(len(arr) / np.sum(1.0 / (arr[arr > 0])))
 
 
 def harmonic_mean_thresh(

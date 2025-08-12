@@ -6,7 +6,7 @@ from flow_analysis_comps.processing.video_manipulation.threshold_methods import 
     RenyiEntropy_thresholding,
     find_histogram_edge,
 )
-from flow_analysis_comps.data_structs.video_info import videoMode
+from flow_analysis_comps.data_structs.video_metadata_structs import videoMode
 
 
 def _segment_brightfield_image(

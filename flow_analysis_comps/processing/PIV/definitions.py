@@ -2,17 +2,17 @@ from enum import StrEnum
 from pydantic import BaseModel, PositiveInt, field_validator
 from pathlib import Path
 
-from flow_analysis_comps.data_structs.video_info import videoMode
+from flow_analysis_comps.data_structs.video_metadata_structs import videoMode
 
 
 class segmentMode(StrEnum):
-    NONE : str =  "NONE"
-    BRIGHT: str = "BRIGHTFIELD"
-    FLUO: str = "FLUO"
+    NONE =  "NONE"
+    BRIGHT = "BRIGHTFIELD"
+    FLUO = "FLUO"
 
 
 class preProcessMode(StrEnum):
-    HARM_THRESH: str = "HARMONIC_MEAN_THRESHOLD"
+    HARM_THRESH = "HARMONIC_MEAN_THRESHOLD"
 
 
 class PIV_params(BaseModel):

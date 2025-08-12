@@ -6,7 +6,7 @@ from dask.delayed import delayed
 import tifffile
 import pandas as pd
 
-from flow_analysis_comps.data_structs.video_info import (
+from flow_analysis_comps.data_structs.video_metadata_structs import (
     cameraPosition,
     cameraSettings,
     videoInfo,

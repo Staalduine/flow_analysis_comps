@@ -1,11 +1,13 @@
 from pathlib import Path
-from flow_analysis_comps.data_structs.process_configs import graphExtractConfig
-from flow_analysis_comps.data_structs.kymographs import (
+from flow_analysis_comps.data_structs.graph_extraction_structs import (
+    graphExtractConfig,
     VideoGraphExtraction,
+)
+from flow_analysis_comps.data_structs.kymograph_structs import (
     VideoGraphEdge,
     graphOutput,
 )
-from flow_analysis_comps.data_structs.video_info import videoInfo
+from flow_analysis_comps.data_structs.video_metadata_structs import videoInfo
 from flow_analysis_comps.processing.graph_extraction.edge_utils import (
     low_pass_filter,
     resample_trail,
@@ -35,6 +37,18 @@ def extract_graph_from_video(
     return extractor.edge_data
 
 
+def video_to_mask(
+    metadata: videoInfo, extract_properties: graphExtractConfig | None = None
+) -> np.ndarray:
+    """
+    Converts a video file to a mask using the specified extraction properties.
+    """
+    if extract_properties is None:
+        extract_properties = graphExtractConfig()
+    extractor = VideoGraphExtractor(metadata, extract_properties)
+    return extractor.mask
+
+
 class VideoGraphExtractor:
     """
     A class to extract graphs from a video file.
@@ -42,7 +56,11 @@ class VideoGraphExtractor:
 
     video_path: Path
 
-    def __init__(self, metadata: videoInfo, extract_properties: graphExtractConfig):
+    def __init__(
+        self, metadata: videoInfo, extract_properties: graphExtractConfig | None = None
+    ):
+        if not extract_properties:
+            extract_properties = graphExtractConfig()
         self.video_path = metadata.root_path
         self.extract_properties = extract_properties
         self.metadata = metadata
@@ -80,7 +98,7 @@ class VideoGraphExtractor:
 
     @property
     def edge_data(self) -> VideoGraphExtraction:
-        output = VideoGraphExtraction(io=self.metadata, edges=[])
+        output = VideoGraphExtraction(metadata=self.metadata, edges=[])
         for edge_graph in self.edge_graphs:
             edge_pixels = orient(
                 self.graph.graph.get_edge_data(*edge_graph)["pixel_list"],
@@ -107,5 +125,5 @@ class VideoGraphExtractor:
     @staticmethod
     def _smooth_pixel_trail(edge: VideoGraphEdge):
         edge_pixels = edge.pixel_list
-        edge_pixels = resample_trail(low_pass_filter(edge_pixels)) # type: ignore
+        edge_pixels = resample_trail(low_pass_filter(edge_pixels))  # type: ignore
         edge.pixel_list = edge_pixels

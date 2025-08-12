@@ -1,10 +1,10 @@
-from flow_analysis_comps.data_structs.process_configs import kymoExtractConfig
-from flow_analysis_comps.data_structs.kymographs import (
+from flow_analysis_comps.data_structs.graph_extraction_structs import VideoGraphExtraction
+from flow_analysis_comps.data_structs.kymograph_structs import (
     KymoCoordinates,
-    VideoGraphExtraction,
+    kymoExtractConfig,
     kymoOutputs,
 )
-from flow_analysis_comps.data_structs.video_info import videoInfo
+from flow_analysis_comps.data_structs.video_metadata_structs import videoInfo
 from flow_analysis_comps.processing.GSTSpeedExtract.classic_image_util import filter_kymo_right
 from flow_analysis_comps.processing.kymographing.kymo_utils import (
     extract_kymo_coordinates,
@@ -22,11 +22,14 @@ import flow_analysis_comps.io as io
 def extract_kymographs_from_video(
     video_metadata: videoInfo,
     extracted_graph: VideoGraphExtraction,
-    extract_params: kymoExtractConfig,
+    extract_params: kymoExtractConfig | None = None,
 ) -> list[kymoOutputs]:
     """
     Extracts kymographs from a video file using the specified extraction parameters.
     """
+    if not extract_params:
+        extract_params = kymoExtractConfig()
+
     extractor = KymographExtractor(video_metadata, extracted_graph, extract_params)
     return extractor.processed_kymographs
 
@@ -44,7 +47,6 @@ class KymographExtractor:
     ):
         self.metadata = video_metadata
         self.extract_properties = extract_params
-        self.io = graph_extraction.io
         self.video_array: da.Array = io.read_video_array(self.metadata)
         self.logger = setup_logger(name="flow_analysis_comps.kymographer")
 

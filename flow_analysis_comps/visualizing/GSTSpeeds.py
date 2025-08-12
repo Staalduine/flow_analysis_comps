@@ -1,13 +1,27 @@
-from flow_analysis_comps.data_structs.kymographs import GSTSpeedOutputs, kymoOutputs
+from flow_analysis_comps.data_structs.GST_structs import GSTSpeedOutputs
+from flow_analysis_comps.data_structs.kymograph_structs import kymoOutputs
 import numpy as np
 import matplotlib.pyplot as plt
 
 
 class GSTSpeedVizualizer:
     def __init__(self, flow_analysis: GSTSpeedOutputs):
+        assert isinstance(flow_analysis.speed_left, np.ndarray), (
+            "flow_analysis must be a GSTSpeedOutputs instance"
+        )
         self.flow_analysis = flow_analysis
+        assert isinstance(self.flow_analysis.speed_left, np.ndarray), (
+            "flow_analysis must be contain np arrays"
+        )
 
     def show_speed_fields(self):
+        assert isinstance(self.flow_analysis.speed_left, np.ndarray), (
+            "flow_analysis must be contain np arrays"
+        )
+        assert isinstance(self.flow_analysis.speed_right, np.ndarray), (
+            "flow_analysis must be contain np arrays"
+        )
+
         kymo_extent: tuple[float, float, float, float] = (
             0,
             self.flow_analysis.deltas.delta_x * len(self.flow_analysis.speed_left[0]),
@@ -61,7 +75,9 @@ class GSTSpeedVizualizer:
 
         fig, ax = plt.subplot_mosaic(
             [["kymograph", "temporal histogram"], ["speed plot", "temporal histogram"]],
-            layout="constrained", dpi=300, figsize=(12, 8)
+            layout="constrained",
+            dpi=300,
+            figsize=(12, 8),
         )
 
         self._plot_kymograph(ax["kymograph"], fourier_images, kymo_extent)
@@ -86,6 +102,10 @@ class GSTSpeedVizualizer:
         return fig, ax
 
     def _get_kymo_extent(self, fourier_images: kymoOutputs):
+        assert isinstance(fourier_images.kymo_left, np.ndarray), (
+            "flow_analysis must be contain np arrays"
+        )
+
         return (
             0,
             fourier_images.deltas.delta_x * len(fourier_images.kymo_left[0]),
@@ -94,6 +114,10 @@ class GSTSpeedVizualizer:
         )
 
     def _get_time_axis_points(self, fourier_images: kymoOutputs):
+        assert isinstance(fourier_images.kymo_left, np.ndarray), (
+            "flow_analysis must be contain np arrays"
+        )
+
         return np.linspace(
             0,
             fourier_images.deltas.delta_t * len(fourier_images.kymo_left),
@@ -101,6 +125,13 @@ class GSTSpeedVizualizer:
         )
 
     def _get_speed_histogram(self, speedmax):
+        assert isinstance(self.flow_analysis.speed_left, np.ndarray), (
+            "flow_analysis must be contain np arrays"
+        )
+        assert isinstance(self.flow_analysis.speed_right, np.ndarray), (
+            "flow_analysis must be contain np arrays"
+        )
+
         speed_bins = np.linspace(-speedmax, speedmax, 1001)
         speed_histo_left = np.array(
             [np.histogram(row, speed_bins)[0] for row in self.flow_analysis.speed_left]
@@ -114,6 +145,13 @@ class GSTSpeedVizualizer:
         return speed_histo
 
     def _get_speed_means(self):
+        assert isinstance(self.flow_analysis.speed_left, np.ndarray), (
+            "flow_analysis must be contain np arrays"
+        )
+        assert isinstance(self.flow_analysis.speed_right, np.ndarray), (
+            "flow_analysis must be contain np arrays"
+        )
+
         speed_mean_over_time = [
             np.nanmean(self.flow_analysis.speed_left, axis=1),
             np.nanmean(self.flow_analysis.speed_right, axis=1),
@@ -190,6 +228,13 @@ class GSTSpeedVizualizer:
         ax.set_ylabel(r"Speed ($\mu m / s$)")
 
     def _max_speed(self):
+        assert isinstance(self.flow_analysis.speed_left, np.ndarray), (
+            "flow_analysis must be contain np arrays"
+        )
+        assert isinstance(self.flow_analysis.speed_right, np.ndarray), (
+            "flow_analysis must be contain np arrays"
+        )
+
         speed_images = [self.flow_analysis.speed_left, self.flow_analysis.speed_right]
         speed_min = np.nanmin(speed_images)
         speed_max = np.nanmax(speed_images)

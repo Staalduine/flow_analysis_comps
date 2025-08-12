@@ -1,8 +1,10 @@
-from flow_analysis_comps.data_structs.kymographs import (
+from flow_analysis_comps.data_structs.kymograph_structs import (
     KymoCoordinates,
-    VideoGraphExtraction,
-    kymoDeltas,
     kymoExtractConfig,
+)
+from flow_analysis_comps.data_structs.video_metadata_structs import videoDeltas
+from flow_analysis_comps.data_structs.graph_extraction_structs import (
+    VideoGraphExtraction,
 )
 from flow_analysis_comps.processing.kymographing.kymo_utils import (
     extract_kymo_coordinates,
@@ -11,6 +13,7 @@ from matplotlib import pyplot as plt
 import matplotlib.patheffects as path_effects
 import numpy as np
 import colorcet
+from flow_analysis_comps.io import read_video_array
 
 
 class GraphVisualizer:
@@ -18,12 +21,13 @@ class GraphVisualizer:
         self, graph: VideoGraphExtraction, extract_properties: kymoExtractConfig
     ):
         self.graph = graph
-        self.image: np.ndarray = graph.io.video_array[0].compute()
-        self.metadata = graph.io.metadata
-        deltas = graph.io.get_deltas()
-        self.deltas = kymoDeltas(
-            delta_x=deltas[0],
-            delta_t=deltas[1],
+        video = read_video_array(graph.metadata)
+        self.image: np.ndarray = video[0].compute()
+        self.metadata = graph.metadata
+        deltas = graph.metadata.deltas
+        self.deltas = videoDeltas(
+            delta_x=deltas.delta_x,
+            delta_t=deltas.delta_t,
         )
         self.extract_properties = extract_properties
         self.segment_coords = [
@@ -83,6 +87,7 @@ class GraphVisualizer:
         return fig1
 
     def _plot_segments(self, edge: KymoCoordinates, adjust_val, ax):
+        assert isinstance(edge.edge_info.pixel_list, np.ndarray)
         weight = 0.05
         for point_1, point_2 in edge.segment_coords:
             ax.plot(

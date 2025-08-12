@@ -2,29 +2,28 @@ import numpy as np
 import pandas as pd
 
 from flow_analysis_comps.processing.GSTSpeedExtract.classic_image_util import (
-    extract_orientations,
+    GST_extract_orientations,
     speed_from_orientation_image,
 )
-from flow_analysis_comps.data_structs.kymographs import (
-    GSTSpeedOutputs,
+from flow_analysis_comps.data_structs.kymograph_structs import (
     kymoOutputs,
 )
-from flow_analysis_comps.data_structs.process_configs import (
-    GSTConfig,
-)
+
+# from flow_analysis_comps.data_structs.process_configs import GST_params
+from flow_analysis_comps.data_structs.GST_structs import GST_params, GSTSpeedOutputs
 
 
 class kymoAnalyser:
     def __init__(
         self,
         kymograph: kymoOutputs,
-        gst_params: GSTConfig,
+        gst_params: GST_params,
     ):
         self.kymograph = kymograph
         self.name = kymograph.name
         self.video_deltas = self.kymograph.deltas
-        self.config = gst_params
-        self.GST_params = gst_params.gst_params
+        # self.config = gst_params
+        self.GST_params = gst_params
 
     @property
     def orientation_images(self):
@@ -51,7 +50,7 @@ class kymoAnalyser:
         return np.array([speed_field_left, speed_field_right])
 
     def _orientation_field(self, image):
-        imgGSTMax = extract_orientations(image, self.GST_params)
+        imgGSTMax = GST_extract_orientations(image, self.GST_params)
 
         return imgGSTMax
 
@@ -89,7 +88,7 @@ class kymoAnalyser:
 
         # Compute fluxes
         # Multiply speed fields by intensity, and delta_x, sum up, divide by total length x
-        total_length = self.kymograph.kymo_left.shape[0] * self.video_deltas.delta_x
+        total_length = self.kymograph.kymo_left.shape[0] * self.video_deltas.delta_x  # type: ignore
         flux_left = (
             speed_fields[0] * self.kymograph.kymo_left * self.video_deltas.delta_x
         )

@@ -1,4 +1,4 @@
-from flow_analysis_comps.data_structs.kymographs import KymoCoordinates, VideoGraphEdge
+from flow_analysis_comps.data_structs.kymograph_structs import KymoCoordinates, VideoGraphEdge
 from flow_analysis_comps.util.coord_space_util import extract_perp_lines
 import numpy as np
 
@@ -9,6 +9,7 @@ def extract_kymo_coordinates(
     """
     Extracts kymograph coordinates from a VideoGraphEdge.
     """
+    assert isinstance(edge.pixel_list, np.ndarray)
     start, end, step_size = (
         step,
         len(edge.pixel_list) - step,
