@@ -167,7 +167,6 @@ def from_sparse_to_graph(doc_skel: dict) -> pd.DataFrame:
     column_names = ["origin", "end", "pixel_list"]
     graph = pd.DataFrame(columns=column_names)
     pixel_branch_dic, is_node, new_index = extract_branches(doc_skel)
-    # nodes = []
     edges = {}
     for pixel in pixel_branch_dic:
         for branch in pixel_branch_dic[pixel]:
@@ -189,7 +188,7 @@ def from_sparse_to_graph(doc_skel: dict) -> pd.DataFrame:
 
 
 def reconnect_degree_2(nx_graph: nx.Graph, pos: dict, has_width: bool = True) -> None:
-    assert isinstance(nx_graph.degree, dict), "Graph must have nodes to reconnect."
+    assert isinstance(nx_graph.degree, nx.classes.reportviews.DegreeView), "Graph must have nodes to reconnect."
     degree_2_nodes = [node for node in nx_graph.nodes if nx_graph.degree[node] == 2]
     while len(degree_2_nodes) > 0:
         node = degree_2_nodes.pop()
@@ -230,7 +229,7 @@ def reconnect_degree_2(nx_graph: nx.Graph, pos: dict, has_width: bool = True) ->
 def remove_spurs(
     nx_g: nx.Graph, pos: dict, threshold: int = 100
 ) -> tuple[nx.Graph, dict]:
-    assert isinstance(nx_g.degree, dict), "Graph must have nodes to remove spurs."
+    assert isinstance(nx_g.degree, nx.classes.reportviews.DegreeView), "Graph must have nodes to remove spurs."
     found = True
     while found:
         spurs = []

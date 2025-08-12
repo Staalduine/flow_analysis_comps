@@ -42,8 +42,8 @@ def postprocess_angles(output_dict):
     Returns:
         dict: Postprocessed dictionary with angles in expected range.
     """
-    output_dict["maxima"] = (((output_dict["maxima"]) / 2) + np.pi / 2) % (np.pi ) - (np.pi / 2)
-    output_dict["minima"] = (((output_dict["minima"]) / 2) + np.pi / 2) % (np.pi ) - (np.pi / 2)
+    output_dict["maxima"] = -1 * ((((output_dict["maxima"] + np.pi) / 2) % np.pi ) - np.pi / 2)
+    output_dict["minima"] = -1 * ((((output_dict["minima"] + np.pi) / 2) % np.pi ) - np.pi / 2)
     return output_dict
 
 

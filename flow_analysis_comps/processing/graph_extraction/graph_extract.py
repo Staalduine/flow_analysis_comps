@@ -107,5 +107,5 @@ class VideoGraphExtractor:
     @staticmethod
     def _smooth_pixel_trail(edge: VideoGraphEdge):
         edge_pixels = edge.pixel_list
-        edge_pixels = resample_trail(low_pass_filter(edge_pixels))
+        edge_pixels = resample_trail(low_pass_filter(edge_pixels)) # type: ignore
         edge.pixel_list = edge_pixels

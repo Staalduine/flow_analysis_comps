@@ -23,26 +23,12 @@ def find_regime_bifurcation(
     K_response = broadcast_K(K_response)
     K_low = broadcast_K(K_low)
     K_high = broadcast_K(K_high)
-    # if np.isscalar(K_response):
-    #     K_response = np.full((response_fft.shape[1],), K_response)
-
-    # if K_low is None or len(np.atleast_1d(K_low)) == 0:
-    #     K_low = np.ones(response_fft.shape[1])
 
     useMinima = (
         False
         if minima is None or (isinstance(minima, list) and len(minima) == 0)
         else True
     )
-
-    # if np.isscalar(K_high):
-    #     K_high = np.full((response_fft.shape[1],), K_high)
-    # else:
-    #     K_high = np.atleast_1d(K_high)
-    # Make K_low match 2nd dimension of response
-    # K_low = np.atleast_1d(K_low)
-    # if K_low.shape[0] == 1:
-    #     K_low = np.full((response_fft.shape[1],), K_low[0])
 
     if useMinima:
         extrema_working = np.sort(np.concatenate([maxima, minima], axis=0), axis=0)
@@ -97,11 +83,6 @@ def find_regime_bifurcation(
         response_working_hat = response_working_hat[:, not_done_working]
         extrema_working = extrema_working[:, not_done_working]
 
-        # if debug:
-        #     print("K_high[debugIdx]:", K_high[debugIdx])
-        #     print("K_low[debugIdx]:", K_low[debugIdx])
-        #     print("extrema_high[:, debugIdx]:", extrema_high[:, debugIdx])
-
         if K_high_working.size == 0:
             if debug:
                 print("Iteration:", i)
@@ -110,10 +91,6 @@ def find_regime_bifurcation(
             print("length(K_high_working):", len(K_high_working))
 
     # Reactivate these lines to get the extrema_low again
-
-    # response_low_hat = get_response_at_order_vec_hat(response_fft, K_response, K_low)
-    # maxima_low, minima_low = interpft_extrema_fast(response_low_hat, 1, False)
-    # extrema_low = np.sort(np.concatenate([maxima_low, minima_low], axis=0), axis=0)
 
     return K_high, K_low
 

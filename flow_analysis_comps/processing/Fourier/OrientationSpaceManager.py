@@ -163,12 +163,12 @@ class orientationSpaceManager:
             )
 
             a_hat = self.response.response_stack_fft * f_hat
+            
+            new_params = self.os_filter.params.model_copy()
+            new_params.orientation_accuracy = K_new
 
             filter_new = OrientationSpaceFilter(
-                OSFilterParams(
-                    space_frequency_center=self.os_filter.params.space_frequency_center,
-                    orientation_accuracy=K_new,
-                )
+                new_params
             )
 
             if normalize == 1:

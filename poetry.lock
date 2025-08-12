@@ -2187,6 +2187,32 @@ files = [
 ]
 
 [[package]]
+name = "numpydantic"
+version = "1.6.10"
+description = "Type and shape validation and serialization for arbitrary array types in pydantic models"
+optional = false
+python-versions = "<4.0,>=3.9"
+groups = ["main"]
+files = [
+    {file = "numpydantic-1.6.10-py3-none-any.whl", hash = "sha256:f0853433d0fece69ac30fca353d1255d43293ebca08da221fc79e0bebf17a3c0"},
+    {file = "numpydantic-1.6.10.tar.gz", hash = "sha256:785286d46fa5ea64e2ae69c9f3d6abd272516b6280da30587eaf342b1fa1d3d8"},
+]
+
+[package.dependencies]
+numpy = ">=1.24.0"
+pydantic = ">=2.7.0"
+
+[package.extras]
+arrays = ["numpydantic[dask,hdf5,video,zarr]"]
+dask = ["dask (>=2024.4.0)"]
+dev = ["black (>=24.1.1)", "numpydantic[docs,tests]", "ruff (>=0.2.0,<1.0.0)", "sphinx-autobuild (>=2021.3.14)"]
+docs = ["autodoc-pydantic (>=2.0.1,<3.0.0)", "furo (>=2024.1.29)", "myst-nb (>=1.1.1)", "myst-parser (>=2.0.0,<3.0.0)", "numpydantic[arrays]", "rich (>=13.8.1)", "sphinx (>=7.2.6,<8.0.0)", "sphinx-design (>=0.5.0,<1.0.0)", "sphinxcontrib-mermaid (>=0.9.2)"]
+hdf5 = ["h5py (>=3.10.0)"]
+tests = ["coverage (>=6.1.1)", "coveralls (>=3.3.1,<4.0.0)", "numpydantic[arrays]", "pytest (>=7.4.0)", "pytest-cov (>=4.1.0,<5.0.0)", "pytest-depends (>=1.0.1,<2.0.0)"]
+video = ["opencv-python (>=4.9.0.80)"]
+zarr = ["zarr (>=2.17.2,<3.0.0)"]
+
+[[package]]
 name = "opencv-python"
 version = "4.11.0.86"
 description = "Wrapper package for OpenCV python bindings."
@@ -3939,4 +3965,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4.0"
-content-hash = "1d3828b9ae6237b1cc392f12421c1da28e887304d503b028d7ece1ab265e782d"
+content-hash = "8fefca82bb05952b3e9fd15d2c21ae02fe482ff4a82caa02562a2283694ef9fc"

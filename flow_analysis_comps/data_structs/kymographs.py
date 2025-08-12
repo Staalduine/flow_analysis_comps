@@ -3,6 +3,7 @@ from networkx import Graph
 import numpy as np
 import pandas as pd
 from pydantic import BaseModel, computed_field
+from numpydantic import NDArray, Shape
 
 from flow_analysis_comps.processing.GSTSpeedExtract.classic_image_util import (
     filter_kymo_right,
@@ -20,10 +21,11 @@ class graphOutput(BaseModel):
 class VideoGraphEdge(BaseModel):
     name: str
     edge: tuple[int, int]
-    pixel_list: np.ndarray
+    pixel_list : NDArray[Shape["* x, 2 y"], np.float32] # type: ignore # Coordinates of the edge in the video  # noqa: F722
+    # pixel_list: np.ndarray
 
-    class Config:
-        arbitrary_types_allowed = True
+    # class Config:
+    #     arbitrary_types_allowed = True
 
 
 class VideoGraphExtraction(BaseModel):
