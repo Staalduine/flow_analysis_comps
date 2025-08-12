@@ -9,7 +9,7 @@ from flow_analysis_comps.data_structs.kymographs import (
     GSTSpeedOutputs,
     kymoOutputs,
 )
-from flow_analysis_comps.data_structs.kymographs import (
+from flow_analysis_comps.data_structs.process_configs import (
     GSTConfig,
 )
 
@@ -37,6 +37,9 @@ class kymoAnalyser:
     @property
     def speed_images(self):
         orientation_images = self.orientation_images
+        orientation_images = (
+            (orientation_images - 90) / 180 * np.pi
+        )  # Convert to radians, put vertical at 0
         speed_field_left = speed_from_orientation_image(
             orientation_images[0], self.video_deltas, self.config.speed_limit, True
         )
@@ -82,15 +85,18 @@ class kymoAnalyser:
         speed_left_std = np.nanstd(speed_fields[0], axis=1)
         speed_right_std = np.nanstd(speed_fields[1], axis=1)
 
-        # Compute fluxes 
+        # Compute fluxes
         # Multiply speed fields by intensity, and delta_x, sum up, divide by total length x
         total_length = self.kymograph.kymo_left.shape[0] * self.video_deltas.delta_x
-        flux_left = speed_fields[0] * self.kymograph.kymo_left * self.video_deltas.delta_x
-        flux_right = speed_fields[1] * self.kymograph.kymo_right * self.video_deltas.delta_x
+        flux_left = (
+            speed_fields[0] * self.kymograph.kymo_left * self.video_deltas.delta_x
+        )
+        flux_right = (
+            speed_fields[1] * self.kymograph.kymo_right * self.video_deltas.delta_x
+        )
         flux_left_mean = np.nansum(flux_left, axis=1) / total_length
         flux_right_mean = np.nansum(flux_right, axis=1) / total_length
         flux_total_mean = (flux_left_mean + flux_right_mean) / 2
-
 
         time_series_df = pd.DataFrame(
             {

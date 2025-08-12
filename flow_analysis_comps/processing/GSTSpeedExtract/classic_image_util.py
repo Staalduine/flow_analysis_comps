@@ -1,4 +1,3 @@
-# from flow_analysis_comps.data_structs.kymographs import kymoDeltas
 import numpy as np
 import cv2
 
@@ -18,8 +17,8 @@ def calcGST(inputIMG: np.ndarray, window_size: int):
     # If the largest eigenvalue is much bigger than the smallest eigenvalue, that indicates a strong orientation.
 
     img = inputIMG.astype(np.float32)
-    imgDiffX = cv2.Sobel(img, cv2.CV_32F, 1, 0, -1)
-    imgDiffY = cv2.Sobel(img, cv2.CV_32F, 0, 1, -1)
+    imgDiffX = cv2.Sobel(img, cv2.CV_32F, 1, 0) #TODO: check if this is correct
+    imgDiffY = cv2.Sobel(img, cv2.CV_32F, 0, 1)
     imgDiffXY = cv2.multiply(imgDiffX, imgDiffY)
     imgDiffXX = cv2.multiply(imgDiffX, imgDiffX)
     imgDiffYY = cv2.multiply(imgDiffY, imgDiffY)
@@ -151,7 +150,7 @@ def extract_orientations(image: np.ndarray, gst_params: GST_params):
 
 
 def speed_from_orientation_image(
-    image, deltas: videoDeltas, speed_threshold: float, positive_speed: bool
+    image:np.ndarray, deltas: videoDeltas, speed_threshold: float, positive_speed: bool
 ):
     """
     Calculates the speed from an orientation image using the tangent of the angle.
@@ -159,7 +158,7 @@ def speed_from_orientation_image(
     Parameters
     ----------
     image : np.ndarray
-        The orientation image, where each pixel represents an angle in degrees.
+        The orientation image, where each pixel represents an angle in degrees. Range of orientation is 0-180 degrees.
     deltas : kymoDeltas
         An object containing the spatial (`delta_x`) and temporal (`delta_t`) resolution of the image.
     speed_threshold : float
@@ -180,7 +179,12 @@ def speed_from_orientation_image(
     4. Retains only speeds of the desired sign (positive or negative), setting others to NaN.
     5. Returns the resulting speed array.
     """
-    speed_unthr = np.tan((image - 90) / 180 * np.pi) * deltas.delta_x / deltas.delta_t
+
+    # Ensure orientation is in range (-pi/2, pi/2)
+    assert np.all(image >= -np.pi / 2) and np.all(image <=  np.pi / 2), \
+        "Orientation image must be in range (-pi/2, pi/2) radians."
+
+    speed_unthr = np.tan(image) * deltas.delta_x / deltas.delta_t
     speed = np.where(speed_unthr < speed_threshold, speed_unthr, np.nan)
     speed = np.where(speed > -1 * speed_threshold, speed, np.nan)
     spd_interest = np.where([speed < 0, speed > 0][positive_speed], speed, np.nan)

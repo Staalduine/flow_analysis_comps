@@ -2,7 +2,7 @@ import numpy as np
 from scipy.signal import butter, sosfiltfilt
 
 
-def low_pass_filter(coords, cutoff_freq=0.01, order=2):
+def low_pass_filter(coords: np.ndarray, cutoff_freq: float = 0.01, order: int = 2):
     """
     Applies a low-pass Butterworth filter to (x, y) coordinates.
 
@@ -30,7 +30,10 @@ def low_pass_filter(coords, cutoff_freq=0.01, order=2):
     return np.column_stack((x_filtered, y_filtered))
 
 
-def resample_trail(trail):
+def resample_trail(trail: np.ndarray):
+    """
+    Resamples a trail of coordinates to have uniform spacing of 1 unit.
+    """
     trail = np.array(trail)  # Ensure it's an array
     distances = np.sqrt(np.sum(np.diff(trail, axis=0) ** 2, axis=1))
     cumulative_distances = np.insert(
@@ -47,4 +50,4 @@ def resample_trail(trail):
         ]
     ).T  # Interpolate each coordinate separately
 
-    return new_trail  # Ensure integer pixel coordinates
+    return new_trail

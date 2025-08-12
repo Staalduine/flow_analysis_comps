@@ -4,9 +4,7 @@ from flow_analysis_comps.data_structs.kymographs import (
     VideoGraphExtraction,
     VideoGraphEdge,
     graphOutput,
-    # graphExtractConfig,
 )
-# from flow_analysis_comps.io.video import videoIO
 from flow_analysis_comps.data_structs.video_info import videoInfo
 from flow_analysis_comps.processing.graph_extraction.edge_utils import (
     low_pass_filter,
@@ -19,6 +17,7 @@ from flow_analysis_comps.processing.graph_extraction.graph_utils import (
     orient,
     skeletonize_segmented_im,
 )
+
 # import dask.array as da
 import numpy as np
 from flow_analysis_comps.io import read_video_array
@@ -35,6 +34,7 @@ def extract_graph_from_video(
     extractor = VideoGraphExtractor(metadata, extract_properties)
     return extractor.edge_data
 
+
 class VideoGraphExtractor:
     """
     A class to extract graphs from a video file.
@@ -46,9 +46,7 @@ class VideoGraphExtractor:
         self.video_path = metadata.root_path
         self.extract_properties = extract_properties
         self.metadata = metadata
-        # self.io = videoIO(self.video_path, user_metadata=user_metadata)
         self.video_array = read_video_array(self.metadata)[:20].compute()
-        # self.video_array: da.Array = self.video_array[:20].compute()
 
     @property
     def mean_img(self):

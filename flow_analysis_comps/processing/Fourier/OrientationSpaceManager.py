@@ -46,7 +46,9 @@ class orientationSpaceManager:
         Returns:
             instance of object
         """
-        self.filter_params = params
+        self.filter_params = params        
+        self.thresh_method = thresh_method
+        self.os_filter: OrientationSpaceFilter = OrientationSpaceFilter(params)
 
         # If image has even dimension sizes, pad to make it odd
         # TODO: Even-sized images lead to orientation offsets, possibly related to FFT artifacts for even dimensions. 
@@ -58,16 +60,15 @@ class orientationSpaceManager:
                 mode='reflect',
             )
 
+        # Pad image to reduce Fourier ringing artifacts
         self.image = (
             image
             if self.filter_params.padding <= 0
             else mirror_pad_with_exponential_fade(image, self.filter_params.padding)
         )
 
-        self.os_filter: OrientationSpaceFilter = OrientationSpaceFilter(params)
         self.filter_arrays, self.setup_imdims = self._init_filter_on_img(self.image)
         self.response = self.get_response(self.image, self.filter_params.padding)
-        self.thresh_method = thresh_method
         self.mask = self.response.nlms_mask(thresh_method=thresh_method)
 
     def _init_filter_on_img(self, img: np.ndarray):
