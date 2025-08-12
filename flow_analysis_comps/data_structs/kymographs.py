@@ -21,19 +21,12 @@ class graphOutput(BaseModel):
 class VideoGraphEdge(BaseModel):
     name: str
     edge: tuple[int, int]
-    pixel_list : NDArray[Shape["* x, 2 y"], np.float32] # type: ignore # Coordinates of the edge in the video  # noqa: F722
-    # pixel_list: np.ndarray
-
-    # class Config:
-    #     arbitrary_types_allowed = True
+    pixel_list: NDArray[Shape["* x, 2 y"], int]  # type: ignore # Coordinates of the edge in the video  # noqa: F722
 
 
 class VideoGraphExtraction(BaseModel):
     io: videoInfo
     edges: list[VideoGraphEdge]
-
-    class Config:
-        arbitrary_types_allowed = True
 
 
 class KymoCoordinates(BaseModel):

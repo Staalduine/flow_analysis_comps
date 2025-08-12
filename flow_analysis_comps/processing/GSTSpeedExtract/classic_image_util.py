@@ -150,7 +150,7 @@ def extract_orientations(image: np.ndarray, gst_params: GST_params):
 
 
 def speed_from_orientation_image(
-    image:np.ndarray, deltas: videoDeltas, speed_threshold: float, positive_speed: bool
+    image:np.ndarray, deltas: videoDeltas
 ):
     """
     Calculates the speed from an orientation image using the tangent of the angle.
@@ -184,8 +184,8 @@ def speed_from_orientation_image(
     assert np.all(image >= -np.pi / 2) and np.all(image <=  np.pi / 2), \
         "Orientation image must be in range (-pi/2, pi/2) radians."
 
-    speed_unthr = np.tan(image) * deltas.delta_x / deltas.delta_t
-    speed = np.where(speed_unthr < speed_threshold, speed_unthr, np.nan)
-    speed = np.where(speed > -1 * speed_threshold, speed, np.nan)
-    spd_interest = np.where([speed < 0, speed > 0][positive_speed], speed, np.nan)
-    return spd_interest
+    speed = np.tan(image) * deltas.delta_x / deltas.delta_t
+    # speed = np.where(speed_unthr < speed_threshold, speed_unthr, np.nan)
+    # speed = np.where(speed > -1 * speed_threshold, speed, np.nan)
+    # spd_interest = np.where([speed < 0, speed > 0][positive_speed], speed, np.nan)
+    return speed

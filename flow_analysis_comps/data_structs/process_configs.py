@@ -16,7 +16,7 @@ class kymoExtractConfig(BaseModel):
     step: int = 15
     target_length: int = 70  # Pixel length of perpendicular lines
     bounds: tuple[float, float] = (0.0, 1.0)
-    graph_extraction: graphExtractConfig = graphExtractConfig()
+    # graph_extraction: graphExtractConfig = graphExtractConfig()
 
 
 class GST_params(BaseModel):

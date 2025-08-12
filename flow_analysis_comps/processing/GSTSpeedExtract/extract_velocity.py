@@ -41,11 +41,13 @@ class kymoAnalyser:
             (orientation_images - 90) / 180 * np.pi
         )  # Convert to radians, put vertical at 0
         speed_field_left = speed_from_orientation_image(
-            orientation_images[0], self.video_deltas, self.config.speed_limit, True
+            orientation_images[0], self.video_deltas
         )
+        speed_field_left = np.where(speed_field_left > 0, speed_field_left, np.nan)
         speed_field_right = speed_from_orientation_image(
-            orientation_images[1], self.video_deltas, self.config.speed_limit, False
+            orientation_images[1], self.video_deltas
         )
+        speed_field_right = np.where(speed_field_right < 0, speed_field_right, np.nan)
         return np.array([speed_field_left, speed_field_right])
 
     def _orientation_field(self, image):

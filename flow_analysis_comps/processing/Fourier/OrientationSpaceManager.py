@@ -1,6 +1,6 @@
 import numpy as np
 from scipy import fftpack
-from flow_analysis_comps.data_structs.AOS_structs import (
+from flow_analysis_comps.data_structs.multiori_config_struct import (
     OSFilterParams,
 )
 from flow_analysis_comps.processing.Fourier.utils.orientation_maxima_first_derivatives import (

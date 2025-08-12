@@ -1,7 +1,7 @@
 import numba
 import numpy as np
 from tqdm import tqdm
-from flow_analysis_comps.data_structs.AOS_structs import angle_filter_values
+from flow_analysis_comps.data_structs.multiori_config_struct import angle_filter_values
 from joblib import Parallel, delayed
 from flow_analysis_comps.processing.Fourier.utils.Interpolation import (
     interpolate_fourier_series,

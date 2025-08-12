@@ -1,7 +1,7 @@
 from typing import Optional
 import numpy as np
 from flow_analysis_comps.util.coord_space_util import freqSpaceCoords
-from flow_analysis_comps.data_structs.AOS_structs import OSFilterParams
+from flow_analysis_comps.data_structs.multiori_config_struct import OSFilterParams
 
 
 class OrientationSpaceFilter:

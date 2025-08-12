@@ -12,7 +12,7 @@ from flow_analysis_comps.data_structs.video_info import (
     videoInfo,
     videoMode,
 )
-from flow_analysis_comps.data_structs.plate_info import (
+from flow_analysis_comps.data_structs.plate_info_structs import (
     plateInfo,
     rootTypes,
     strainTypes,

@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Optional
 from pydantic import BaseModel, computed_field
 from datetime import datetime, timedelta
-from flow_analysis_comps.data_structs.plate_info import plateInfo
+from flow_analysis_comps.data_structs.plate_info_structs import plateInfo
 
 
 class videoMode(StrEnum):
