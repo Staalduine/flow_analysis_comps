@@ -2,10 +2,8 @@ from pathlib import Path
 from flow_analysis_comps.data_structs.graph_extraction_structs import (
     graphExtractConfig,
     VideoGraphExtraction,
-)
-from flow_analysis_comps.data_structs.kymograph_structs import (
-    VideoGraphEdge,
     graphOutput,
+    VideoGraphEdge
 )
 from flow_analysis_comps.data_structs.video_metadata_structs import videoInfo
 from flow_analysis_comps.processing.graph_extraction.edge_utils import (
@@ -19,8 +17,6 @@ from flow_analysis_comps.processing.graph_extraction.graph_utils import (
     orient,
     skeletonize_segmented_im,
 )
-
-# import dask.array as da
 import numpy as np
 from flow_analysis_comps.io import read_video_array
 

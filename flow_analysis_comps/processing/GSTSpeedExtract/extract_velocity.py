@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-
 from flow_analysis_comps.processing.GSTSpeedExtract.classic_image_util import (
     GST_extract_orientations,
     speed_from_orientation_image,
@@ -8,8 +7,6 @@ from flow_analysis_comps.processing.GSTSpeedExtract.classic_image_util import (
 from flow_analysis_comps.data_structs.kymograph_structs import (
     kymoOutputs,
 )
-
-# from flow_analysis_comps.data_structs.process_configs import GST_params
 from flow_analysis_comps.data_structs.GST_structs import GST_params, GSTSpeedOutputs
 
 
@@ -22,7 +19,6 @@ class kymoAnalyser:
         self.kymograph = kymograph
         self.name = kymograph.name
         self.video_deltas = self.kymograph.deltas
-        # self.config = gst_params
         self.GST_params = gst_params
 
     @property

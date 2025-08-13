@@ -2,7 +2,6 @@ from flow_analysis_comps.data_structs.graph_extraction_structs import VideoGraph
 from flow_analysis_comps.data_structs.video_metadata_structs import (
     videoDeltas,
 )
-from networkx import Graph
 import numpy as np
 from pydantic import BaseModel, computed_field
 
@@ -10,15 +9,6 @@ from flow_analysis_comps.processing.GSTSpeedExtract.classic_image_util import (
     filter_kymo_right,
 )
 from flow_analysis_comps.data_structs.array_types import image_float
-# float_image = NDArray[Shape["* x, * y"], float]  # type: ignore # A 2D image with float values
-
-
-class graphOutput(BaseModel):
-    graph: Graph
-    positions: dict
-
-    class Config:
-        arbitrary_types_allowed = True
 
 
 class KymoCoordinates(BaseModel):
@@ -34,7 +24,6 @@ class kymoExtractConfig(BaseModel):
     resolution: int = 1  # Pixel distance between sampled points
     step: int = 15
     target_length: int = 70  # Pixel length of perpendicular lines
-    # bounds: tuple[float, float] = (0.0, 1.0)
 
 
 class kymoOutputs(BaseModel):
