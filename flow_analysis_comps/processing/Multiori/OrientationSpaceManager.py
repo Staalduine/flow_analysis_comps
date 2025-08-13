@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import fftpack
 from flow_analysis_comps.data_structs.multiori_config_struct import (
-    OSFilterParams,
+    multiOriParams,
 )
 from flow_analysis_comps.processing.Multiori.utils.orientation_maxima_first_derivatives import (
     orientation_maxima_first_derivative,
@@ -30,7 +30,7 @@ from flow_analysis_comps.util.image_manips import mirror_pad_with_exponential_fa
 class orientationSpaceManager:
     def __init__(
         self,
-        params: OSFilterParams,
+        params: multiOriParams,
         image: np.ndarray,
         thresh_method=ThresholdMethods.OTSU,
     ):

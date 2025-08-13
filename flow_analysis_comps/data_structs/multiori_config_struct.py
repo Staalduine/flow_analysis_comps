@@ -8,7 +8,7 @@ class angle_filter_values(BaseModel):
     second_derivative: float = 5.0
 
 
-class OSFilterParams(BaseModel):
+class multiOriParams(BaseModel):
     space_frequency_center: float  # Central frequency band, selects for object sizes
     orientation_accuracy: float = 5.0  # Width of orientation band
     sampling_factor: int = 1

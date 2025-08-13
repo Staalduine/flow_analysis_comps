@@ -1,12 +1,12 @@
 from copy import copy
-from flow_analysis_comps.data_structs.multiori_config_struct import OSFilterParams
+from flow_analysis_comps.data_structs.multiori_config_struct import multiOriParams
 from flow_analysis_comps.processing.Multiori.OrientationSpaceManager import orientationSpaceManager
 from flow_analysis_comps.util.coord_space_util import cart2pol
 from matplotlib import pyplot as plt
 import numpy as np
 
 class AOSVisualizer:
-    def __init__(self, params: OSFilterParams) -> None:
+    def __init__(self, params: multiOriParams) -> None:
         self.params = params
         
     
