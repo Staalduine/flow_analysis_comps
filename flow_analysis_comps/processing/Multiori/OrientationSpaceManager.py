@@ -1,31 +1,40 @@
 import numpy as np
 from scipy import fftpack
 from flow_analysis_comps.data_structs.multiori_config_struct import (
+    multiOriOutput,
     multiOriParams,
 )
-from flow_analysis_comps.processing.Multiori.utils.orientation_maxima_first_derivatives import (
+from flow_analysis_comps.data_structs.video_metadata_structs import videoInfo
+from flow_analysis_comps.processing.Multiori.utils import (
     orientation_maxima_first_derivative,
-)
-from flow_analysis_comps.processing.Multiori.utils.find_regime_bifurcation import (
+    find_all_extrema_in_filter_response,
     find_regime_bifurcation,
     get_response_at_order_vec_hat,
+    nlms_precise,
 )
-from flow_analysis_comps.processing.AOSFilter.OrientationSpaceFilter import (
+from flow_analysis_comps.processing.Multiori import (
     OrientationSpaceFilter,
-)
-from flow_analysis_comps.processing.Multiori.OrientationSpaceResponse import (
     OrientationSpaceResponse,
     ThresholdMethods,
 )
 import numpy.typing as npt
+from flow_analysis_comps.util import wraparoundN, mirror_pad_with_exponential_fade
 
-from flow_analysis_comps.processing.Multiori.utils.NLMSPrecise import nlms_precise
-from flow_analysis_comps.processing.Multiori.utils.findAllMaxima import (
-    find_all_extrema_in_filter_response,
-)
-from flow_analysis_comps.util.coord_space_util import wraparoundN
-from flow_analysis_comps.util.image_manips import mirror_pad_with_exponential_fade
+def multiori_kymo_analysis(video_metadata: videoInfo, multi_ori_filter_params: multiOriParams, kymograph: np.ndarray):
+    # Start with orientation manager
+    os_manager = orientationSpaceManager(multi_ori_filter_params, kymograph)
 
+    multi_ori_output = os_manager.get_all_angles()
+
+    output_struct = multiOriOutput(
+        metadata=video_metadata,
+        angles_maxima=multi_ori_output["maxima"],
+        angles_minima=multi_ori_output["minima"],
+        values_maxima=multi_ori_output["values_max"],
+        values_minima=multi_ori_output["values_min"],
+    )
+
+    return output_struct
 
 class orientationSpaceManager:
     def __init__(
@@ -46,18 +55,18 @@ class orientationSpaceManager:
         Returns:
             instance of object
         """
-        self.filter_params = params        
+        self.filter_params = params
         self.thresh_method = thresh_method
         self.os_filter: OrientationSpaceFilter = OrientationSpaceFilter(params)
 
         # If image has even dimension sizes, pad to make it odd
-        # TODO: Even-sized images lead to orientation offsets, possibly related to FFT artifacts for even dimensions. 
+        # TODO: Even-sized images lead to orientation offsets, possibly related to FFT artifacts for even dimensions.
         # This is a workaround, but should be fixed in the future.
         if image.ndim == 2 and (image.shape[0] % 2 == 0 or image.shape[1] % 2 == 0):
             image = np.pad(
                 image,
                 ((0, int(image.shape[0] % 2 == 0)), (0, int(image.shape[1] % 2 == 0))),
-                mode='reflect',
+                mode="reflect",
             )
 
         # Pad image to reduce Fourier ringing artifacts
@@ -163,13 +172,11 @@ class orientationSpaceManager:
             )
 
             a_hat = self.response.response_stack_fft * f_hat
-            
+
             new_params = self.os_filter.params.model_copy()
             new_params.orientation_accuracy = K_new
 
-            filter_new = OrientationSpaceFilter(
-                new_params
-            )
+            filter_new = OrientationSpaceFilter(new_params)
 
             if normalize == 1:
                 Response = OrientationSpaceResponse(

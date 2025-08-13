@@ -1,8 +1,9 @@
 import numba
 import numpy as np
 from tqdm import tqdm
-from flow_analysis_comps.data_structs.multiori_config_struct import angle_filter_values
+from flow_analysis_comps.data_structs.multiori_config_struct import angle_filter_values, multiOriOutput
 from joblib import Parallel, delayed
+from flow_analysis_comps.data_structs.video_metadata_structs import videoInfo
 from flow_analysis_comps.processing.Multiori.utils.Interpolation import (
     interpolate_fourier_series,
 )
@@ -28,6 +29,14 @@ def find_all_extrema_in_filter_response(
     )
 
     filtered_angles_dict = postprocess_angles(filtered_angles_dict)
+
+    # output = multiOriOutput(
+    #     metadata=video_metadata,
+    #     angles_maxima=filtered_angles_dict["maxima"],
+    #     angles_minima=filtered_angles_dict["minima"],
+    #     values_maxima=filtered_angles_dict["values_max"],
+    #     values_minima=filtered_angles_dict["values_min"],
+    # )
 
     return filtered_angles_dict
 
@@ -193,6 +202,8 @@ def _process_filter_stack(
 
     for key, item in output_dict.items():
         output_dict[key] = np.reshape(item.T, (output_depth, *img_size))
+
+    
 
     return output_dict
 

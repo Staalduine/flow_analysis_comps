@@ -7,16 +7,13 @@ from flow_analysis_comps.processing.graph_extraction.graph_extract import video_
 from flow_analysis_comps.processing.video_manipulation.threshold_methods import (
     harmonic_mean_thresh,
 )
-from flow_analysis_comps.processing.graph_extraction.segmentation_utils import (
-    segment_hyphae_w_mean_std,
-)
 from glob import glob
 import os
 import matplotlib.pyplot as plt
 import numpy as np
 from flow_analysis_comps.processing.PIV.definitions import PIV_params
 
-from flow_analysis_comps.processing.PIV.PIV_visualize import PIV_visualize
+from flow_analysis_comps.visualizing.PIV_visualize import PIV_visualize
 
 
 class AMF_PIV:

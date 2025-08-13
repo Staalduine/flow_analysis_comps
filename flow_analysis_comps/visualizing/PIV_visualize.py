@@ -1,12 +1,10 @@
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Optional
 from matplotlib.axes import Axes
 from matplotlib.image import AxesImage
 import numpy as np
 import matplotlib.pyplot as plt
-from glob import glob
 import colorcet
-
 import pandas as pd
 from pydantic import BaseModel
 import scipy.interpolate

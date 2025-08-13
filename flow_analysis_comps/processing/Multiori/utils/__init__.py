@@ -1,0 +1,4 @@
+from .find_regime_bifurcation import find_regime_bifurcation, get_response_at_order_vec_hat
+from .orientation_maxima_first_derivatives import orientation_maxima_first_derivative
+from .NLMSPrecise import nlms_precise
+from .findAllMaxima import find_all_extrema_in_filter_response
