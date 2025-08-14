@@ -95,12 +95,15 @@ class videoIO:
                 for x in intensity.replace("[", "").replace("]", "").split(",")
                 if x.strip()
             ]
-        if intensity[0] == 0:
-            image_mode = "fluorescence"
-        elif intensity[1] == 0:
-            image_mode = "brightfield"
+        if video_json["video"]["type"]:
+            image_mode = video_json["video"]["type"]
         else:
-            image_mode = "brightfield"
+            if intensity[0] == 0:
+                image_mode = "fluorescence"
+            elif intensity[1] == 0:
+                image_mode = "brightfield"
+            else:
+                image_mode = "brightfield"
 
         position = cameraPosition(
             x=video_json["video"]["location"][0],
