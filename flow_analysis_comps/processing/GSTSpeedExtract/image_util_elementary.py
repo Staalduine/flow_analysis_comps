@@ -1,54 +1,5 @@
-import cv2
-from flow_analysis_comps.data_structs.video_metadata_structs import (
-    videoDeltas,
-)
 import numpy as np
-from pydantic import BaseModel, computed_field
-from numpydantic import NDArray, Shape
-from flow_analysis_comps.data_structs.array_types import image_float
-
-
-class VideoGraphEdge(BaseModel):
-    name: str
-    edge: tuple[int, int]
-    pixel_list: NDArray[Shape["* x, 2 y"], int]  # type: ignore # Coordinates of the edge in the video  # noqa: F722
-
-
-class KymoCoordinates(BaseModel):
-    segment_coords: np.ndarray
-    perp_lines: np.ndarray
-    edge_info: VideoGraphEdge
-
-    class Config:
-        arbitrary_types_allowed = True
-
-
-class kymoExtractConfig(BaseModel):
-    resolution: int = 1  # Pixel distance between sampled points
-    step: int = 15
-    target_length: int = 70  # Pixel length of perpendicular lines
-
-
-class kymoOutputs(BaseModel):
-    deltas: videoDeltas
-    name: str
-    kymograph: image_float  # type: ignore # The kymograph image
-
-    @computed_field
-    @property
-    def kymo_left(self) -> image_float:
-        return filter_kymo_right(self.kymograph)  # type: ignore
-
-    @computed_field
-    @property
-    def kymo_right(self) -> image_float:
-        return np.flip(filter_kymo_right(np.flip(self.kymograph, axis=1)), axis=1)  # type: ignore
-
-    @computed_field
-    @property
-    def kymo_no_static(self) -> image_float:
-        return self.kymo_left + self.kymo_right  # type: ignore
-
+import cv2
 
 def tile_pad_image(kymo: np.ndarray):
     """
@@ -109,3 +60,36 @@ def fourier_filter_right_diagonal(tiled_image):
     inverse_dft = np.fft.ifft2(np.fft.ifftshift(dft)).real
 
     return inverse_dft
+
+
+def calcGST(inputIMG: np.ndarray, window_size: int):
+    """
+    Calculates the Image orientation and the image coherency. Image orientation is merely a guess, and image coherency gives an idea how sure that guess is.
+    inputIMG:   The input image
+    w:          The window size of the various filters to use. Large boxes catch higher order structures.
+    """
+
+    # The idea here is to perceive any patch of the image as a transformation matrix.
+    # Such a matrix will have some eigenvalues, which describe the direction of uniform transformation.
+    # If the largest eigenvalue is much bigger than the smallest eigenvalue, that indicates a strong orientation.
+
+    img = inputIMG.astype(np.float32)
+    imgDiffX = cv2.Sobel(img, cv2.CV_32F, 1, 0)  # TODO: check if this is correct
+    imgDiffY = cv2.Sobel(img, cv2.CV_32F, 0, 1)
+    imgDiffXY = cv2.multiply(imgDiffX, imgDiffY)
+    imgDiffXX = cv2.multiply(imgDiffX, imgDiffX)
+    imgDiffYY = cv2.multiply(imgDiffY, imgDiffY)
+    J11 = cv2.boxFilter(imgDiffXX, cv2.CV_32F, (window_size, window_size))
+    J22 = cv2.boxFilter(imgDiffYY, cv2.CV_32F, (window_size, window_size))
+    J12 = cv2.boxFilter(imgDiffXY, cv2.CV_32F, (window_size, window_size))
+    tmp1 = J11 + J22
+    tmp2 = J11 - J22
+    tmp2 = cv2.multiply(tmp2, tmp2)
+    tmp3 = cv2.multiply(J12, J12)
+    tmp4 = np.sqrt(tmp2 + 4.0 * tmp3)
+    lambda1 = 0.5 * (tmp1 + tmp4)  # biggest eigenvalue
+    lambda2 = 0.5 * (tmp1 - tmp4)  # smallest eigenvalue
+    imgCoherencyOut = cv2.divide(lambda1 - lambda2, lambda1 + lambda2)
+    imgOrientationOut = cv2.phase(J22 - J11, 2.0 * J12, angleInDegrees=True)
+    imgOrientationOut = 0.5 * imgOrientationOut
+    return imgCoherencyOut, imgOrientationOut

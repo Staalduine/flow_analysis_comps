@@ -5,7 +5,7 @@ from flow_analysis_comps.data_structs.kymograph_structs import (
     kymoOutputs,
 )
 from flow_analysis_comps.data_structs.video_metadata_structs import videoInfo
-from flow_analysis_comps.processing.GSTSpeedExtract.classic_image_util import filter_kymo_right
+from flow_analysis_comps.data_structs.kymograph_structs import filter_kymo_right
 from flow_analysis_comps.processing.kymographing.kymo_utils import (
     extract_kymo_coordinates,
 )
