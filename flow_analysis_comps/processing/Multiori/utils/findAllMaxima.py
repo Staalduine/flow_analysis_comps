@@ -15,7 +15,7 @@ def find_all_extrema_in_filter_response(
     filter_stack: np.ndarray,
     filter_vals: angle_filter_values | None = None,
     do_fft: bool = True,
-):
+) -> dict:
     if not filter_vals:
         filter_vals = angle_filter_values()
 
@@ -29,14 +29,6 @@ def find_all_extrema_in_filter_response(
     )
 
     filtered_angles_dict = postprocess_angles(filtered_angles_dict)
-
-    # output = multiOriOutput(
-    #     metadata=video_metadata,
-    #     angles_maxima=filtered_angles_dict["maxima"],
-    #     angles_minima=filtered_angles_dict["minima"],
-    #     values_maxima=filtered_angles_dict["values_max"],
-    #     values_minima=filtered_angles_dict["values_min"],
-    # )
 
     return filtered_angles_dict
 

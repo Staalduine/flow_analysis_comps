@@ -1,5 +1,6 @@
 import numpy as np
 from scipy import fftpack
+from flow_analysis_comps.io import read_video_array
 from flow_analysis_comps.data_structs.multiori_config_struct import (
     multiOriOutput,
     multiOriParams,
@@ -19,6 +20,24 @@ from flow_analysis_comps.processing.Multiori import (
 )
 import numpy.typing as npt
 from flow_analysis_comps.util import wraparoundN, mirror_pad_with_exponential_fade
+
+def multiori_direction_mask(video_metadata: videoInfo, multi_ori_filter_params: multiOriParams):
+    """
+    Make a mask from video frames. Multiori works well at finding directed structures in images.
+    """
+    first_im = read_video_array(video_metadata)[0].compute()
+    os_manager = orientationSpaceManager(multi_ori_filter_params, first_im)
+    multiori_output = os_manager.get_all_angles()
+
+    output_struct = multiOriOutput(
+        metadata=video_metadata,
+        angles_maxima=multiori_output["maxima"],
+        angles_minima=multiori_output["minima"],
+        values_maxima=multiori_output["values_max"],
+        values_minima=multiori_output["values_min"],
+    )
+    output_mask = ~np.isnan(output_struct.angles_maxima[0])
+    return output_mask
 
 def multiori_kymo_analysis(video_metadata: videoInfo, multi_ori_filter_params: multiOriParams, kymograph: np.ndarray):
     # Start with orientation manager

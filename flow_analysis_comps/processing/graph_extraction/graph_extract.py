@@ -82,6 +82,7 @@ class VideoGraphExtractor:
     @property
     def graph(self):
         graph, positions = skeletonize_segmented_im(self.mask)
+        print("Extracted graph, got mask")
         graph_output = graphOutput(
             graph=graph,
             positions=positions,

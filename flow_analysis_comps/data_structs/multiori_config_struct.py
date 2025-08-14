@@ -3,7 +3,7 @@ from pydantic import BaseModel, computed_field
 from numpydantic import NDArray, Shape
 from flow_analysis_comps.data_structs.video_metadata_structs import videoInfo
 from flow_analysis_comps.processing.GSTSpeedExtract.classic_image_util import speed_from_orientation_image
-data_stack = NDArray[Shape['* D, * x, * y'], float]
+data_stack = NDArray[Shape['* x, * y, * z'], float]
 
 class angle_filter_values(BaseModel):
     magnitude: float = 0.1
