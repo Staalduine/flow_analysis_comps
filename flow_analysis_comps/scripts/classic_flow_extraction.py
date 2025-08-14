@@ -1,3 +1,4 @@
+import cv2
 import flow_analysis_comps.io as io
 from pathlib import Path
 import pandas as pd
@@ -21,7 +22,7 @@ from flow_analysis_comps.visualizing.GraphVisualize import (
 )
 from flow_analysis_comps.visualizing.GSTSpeeds import GSTSpeedVizualizer
 from flow_analysis_comps.util.logging import setup_logger
-import imageio
+import imageio.v3
 
 
 def coord_to_folder(x: float, y: float, precision: int = 2):
@@ -118,20 +119,35 @@ def process_video(
         # save hyphal video with video settings
         hyphal_video = kymograph_videos[kymo.name]
         hyphal_video_path = out_folder / kymo.name / f"{video_position}_{formatted_timestamp}_{kymo.name}_hyphal_video.mp4"
-        hyphal_edge_path = out_folder / kymo.name / f"edge_pixels.npy"
-        metadata_path = out_folder / kymo.name / f"metadata.json"
+        hyphal_edge_path = out_folder / kymo.name / "edge_pixels.npy"
+        metadata_path = out_folder / kymo.name / "metadata.json"
+        framerate = user_metadata.camera.frame_rate if user_metadata.camera.frame_rate else 30.0
+
+        # Convert to uint8 if needed
+        if hyphal_video.dtype != np.uint8:
+            hyphal_video = (255 * (hyphal_video - hyphal_video.min()) / 
+                          (hyphal_video.max() - hyphal_video.min())).astype(np.uint8)
+
+        # Get video dimensions
+        height, width = hyphal_video[0].shape[:2]
+        
+        # Create video writer
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v') # type: ignore
+        out = cv2.VideoWriter(str(hyphal_video_path), fourcc, framerate, (width, height), isColor=False)
+        
+        # Write frames
+        for frame in hyphal_video:
+            out.write(frame)
+        
+        # Release video writer
+        out.release()
 
         video_json = user_metadata.model_dump_json()
 
         # Save to file
         with open(metadata_path, "w") as f:
             f.write(video_json)
-        imageio.mimsave(
-            str(hyphal_video_path),
-            hyphal_video,
-            fps=kymo_extractor.metadata.camera.frame_rate,
-        )
-        np.save(hyphal_edge_path,edge.pixel_list)
+        np.save(hyphal_edge_path,edge.pixel_list) # type: ignore
         kymo_averages["kymo_name"] = kymo.name  # Add name as a column
         kymo_averages.set_index("kymo_name", inplace=True)  # Set as index
         averages_list.append(kymo_averages)

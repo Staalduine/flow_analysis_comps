@@ -76,7 +76,7 @@ def speed_from_orientation_image(image: np.ndarray, deltas: videoDeltas):
     """
 
     # Ensure orientation is in range (-pi/2, pi/2)
-    assert np.all(image >= -np.pi / 2) and np.all(image <= np.pi / 2), (
+    assert np.all(image[~np.isnan(image)] >= -np.pi / 2) and np.all(image[~np.isnan(image)] <= np.pi / 2), (
         "Orientation image must be in range (-pi/2, pi/2) radians."
     )
 

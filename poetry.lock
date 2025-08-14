@@ -175,6 +175,62 @@ tests = ["cloudpickle ; platform_python_implementation == \"CPython\"", "hypothe
 tests-mypy = ["mypy (>=1.11.1) ; platform_python_implementation == \"CPython\" and python_version >= \"3.10\"", "pytest-mypy-plugins ; platform_python_implementation == \"CPython\" and python_version >= \"3.10\""]
 
 [[package]]
+name = "av"
+version = "15.0.0"
+description = "Pythonic bindings for FFmpeg's libraries."
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "av-15.0.0-cp310-cp310-macosx_13_0_arm64.whl", hash = "sha256:f20c7565ad9aed8a5e3ca7ed30b151d4d8a937e072b6a4901c3200134fe7c68b"},
+    {file = "av-15.0.0-cp310-cp310-macosx_13_0_x86_64.whl", hash = "sha256:0d8b78a88f0fdaf6591bca32b41301e40ba60be294b0698318948c4d1fa6f206"},
+    {file = "av-15.0.0-cp310-cp310-manylinux2014_i686.manylinux_2_17_i686.whl", hash = "sha256:5d14f6cea6c4966d5478a50555fa92af4948f83e7843b63b747d4a451c53d4f1"},
+    {file = "av-15.0.0-cp310-cp310-manylinux_2_28_aarch64.whl", hash = "sha256:09f516947890dcf27482af2f0f7b31a579dbd11d5566dd74ce5f1f6396c452b7"},
+    {file = "av-15.0.0-cp310-cp310-manylinux_2_28_x86_64.whl", hash = "sha256:908e2fb4358210a463f81e2dbfac77d5977cc53a400fea3f6decef6f9f9267e4"},
+    {file = "av-15.0.0-cp310-cp310-musllinux_1_2_aarch64.whl", hash = "sha256:911fe092b1c75c35d3e9d836b750ff725599a343b6126449cb2c1b4aa8ac2792"},
+    {file = "av-15.0.0-cp310-cp310-musllinux_1_2_i686.whl", hash = "sha256:25743a08b674596f3b993392259a4953a445b4211796d168c992174c983b76f0"},
+    {file = "av-15.0.0-cp310-cp310-musllinux_1_2_x86_64.whl", hash = "sha256:2ecd5df62b9697a9304a084fbfed13fa890ec9ba2f647aaed35dca291991c7b1"},
+    {file = "av-15.0.0-cp310-cp310-win_amd64.whl", hash = "sha256:7156d1b326e328aaba7f10a0d89bec53d087aba16f4c5c7ae13890b9eefde972"},
+    {file = "av-15.0.0-cp311-cp311-macosx_13_0_arm64.whl", hash = "sha256:eb19386466aafbac4ede549ed7dc6198714e8d35ecc238d5b5c0d91e770d53d4"},
+    {file = "av-15.0.0-cp311-cp311-macosx_13_0_x86_64.whl", hash = "sha256:e3c841befff26823524f3260d29fb3162540535c43238587b24226d345c82af3"},
+    {file = "av-15.0.0-cp311-cp311-manylinux2014_i686.manylinux_2_17_i686.whl", hash = "sha256:fe50ddab68af27bb9f7123dac5b1ff43ee8c7d941499c625018f3cac7da01ff3"},
+    {file = "av-15.0.0-cp311-cp311-manylinux_2_28_aarch64.whl", hash = "sha256:5877f9dacf04bba9e966e0feb707e0fc2955476dc50cc6de5707604f51440e1b"},
+    {file = "av-15.0.0-cp311-cp311-manylinux_2_28_x86_64.whl", hash = "sha256:e2a5f0d1817ab73370fdb35e2e2ecd4c2e5a45d43b8d96d5ae8dfe86098fb9b3"},
+    {file = "av-15.0.0-cp311-cp311-musllinux_1_2_aarch64.whl", hash = "sha256:710ad0307da524be553db123c0681edadb5cefc15baa49cf25217364fb7a80b5"},
+    {file = "av-15.0.0-cp311-cp311-musllinux_1_2_i686.whl", hash = "sha256:d275d3015ab13aadc7bf38df3b2398ad992e30b1685cd350fd46c71913e98af4"},
+    {file = "av-15.0.0-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:5b300f824a7ca1854ca29a37265281fa07d3dd0f69a6d2ff55d4c54ee3d734e2"},
+    {file = "av-15.0.0-cp311-cp311-win_amd64.whl", hash = "sha256:cb7a85b4fe853a9c2725cdf02f457221fcc24f0391c8333b25a3a889e16ff26d"},
+    {file = "av-15.0.0-cp312-cp312-macosx_13_0_arm64.whl", hash = "sha256:84e2ede9459e64e768f4bc56d9df65da9e94b704ee3eccfe2e5b1da1da754313"},
+    {file = "av-15.0.0-cp312-cp312-macosx_13_0_x86_64.whl", hash = "sha256:9473ed92d6942c5a449a2c79d49f3425eb0272499d1a3559b32c1181ff736a08"},
+    {file = "av-15.0.0-cp312-cp312-manylinux2014_i686.manylinux_2_17_i686.whl", hash = "sha256:56a53fe4e09bebd99355eaa0ce221b681eaf205bdda114f5e17fb79f3c3746ad"},
+    {file = "av-15.0.0-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:247dd9a99d7ed3577b8c1e9977e811f423b04504ff36c9dcd7a4de3e6e5fe5ad"},
+    {file = "av-15.0.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:fc50a7d5f60109221ccf44f8fa4c56ce73f22948b7f19b1717fcc58f7fbc383e"},
+    {file = "av-15.0.0-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:77deaec8943abfebd4e262924f2f452d6594cf0bc67d8d98aac0462b476e4182"},
+    {file = "av-15.0.0-cp312-cp312-musllinux_1_2_i686.whl", hash = "sha256:601d9b0740e47a17ec96ba2a537ebfd4d6edc859ae6f298475c06caa51f0a019"},
+    {file = "av-15.0.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:e021f67e0db7256c9f5d3d6a2a4237a4a4a804b131b33e7f2778981070519b20"},
+    {file = "av-15.0.0-cp312-cp312-win_amd64.whl", hash = "sha256:383f1b57520d790069d85fc75f43cfa32fca07f5fb3fb842be37bd596638602c"},
+    {file = "av-15.0.0-cp313-cp313-macosx_13_0_arm64.whl", hash = "sha256:0701c116f32bd9478023f610722f6371d15ca0c068ff228d355f54a7cf23d9cb"},
+    {file = "av-15.0.0-cp313-cp313-macosx_13_0_x86_64.whl", hash = "sha256:57fb6232494ec575b8e78e5a9ef9b811d78f8d67324476ec8430ca3146751124"},
+    {file = "av-15.0.0-cp313-cp313-manylinux2014_i686.manylinux_2_17_i686.whl", hash = "sha256:801a3e0afd5c36df70d012d083bfca67ab22d0ebd2c860c0d9432ac875bc0ad6"},
+    {file = "av-15.0.0-cp313-cp313-manylinux_2_28_aarch64.whl", hash = "sha256:d5e97791b96741b344bf6dbea4fb14481c117b1f7fe8113721e8d80e26cbb388"},
+    {file = "av-15.0.0-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:acb4e4aa6bb394d3a9e60feb4cb7a856fc7bac01f3c99019b1d0f11c898c682c"},
+    {file = "av-15.0.0-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:02d2d80bdbe184f1f3f49b3f5eae7f0ff7cba0a62ab3b18be0505715e586ad29"},
+    {file = "av-15.0.0-cp313-cp313-musllinux_1_2_i686.whl", hash = "sha256:603f3ae751f6678df5d8b949f92c6f8257064bba8b3e8db606a24c29d31b4e25"},
+    {file = "av-15.0.0-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:682686a9ea2745e63c8878641ec26b1787b9210533f3e945a6e07e24ab788c2e"},
+    {file = "av-15.0.0-cp313-cp313-win_amd64.whl", hash = "sha256:5758231163b5486dfbf664036be010b7f5ebb24564aaeb62577464be5ea996e0"},
+    {file = "av-15.0.0-cp39-cp39-macosx_13_0_arm64.whl", hash = "sha256:4a110aecebd7daef08f8be68ac9d6540f716a492f1994886a65eab9d19de39e2"},
+    {file = "av-15.0.0-cp39-cp39-macosx_13_0_x86_64.whl", hash = "sha256:5bcf99da2b1c67ed6b6a0d070cc218eccf05698fc960db9b8f42d36779714294"},
+    {file = "av-15.0.0-cp39-cp39-manylinux2014_i686.manylinux_2_17_i686.whl", hash = "sha256:f483c1dcefe1bb9b96bc5813b57acf03d13c717aea477088e26119392c53aa81"},
+    {file = "av-15.0.0-cp39-cp39-manylinux_2_28_aarch64.whl", hash = "sha256:ad7faa2b906954fd75fa9d3b52c81cdf9a1b202df305de34456a2a1d4aee625f"},
+    {file = "av-15.0.0-cp39-cp39-manylinux_2_28_x86_64.whl", hash = "sha256:e1a8d63fa3af2136c70e330a9845a4a2314d936c8a487760598ed7692024cc93"},
+    {file = "av-15.0.0-cp39-cp39-musllinux_1_2_aarch64.whl", hash = "sha256:5abc363915c0bb4d5973e41095881ce7dd715fc921e8366732a6b1a2e91f928a"},
+    {file = "av-15.0.0-cp39-cp39-musllinux_1_2_i686.whl", hash = "sha256:679720aba7540a974a7911a20cce5d0fd2c32a8ae3f7371283b9361140b8d0bb"},
+    {file = "av-15.0.0-cp39-cp39-musllinux_1_2_x86_64.whl", hash = "sha256:886a73abb874d8f1813d750714ea271ecc6c1e1b489e4d8381cdd4e1ab3fced2"},
+    {file = "av-15.0.0-cp39-cp39-win_amd64.whl", hash = "sha256:224087661cc20f0de052f05c2a47ff35eccd00702f8c8a4260fe5d469c6d591d"},
+    {file = "av-15.0.0.tar.gz", hash = "sha256:871c1a9becddf00b60b1294dc0bff9ff193ac31286aeec1a34039bd27e650183"},
+]
+
+[[package]]
 name = "babel"
 version = "2.17.0"
 description = "Internationalization utilities"
@@ -943,6 +999,23 @@ test = ["fsspec[github]", "pytest", "pytest-cov"]
 tifffile = ["tifffile"]
 
 [[package]]
+name = "imageio-ffmpeg"
+version = "0.6.0"
+description = "FFMPEG wrapper for Python"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "imageio_ffmpeg-0.6.0-py3-none-macosx_10_9_intel.macosx_10_9_x86_64.whl", hash = "sha256:9d2baaf867088508d4a3458e61eeb30e945c4ad8016025545f66c4b5aaef0a61"},
+    {file = "imageio_ffmpeg-0.6.0-py3-none-macosx_11_0_arm64.whl", hash = "sha256:b1ae3173414b5fc5f538a726c4e48ea97edc0d2cdc11f103afee655c463fa742"},
+    {file = "imageio_ffmpeg-0.6.0-py3-none-manylinux2014_aarch64.whl", hash = "sha256:1d47bebd83d2c5fc770720d211855f208af8a596c82d17730aa51e815cdee6dc"},
+    {file = "imageio_ffmpeg-0.6.0-py3-none-manylinux2014_x86_64.whl", hash = "sha256:c7e46fcec401dd990405049d2e2f475e2b397779df2519b544b8aab515195282"},
+    {file = "imageio_ffmpeg-0.6.0-py3-none-win32.whl", hash = "sha256:196faa79366b4a82f95c0f4053191d2013f4714a715780f0ad2a68ff37483cc2"},
+    {file = "imageio_ffmpeg-0.6.0-py3-none-win_amd64.whl", hash = "sha256:02fa47c83703c37df6bfe4896aab339013f62bf02c5ebf2dce6da56af04ffc0a"},
+    {file = "imageio_ffmpeg-0.6.0.tar.gz", hash = "sha256:e2556bed8e005564a9f925bb7afa4002d82770d6b08825078b7697ab88ba1755"},
+]
+
+[[package]]
 name = "importlib-metadata"
 version = "8.7.0"
 description = "Read metadata from Python packages"
@@ -1642,6 +1715,37 @@ lint = ["pre-commit (==3.7.0)"]
 test = ["pytest (>=7.4)", "pytest-cov (>=4.1)"]
 
 [[package]]
+name = "llvmlite"
+version = "0.44.0"
+description = "lightweight wrapper around basic LLVM functionality"
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "llvmlite-0.44.0-cp310-cp310-macosx_10_14_x86_64.whl", hash = "sha256:9fbadbfba8422123bab5535b293da1cf72f9f478a65645ecd73e781f962ca614"},
+    {file = "llvmlite-0.44.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:cccf8eb28f24840f2689fb1a45f9c0f7e582dd24e088dcf96e424834af11f791"},
+    {file = "llvmlite-0.44.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:7202b678cdf904823c764ee0fe2dfe38a76981f4c1e51715b4cb5abb6cf1d9e8"},
+    {file = "llvmlite-0.44.0-cp310-cp310-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:40526fb5e313d7b96bda4cbb2c85cd5374e04d80732dd36a282d72a560bb6408"},
+    {file = "llvmlite-0.44.0-cp310-cp310-win_amd64.whl", hash = "sha256:41e3839150db4330e1b2716c0be3b5c4672525b4c9005e17c7597f835f351ce2"},
+    {file = "llvmlite-0.44.0-cp311-cp311-macosx_10_14_x86_64.whl", hash = "sha256:eed7d5f29136bda63b6d7804c279e2b72e08c952b7c5df61f45db408e0ee52f3"},
+    {file = "llvmlite-0.44.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:ace564d9fa44bb91eb6e6d8e7754977783c68e90a471ea7ce913bff30bd62427"},
+    {file = "llvmlite-0.44.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c5d22c3bfc842668168a786af4205ec8e3ad29fb1bc03fd11fd48460d0df64c1"},
+    {file = "llvmlite-0.44.0-cp311-cp311-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:f01a394e9c9b7b1d4e63c327b096d10f6f0ed149ef53d38a09b3749dcf8c9610"},
+    {file = "llvmlite-0.44.0-cp311-cp311-win_amd64.whl", hash = "sha256:d8489634d43c20cd0ad71330dde1d5bc7b9966937a263ff1ec1cebb90dc50955"},
+    {file = "llvmlite-0.44.0-cp312-cp312-macosx_10_14_x86_64.whl", hash = "sha256:1d671a56acf725bf1b531d5ef76b86660a5ab8ef19bb6a46064a705c6ca80aad"},
+    {file = "llvmlite-0.44.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:5f79a728e0435493611c9f405168682bb75ffd1fbe6fc360733b850c80a026db"},
+    {file = "llvmlite-0.44.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c0143a5ef336da14deaa8ec26c5449ad5b6a2b564df82fcef4be040b9cacfea9"},
+    {file = "llvmlite-0.44.0-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:d752f89e31b66db6f8da06df8b39f9b91e78c5feea1bf9e8c1fba1d1c24c065d"},
+    {file = "llvmlite-0.44.0-cp312-cp312-win_amd64.whl", hash = "sha256:eae7e2d4ca8f88f89d315b48c6b741dcb925d6a1042da694aa16ab3dd4cbd3a1"},
+    {file = "llvmlite-0.44.0-cp313-cp313-macosx_10_14_x86_64.whl", hash = "sha256:319bddd44e5f71ae2689859b7203080716448a3cd1128fb144fe5c055219d516"},
+    {file = "llvmlite-0.44.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:9c58867118bad04a0bb22a2e0068c693719658105e40009ffe95c7000fcde88e"},
+    {file = "llvmlite-0.44.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:46224058b13c96af1365290bdfebe9a6264ae62fb79b2b55693deed11657a8bf"},
+    {file = "llvmlite-0.44.0-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:aa0097052c32bf721a4efc03bd109d335dfa57d9bffb3d4c24cc680711b8b4fc"},
+    {file = "llvmlite-0.44.0-cp313-cp313-win_amd64.whl", hash = "sha256:2fb7c4f2fb86cbae6dca3db9ab203eeea0e22d73b99bc2341cdf9de93612e930"},
+    {file = "llvmlite-0.44.0.tar.gz", hash = "sha256:07667d66a5d150abed9157ab6c0b9393c9356f229784a4385c02f99e94fc94d4"},
+]
+
+[[package]]
 name = "locket"
 version = "1.0.0"
 description = "File-based locks for Python on Linux and Windows"
@@ -1982,6 +2086,41 @@ jupyter-server = ">=1.8,<3"
 test = ["pytest", "pytest-console-scripts", "pytest-jupyter", "pytest-tornasync"]
 
 [[package]]
+name = "numba"
+version = "0.61.2"
+description = "compiling Python code using LLVM"
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "numba-0.61.2-cp310-cp310-macosx_10_14_x86_64.whl", hash = "sha256:cf9f9fc00d6eca0c23fc840817ce9f439b9f03c8f03d6246c0e7f0cb15b7162a"},
+    {file = "numba-0.61.2-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:ea0247617edcb5dd61f6106a56255baab031acc4257bddaeddb3a1003b4ca3fd"},
+    {file = "numba-0.61.2-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:ae8c7a522c26215d5f62ebec436e3d341f7f590079245a2f1008dfd498cc1642"},
+    {file = "numba-0.61.2-cp310-cp310-manylinux_2_28_aarch64.whl", hash = "sha256:bd1e74609855aa43661edffca37346e4e8462f6903889917e9f41db40907daa2"},
+    {file = "numba-0.61.2-cp310-cp310-win_amd64.whl", hash = "sha256:ae45830b129c6137294093b269ef0a22998ccc27bf7cf096ab8dcf7bca8946f9"},
+    {file = "numba-0.61.2-cp311-cp311-macosx_10_14_x86_64.whl", hash = "sha256:efd3db391df53aaa5cfbee189b6c910a5b471488749fd6606c3f33fc984c2ae2"},
+    {file = "numba-0.61.2-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:49c980e4171948ffebf6b9a2520ea81feed113c1f4890747ba7f59e74be84b1b"},
+    {file = "numba-0.61.2-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:3945615cd73c2c7eba2a85ccc9c1730c21cd3958bfcf5a44302abae0fb07bb60"},
+    {file = "numba-0.61.2-cp311-cp311-manylinux_2_28_aarch64.whl", hash = "sha256:bbfdf4eca202cebade0b7d43896978e146f39398909a42941c9303f82f403a18"},
+    {file = "numba-0.61.2-cp311-cp311-win_amd64.whl", hash = "sha256:76bcec9f46259cedf888041b9886e257ae101c6268261b19fda8cfbc52bec9d1"},
+    {file = "numba-0.61.2-cp312-cp312-macosx_10_14_x86_64.whl", hash = "sha256:34fba9406078bac7ab052efbf0d13939426c753ad72946baaa5bf9ae0ebb8dd2"},
+    {file = "numba-0.61.2-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:4ddce10009bc097b080fc96876d14c051cc0c7679e99de3e0af59014dab7dfe8"},
+    {file = "numba-0.61.2-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:5b1bb509d01f23d70325d3a5a0e237cbc9544dd50e50588bc581ba860c213546"},
+    {file = "numba-0.61.2-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:48a53a3de8f8793526cbe330f2a39fe9a6638efcbf11bd63f3d2f9757ae345cd"},
+    {file = "numba-0.61.2-cp312-cp312-win_amd64.whl", hash = "sha256:97cf4f12c728cf77c9c1d7c23707e4d8fb4632b46275f8f3397de33e5877af18"},
+    {file = "numba-0.61.2-cp313-cp313-macosx_10_14_x86_64.whl", hash = "sha256:3a10a8fc9afac40b1eac55717cece1b8b1ac0b946f5065c89e00bde646b5b154"},
+    {file = "numba-0.61.2-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:7d3bcada3c9afba3bed413fba45845f2fb9cd0d2b27dd58a1be90257e293d140"},
+    {file = "numba-0.61.2-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:bdbca73ad81fa196bd53dc12e3aaf1564ae036e0c125f237c7644fe64a4928ab"},
+    {file = "numba-0.61.2-cp313-cp313-manylinux_2_28_aarch64.whl", hash = "sha256:5f154aaea625fb32cfbe3b80c5456d514d416fcdf79733dd69c0df3a11348e9e"},
+    {file = "numba-0.61.2-cp313-cp313-win_amd64.whl", hash = "sha256:59321215e2e0ac5fa928a8020ab00b8e57cda8a97384963ac0dfa4d4e6aa54e7"},
+    {file = "numba-0.61.2.tar.gz", hash = "sha256:8750ee147940a6637b80ecf7f95062185ad8726c8c28a2295b8ec1160a196f7d"},
+]
+
+[package.dependencies]
+llvmlite = "==0.44.*"
+numpy = ">=1.24,<2.3"
+
+[[package]]
 name = "numpy"
 version = "1.26.4"
 description = "Fundamental package for array computing in Python"
@@ -2026,6 +2165,32 @@ files = [
     {file = "numpy-1.26.4-pp39-pypy39_pp73-win_amd64.whl", hash = "sha256:7e50d0a0cc3189f9cb0aeb3a6a6af18c16f59f004b866cd2be1c14b36134a4a0"},
     {file = "numpy-1.26.4.tar.gz", hash = "sha256:2a02aba9ed12e4ac4eb3ea9421c420301a0c6460d9830d74a9df87efa4912010"},
 ]
+
+[[package]]
+name = "numpydantic"
+version = "1.6.11"
+description = "Type and shape validation and serialization for arbitrary array types in pydantic models"
+optional = false
+python-versions = "<4.0,>=3.9"
+groups = ["main"]
+files = [
+    {file = "numpydantic-1.6.11-py3-none-any.whl", hash = "sha256:491b500b8210d5163af8e15bb39142d96caf91717c43c88d29366fa12c05ec46"},
+    {file = "numpydantic-1.6.11.tar.gz", hash = "sha256:d8e0d29d4a39f6ac190376eb96de6c8a5e29277db2c3ecc3aab8e85384ebfb47"},
+]
+
+[package.dependencies]
+numpy = ">=1.24.0"
+pydantic = ">=2.7.0"
+
+[package.extras]
+arrays = ["numpydantic[dask,hdf5,video,zarr]"]
+dask = ["dask (>=2024.4.0)"]
+dev = ["black (>=24.1.1)", "numpydantic[docs,tests]", "ruff (>=0.2.0,<1.0.0)", "sphinx-autobuild (>=2021.3.14)"]
+docs = ["autodoc-pydantic (>=2.0.1,<3.0.0)", "furo (>=2024.1.29)", "myst-nb (>=1.1.1)", "myst-parser (>=2.0.0,<3.0.0)", "numpydantic[arrays]", "rich (>=13.8.1)", "sphinx (>=7.2.6,<8.0.0)", "sphinx-design (>=0.5.0,<1.0.0)", "sphinxcontrib-mermaid (>=0.9.2)"]
+hdf5 = ["h5py (>=3.10.0)"]
+tests = ["coverage (>=6.1.1)", "coveralls (>=3.3.1,<4.0.0)", "mypy (>=1.17.1)", "numpydantic[arrays]", "pytest (>=7.4.0)", "pytest-cov (>=4.1.0,<5.0.0)", "pytest-depends (>=1.0.1,<2.0.0)"]
+video = ["opencv-python (>=4.9.0.80)"]
+zarr = ["zarr (>=2.17.2,<3.0.0)"]
 
 [[package]]
 name = "opencv-python"
@@ -3667,4 +3832,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4.0"
-content-hash = "aba12ce29c442322dc9432f79e35465f5ceec36763e75d981f65855bf2a98879"
+content-hash = "59046bd8c235f575ecff031b0307f6d4665b7d463603baa651762d28a561cba9"

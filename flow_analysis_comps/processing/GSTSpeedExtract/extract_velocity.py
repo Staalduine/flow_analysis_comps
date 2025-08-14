@@ -32,6 +32,7 @@ class kymoAnalyser:
     @property
     def speed_images(self):
         orientation_images = self.orientation_images
+        print(np.nanmin(orientation_images[1]), np.nanmax(orientation_images[1]))
         orientation_images = (
             (orientation_images - 90) / 180 * np.pi
         )  # Convert to radians, put vertical at 0
