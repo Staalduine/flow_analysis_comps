@@ -80,5 +80,5 @@ def speed_from_orientation_image(image: np.ndarray, deltas: videoDeltas):
         "Orientation image must be in range (-pi/2, pi/2) radians."
     )
 
-    speed = np.tan(image) * deltas.delta_x / deltas.delta_t
+    speed = np.tan(image) * deltas.delta_x / deltas.delta_t / 2
     return speed
